@@ -240,13 +240,13 @@ $('btnRefreshBoard').addEventListener('click', muatLeaderboard);
 /* ---------- Toko ---------- */
 const KATALOG = {
   character: [
-    { id: 'jolly', nama: 'Jolly', harga: 0, ikon: '🟡', desc: 'Plush krem kesayangan — sudah dimiliki.' },
+    { id: 'jolly', nama: 'Nailong', harga: 0, ikon: '🐲', desc: 'Naga kuning gembul kesayangan — sudah dimiliki.' },
     { id: 'kiko', nama: 'Kiko', harga: 50000, ikon: '🟢', desc: 'Hijau ceria, telinga daun.' },
     { id: 'momo', nama: 'Momo', harga: 100000, ikon: '🌸', desc: 'Pink manis, pita di kepala.' },
-    { id: 'rex', nama: 'Rex', harga: 200000, ikon: '🦖', desc: 'Oranye garang, tanduk kecil.' }
+    { id: 'rex', nama: 'Rex', harga: 200000, ikon: '🦖', desc: 'Oranye garang, tanduk naga.' }
   ],
   skin: [
-    { id: 'emas', nama: 'Emas', harga: 25000, ikon: '✨', desc: 'Jolly kuning keemasan.' },
+    { id: 'emas', nama: 'Emas', harga: 25000, ikon: '✨', desc: 'Nailong kuning keemasan.' },
     { id: 'ninja', nama: 'Ninja', harga: 50000, ikon: '🥷', desc: 'Hitam + ikat kepala.' },
     { id: 'astronot', nama: 'Astronot', harga: 75000, ikon: '🧑‍🚀', desc: 'Putih + helm kaca.' },
     { id: 'pelangi', nama: 'Pelangi', harga: 100000, ikon: '🌈', desc: 'Warna-warni ceria.' },
@@ -368,28 +368,53 @@ const ctx = canvas.getContext('2d');
 const LANES = [80, 210, 340];
 const game = { running: false, paused: false, lane: 1, level: 1, coins: 0, coinCount: 0, distance: 0, target: 500, speed: 4, objects: [], spawnT: 0, frame: 0, shield: false, magnet: false, mult: 1, hiasY: 0 };
 
-function drawJolly(x, y, r, skinId, charId) {
+function drawNailong(x, y, r, skinId, charId) {
   const char = charId || (profile && profile.equipped && profile.equipped.character) || 'jolly';
   const skin = skinId || (profile && profile.equipped && profile.equipped.skin) || '';
-  let warna = '#fff3d6', garis = '#e8d5a8';
-  if (char === 'kiko') { warna = '#a8e6a3'; garis = '#6fbf6a'; }
-  if (char === 'momo') { warna = '#ffc0cb'; garis = '#e88aa0'; }
-  if (char === 'rex') { warna = '#ffb74d'; garis = '#e08a1e'; }
-  if (skin === 'emas') { warna = '#ffd54a'; garis = '#c79a00'; }
-  if (skin === 'ninja') { warna = '#2b2b2b'; garis = '#111'; }
-  if (skin === 'astronot') { warna = '#ffffff'; garis = '#b0bec5'; }
-  if (skin === 'shadow') { warna = '#5a5a7a'; garis = '#33334d'; }
-  if (skin === 'pelangi') { warna = '#ffe082'; garis = '#ff8a65'; }
-  // telinga
+  let warna = '#ffd93b', garis = '#d9a400', perut = '#fff3c4';
+  if (char === 'kiko') { warna = '#a8e6a3'; garis = '#6fbf6a'; perut = '#e4f7e2'; }
+  if (char === 'momo') { warna = '#ffc0cb'; garis = '#e88aa0'; perut = '#ffe3ea'; }
+  if (char === 'rex') { warna = '#ffb74d'; garis = '#e08a1e'; perut = '#ffe0b3'; }
+  if (skin === 'emas') { warna = '#ffd54a'; garis = '#c79a00'; perut = '#ffef9e'; }
+  if (skin === 'ninja') { warna = '#2b2b2b'; garis = '#111'; perut = '#444444'; }
+  if (skin === 'astronot') { warna = '#ffffff'; garis = '#b0bec5'; perut = '#eef6fb'; }
+  if (skin === 'shadow') { warna = '#5a5a7a'; garis = '#33334d'; perut = '#7a7a9a'; }
+  if (skin === 'pelangi') { warna = '#ffe082'; garis = '#ff8a65'; perut = '#fff3c4'; }
+  const f = game.frame || 0;
+  const lari = Math.sin(f / 4); // ayunan kaki saat lari
+  const goyang = Math.sin(f / 6) * 0.12; // ekor bergoyang
+  // squash & stretch biar tidak kaku
+  const sy = 1 + Math.sin(f / 4) * 0.05, sx = 1 - Math.sin(f / 4) * 0.04;
+  ctx.save();
+  ctx.translate(x, y); ctx.scale(sx, sy); ctx.translate(-x, -y);
+  // ekor naga (bergoyang)
   ctx.fillStyle = warna; ctx.strokeStyle = garis; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(x - r * 0.55, y - r * 0.75, r * 0.32, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.arc(x + r * 0.55, y - r * 0.75, r * 0.32, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x - r * 0.7, y + r * 0.55);
+  ctx.quadraticCurveTo(x - r * 1.5, y + r * (0.7 + goyang), x - r * 1.35, y + r * 0.1);
+  ctx.quadraticCurveTo(x - r * 1.1, y + r * 0.35, x - r * 0.6, y + r * 0.3);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+  // kaki lari (bergantian naik-turun)
+  const kakiY1 = y + r * 0.95 + Math.max(0, lari) * r * 0.25;
+  const kakiY2 = y + r * 0.95 + Math.max(0, -lari) * r * 0.25;
+  ctx.beginPath(); ctx.ellipse(x - r * 0.35, kakiY1, r * 0.28, r * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(x + r * 0.35, kakiY2, r * 0.28, r * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // lengan kecil (mengayun)
+  ctx.beginPath(); ctx.ellipse(x - r * 0.95, y + r * (0.1 - lari * 0.15), r * 0.16, r * 0.3, -0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(x + r * 0.95, y + r * (0.1 + lari * 0.15), r * 0.16, r * 0.3, 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  // tanduk naga kecil (krem)
+  ctx.fillStyle = '#fff3c4'; ctx.strokeStyle = garis; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.ellipse(x - r * 0.45, y - r * 1.05, r * 0.14, r * 0.3, -0.35, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(x + r * 0.45, y - r * 1.05, r * 0.14, r * 0.3, 0.35, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   if (char === 'rex') { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(x, y - r * 1.15); ctx.lineTo(x - r * 0.25, y - r * 0.7); ctx.lineTo(x + r * 0.25, y - r * 0.7); ctx.closePath(); ctx.fill(); }
   if (char === 'momo') { ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.arc(x + r * 0.45, y - r * 0.9, r * 0.18, 0, Math.PI * 2); ctx.fill(); }
-  // badan plush bulat
+  // badan naga gembul
   ctx.fillStyle = warna;
   ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   ctx.strokeStyle = garis; ctx.lineWidth = 3; ctx.stroke();
+  // perut krem
+  ctx.fillStyle = perut;
+  ctx.beginPath(); ctx.ellipse(x, y + r * 0.45, r * 0.55, r * 0.42, 0, 0, Math.PI * 2); ctx.fill();
   if (skin === 'astronot') { ctx.strokeStyle = 'rgba(120,180,220,.9)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, y, r + 6, 0, Math.PI * 2); ctx.stroke(); }
   if (skin === 'ninja') { ctx.fillStyle = '#c62828'; ctx.fillRect(x - r, y - r * 0.55, r * 2, r * 0.22); }
   if (skin === 'pelangi') { ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r * 0.75, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); ctx.strokeStyle = '#448aff'; ctx.beginPath(); ctx.arc(x, y, r * 0.6, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
@@ -409,6 +434,7 @@ function drawJolly(x, y, r, skinId, charId) {
   ctx.strokeStyle = skin === 'ninja' ? '#fff' : '#5d3a1a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.arc(x, y + r * 0.25, r * 0.3, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
   if (game.shield) { ctx.strokeStyle = 'rgba(68,138,255,.8)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r + 10, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.restore();
 }
 function drawCoin(x, y, r) {
   ctx.fillStyle = '#f5b301'; ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 3;
@@ -438,7 +464,7 @@ function resetGame() {
   game.level = lv; game.lane = 1; game.coins = 0; game.coinCount = 0; game.distance = 0;
   game.target = (isBos(lv) ? 700 : 450) + lv * 30;
   game.speed = 4 + lv * 0.18;
-  game.objects = []; game.spawnT = 0; game.frame = 0;
+  game.objects = []; game.spawnT = 0; game.frame = 0; game.debu = [];
   game.shield = pu === 'perisai' || ((profile && profile.equipped && profile.equipped.powerup) === 'perisai');
   game.magnet = pu === 'magnet' || ((profile && profile.equipped && profile.equipped.powerup) === 'magnet');
   game.mult = (pu === 'koinx2' || ((profile && profile.equipped && profile.equipped.powerup) === 'koinx2')) ? 2 : 1;
@@ -502,11 +528,15 @@ function loop() {
     ctx.font = '22px sans-serif'; ctx.textAlign = 'left';
     ctx.fillText(d.hias, 14, 40); ctx.fillText(d.hias, 384, 120);
     game.objects.forEach((o) => { if (o.kind === 'koin') drawCoin(LANES[o.lane], o.y, 15); else drawObstacle(o); });
-    // bayangan + Jolly (loncat kecil saat lari)
+    // bayangan + Nailong (loncat kecil saat lari) + debu kaki
     const lompat = Math.abs(Math.sin(game.frame / 8)) * 6;
     ctx.fillStyle = 'rgba(0,0,0,.25)';
     ctx.beginPath(); ctx.ellipse(px, py + 34, 26, 8, 0, 0, Math.PI * 2); ctx.fill();
-    drawJolly(px, py - lompat, 30);
+    if (game.frame % 5 === 0) game.debu.push({ x: px + (Math.random() * 30 - 15), y: py + 32, r: 3 + Math.random() * 3, a: 0.3 });
+    game.debu.forEach((d) => { d.y -= 1; d.a -= 0.012; d.r += 0.4; });
+    game.debu = game.debu.filter((d) => d.a > 0);
+    game.debu.forEach((d) => { ctx.fillStyle = 'rgba(210,180,140,' + d.a.toFixed(2) + ')'; ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill(); });
+    drawNailong(px, py - lompat, 30);
     if (game.distance >= game.target) { selesaiLevel(); return; }
   }
   requestAnimationFrame(loop);

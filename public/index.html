@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Lari Koin Online — Lari, Kumpulkan Koin, Tukar Jadi Uang</title>
-<meta name="description" content="Game lari 3 jalur: kumpulkan koin, selesaikan level, tukar koin jadi uang.">
+<title>Nailong Runner — Lari, Kumpulkan Koin, Tukar Jadi Uang</title>
+<meta name="description" content="Nailong Runner: naga kuning gembul lari 3 jalur — kumpulkan koin, selesaikan level, tukar koin jadi uang.">
 <meta name="theme-color" content="#f5b301">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -12,16 +12,28 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<!-- LAYAR MEMUAT -->
+<div id="loadingScreen">
+  <img src="/nailong-wave.jpg" alt="Nailong melambai">
+  <h1>Nailong Runner</h1>
+  <p>Memuat… 🐲</p>
+  <div class="loading-bar"><i></i></div>
+</div>
+<script>window.addEventListener('load',function(){setTimeout(function(){var l=document.getElementById('loadingScreen');if(l){l.classList.add('done');setTimeout(function(){l.remove()},600);}},900);});</script>
 <header class="topbar">
-  <div class="logo" aria-hidden="true">🪙</div>
-  <div><h1>Lari Koin Online</h1><p>Lari • Kumpulkan Koin • Tukar Jadi Uang</p></div>
+  <img class="logo-img" src="/icon-192.png" alt="Nailong">
+  <div><h1>Nailong Runner</h1><p>Lari • Kumpulkan Koin • Tukar Jadi Uang</p></div>
 </header>
 
 <div id="toast" role="status"></div>
 
 <!-- LAYAR MASUK / DAFTAR -->
 <section id="authScreen" class="card" style="margin-top:14px">
-  <h2>Selamat datang, Pelari! 🏃</h2>
+  <div class="hero-nailong">
+    <img src="/nailong-hero.jpg" alt="Nailong berlari mengejar koin emas">
+    <div class="hero-koin"><span>🪙</span><span>🪙</span><span>🪙</span><span>🪙</span></div>
+  </div>
+  <h2>Nailong Runner! 🐉</h2>
   <div class="notice">🎁 <b>Download &amp; main — tukar koin jadi uang sampai Rp50.000!</b><br>1.000 koin = Rp15 &bull; Penarikan mulai Rp1.000 &bull; Undang teman dapat Rp5.000 per teman.</div>
   <p>Masuk dengan nama + PIN kamu. Belum punya akun? Isi nama &amp; PIN lalu tekan <b>Daftar</b> — akun langsung dibuat.</p>
   <label for="authName">Nama pemain</label>
@@ -53,7 +65,7 @@
   <main>
     <!-- GAME -->
     <section class="card" id="gameSection">
-      <h2>🎮 Main — Lari Koin <span id="labelBos"></span></h2>
+      <h2>🎮 Main — Nailong Runner <span id="labelBos"></span></h2>
       <p class="muted">Geser <b>kiri / kanan</b> untuk pindah jalur. Hindari batu, kotak &amp; pagar. Kumpulkan koin — tiap koin <b>+10 koin</b>. Selesai level = lari sampai jarak target.</p>
       <div class="row">
         <div>
@@ -67,7 +79,7 @@
       </div>
       <p id="duniaInfo" class="pill">🌇 Dunia 1: Kota Senja (Level 1–10)</p>
       <div class="game-wrap">
-        <canvas id="gameCanvas" width="420" height="520" aria-label="Arena game Lari Koin"></canvas>
+        <canvas id="gameCanvas" width="420" height="520" aria-label="Arena game Nailong Runner"></canvas>
         <div class="hud"><span id="hudKoin">🪙 0</span><span id="hudJarak">0 m</span><span id="hudLevel">Lv 1</span></div>
       </div>
       <div class="game-controls">
@@ -180,7 +192,7 @@
       <h2>🛍 Toko</h2>
       <h3>Karakter</h3>
       <div id="tokoKarakter"></div>
-      <h3>Skin Jolly</h3>
+      <h3>Skin Nailong</h3>
       <div id="tokoSkin"></div>
       <h3>Power-up</h3>
       <div id="tokoPowerup"></div>
@@ -204,7 +216,7 @@
       <p class="small">Cooldown 5 menit antar iklan • Maksimal 10 iklan per hari.</p>
     </section>
 
-    <p class="small" style="text-align:center">Lari Koin Online • Main gratis, koin dari main, misi, iklan &amp; undang teman.</p>
+    <p class="small" style="text-align:center">Nailong Runner • Main gratis, koin dari main, misi, iklan &amp; undang teman.</p>
   </main>
 </div>
 
