@@ -30,6 +30,84 @@ function isBos(level) { return level % 10 === 0; }
 /* Render aman: satu bagian gagal tidak boleh mengosongkan semua fitur. */
 function renderAman(fn) { try { fn(); } catch (e) { console.warn('[render] gagal:', e && e.message); } }
 
+/* ---------- Tabel data (di-hoist ke atas: dibaca pemakaian top-level) ---------- */
+const KATALOG = {
+  character: [
+    { id: 'jolly', nama: 'Xbot', harga: 0, ikon: '🤖', desc: 'Robot lincah kesayangan — sudah dimiliki.' },
+    { id: 'kiko', nama: 'Xbot Hijau', harga: 50000, ikon: '🤖', desc: 'Xbot hijau ceria.' },
+    { id: 'momo', nama: 'Xbot Pink', harga: 100000, ikon: '🤖', desc: 'Xbot pink manis, pita di kepala.' },
+    { id: 'rex', nama: 'Xbot Api', harga: 200000, ikon: '🤖', desc: 'Xbot oranye garang, mata laser.' }
+  ],
+  skin: [
+    { id: 'emas', nama: 'Emas', harga: 25000, ikon: '✨', desc: 'Xbot kuning keemasan.' },
+    { id: 'ninja', nama: 'Ninja', harga: 50000, ikon: '🥷', desc: 'Hitam + ikat kepala.' },
+    { id: 'astronot', nama: 'Astronot', harga: 75000, ikon: '🧑‍🚀', desc: 'Putih + helm kaca.' },
+    { id: 'pelangi', nama: 'Pelangi', harga: 100000, ikon: '🌈', desc: 'Warna-warni ceria.' },
+    { id: 'shadow', nama: 'Shadow', harga: 150000, ikon: '🌑', desc: 'Gelap misterius.' }
+  ],
+  powerup: [
+    { id: 'magnet', nama: 'Magnet Koin', harga: 2000, ikon: '🧲', desc: 'Menarik koin dari jalur sebelah.' },
+    { id: 'perisai', nama: 'Perisai', harga: 2000, ikon: '🛡', desc: 'Menahan 1 tabrakan.' },
+    { id: 'koinx2', nama: 'Koin x2', harga: 3000, ikon: '✖️2', desc: 'Koin ganda selama satu lari.' }
+  ]
+};
+const LEVEL_CHARACTERS = [
+  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: ['#1a1a1a', '#000000', '#424242'] , gradasi: ['#2b2b2b', '#c62828', '#ff5252'] },
+  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: ['#d32f2f', '#9a0007', '#ffcdd2'] , gradasi: ['#ff1744', '#c62828', '#7f0000'] },
+  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: ['#4fc3f7', '#0288d1', '#e1f5fe'] , gradasi: ['#b3e5fc', '#4fc3f7', '#01579b'] },
+  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: ['#90caf9', '#42a5f5', '#e3f2fd'] , gradasi: ['#e3f2fd', '#90caf9', '#1565c0'] },
+  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: ['#66bb6a', '#388e3c', '#e8f5e9'] , gradasi: ['#a5d6a7', '#43a047', '#1b5e20'] },
+  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: ['#ab47bc', '#6a1b9a', '#f3e5f5'] , gradasi: ['#ce93d8', '#8e24aa', '#4a148c'] },
+  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: ['#fb8c00', '#e65100', '#fff3e0'] , gradasi: ['#ffcc80', '#fb8c00', '#bf360c'] },
+  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: ['#f06292', '#c2185b', '#fce4ec'] , gradasi: ['#f8bbd0', '#ec407a', '#880e4f'] },
+  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: ['#fdd835', '#f9a825', '#fffde7'] , gradasi: ['#fff176', '#fdd835', '#f57f17'] },
+  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: ['#26a69a', '#00695c', '#e0f2f1'] , gradasi: ['#80cbc4', '#26a69a', '#004d40'] },
+  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: ['#546e7a', '#263238', '#eceff1'] , gradasi: ['#90a4ae', '#546e7a', '#11171c'] },
+  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: ['#ffd700', '#b8860b', '#fffde7'] , gradasi: ['#ffe082', '#ffd700', '#8d6e00'] },
+];
+const GRADASI_DEFAULT = ['#4a2d7a', '#2d1b4d', '#8a6d00'];
+const LEVEL_SKINS = [
+  { id: 'es', level: 5, nama: 'Es', ikon: '❄️', desc: 'Xbot biru es yang sejuk.' },
+  { id: 'sakura', level: 10, nama: 'Sakura', ikon: '🌸', desc: 'Xbot pink bunga sakura.' },
+  { id: 'laut', level: 15, nama: 'Laut', ikon: '🌊', desc: 'Xbot biru laut dalam.' },
+  { id: 'hutan', level: 20, nama: 'Hutan', ikon: '🌿', desc: 'Xbot hijau rimba.' },
+  { id: 'senja', level: 25, nama: 'Senja', ikon: '🌇', desc: 'Xbot ungu senja.' },
+  { id: 'salju', level: 30, nama: 'Salju', ikon: '⛄', desc: 'Xbot putih salju.' },
+  { id: 'lava', level: 35, nama: 'Lava', ikon: '🌋', desc: 'Xbot oranye lava panas.' },
+  { id: 'galaksi', level: 40, nama: 'Galaksi', ikon: '🌌', desc: 'Xbot ungu galaksi.' },
+  { id: 'madu', level: 45, nama: 'Madu', ikon: '🍯', desc: 'Xbot kuning madu.' },
+  { id: 'mint', level: 50, nama: 'Mint', ikon: '🍃', desc: 'Xbot hijau mint segar.' },
+  { id: 'komet', level: 55, nama: 'Komet', ikon: '☄️', desc: 'Xbot oranye komet.' },
+  { id: 'legenda', level: 60, nama: 'Legenda', ikon: '👑', desc: 'Xbot emas legenda — skin terakhir!' }
+];
+const SKIN3D_WARNA = {
+  // karakter dasar (tanpa skin)
+  jolly: ['#ffd93b', '#d9a400', '#fff3c4'],
+  kiko: ['#a8e6a3', '#6fbf6a', '#e4f7e2'],
+  momo: ['#ffc0cb', '#e88aa0', '#ffe3ea'],
+  rex: ['#ffb74d', '#e08a1e', '#ffe0b3'],
+  // skin toko
+  emas: ['#ffd54a', '#c79a00', '#ffef9e'],
+  ninja: ['#2b2b2b', '#111111', '#444444'],
+  astronot: ['#ffffff', '#b0bec5', '#eef6fb'],
+  pelangi: ['#ffe082', '#ff8a65', '#fff3c4'],
+  shadow: ['#5a5a7a', '#33334d', '#7a7a9a'],
+  // skin level (gratis per 5 level)
+  es: ['#b3e5fc', '#4fc3f7', '#e1f5fe'],
+  sakura: ['#f8bbd0', '#f06292', '#fce4ec'],
+  laut: ['#4fc3f7', '#0288d1', '#e1f5fe'],
+  hutan: ['#81c784', '#43a047', '#e8f5e9'],
+  senja: ['#ce93d8', '#8e24aa', '#f3e5f5'],
+  salju: ['#eceff1', '#90a4ae', '#ffffff'],
+  lava: ['#ff7043', '#d84315', '#ffccbc'],
+  galaksi: ['#7e57c2', '#512da8', '#ede7f6'],
+  madu: ['#ffca28', '#ff8f00', '#fff8e1'],
+  mint: ['#80cbc4', '#00897b', '#e0f2f1'],
+  komet: ['#ff9800', '#e65100', '#fff3e0'],
+  legenda: ['#ffd700', '#b8860b', '#fffde7']
+};
+
+
 /* ---------- Link undangan (?ref=<nama>) ----------
  * Referral berbasis NAMA: server memvalidasi nama pengundang di
  * /api/auth/social (harus ada, bukan diri sendiri). Tidak butuh ubah server. */
@@ -518,44 +596,10 @@ async function muatLeaderboard() {
 $('btnRefreshBoard').addEventListener('click', muatLeaderboard);
 
 /* ---------- Toko ---------- */
-const KATALOG = {
-  character: [
-    { id: 'jolly', nama: 'Xbot', harga: 0, ikon: '🤖', desc: 'Robot lincah kesayangan — sudah dimiliki.' },
-    { id: 'kiko', nama: 'Xbot Hijau', harga: 50000, ikon: '🤖', desc: 'Xbot hijau ceria.' },
-    { id: 'momo', nama: 'Xbot Pink', harga: 100000, ikon: '🤖', desc: 'Xbot pink manis, pita di kepala.' },
-    { id: 'rex', nama: 'Xbot Api', harga: 200000, ikon: '🤖', desc: 'Xbot oranye garang, mata laser.' }
-  ],
-  skin: [
-    { id: 'emas', nama: 'Emas', harga: 25000, ikon: '✨', desc: 'Xbot kuning keemasan.' },
-    { id: 'ninja', nama: 'Ninja', harga: 50000, ikon: '🥷', desc: 'Hitam + ikat kepala.' },
-    { id: 'astronot', nama: 'Astronot', harga: 75000, ikon: '🧑‍🚀', desc: 'Putih + helm kaca.' },
-    { id: 'pelangi', nama: 'Pelangi', harga: 100000, ikon: '🌈', desc: 'Warna-warni ceria.' },
-    { id: 'shadow', nama: 'Shadow', harga: 150000, ikon: '🌑', desc: 'Gelap misterius.' }
-  ],
-  powerup: [
-    { id: 'magnet', nama: 'Magnet Koin', harga: 2000, ikon: '🧲', desc: 'Menarik koin dari jalur sebelah.' },
-    { id: 'perisai', nama: 'Perisai', harga: 2000, ikon: '🛡', desc: 'Menahan 1 tabrakan.' },
-    { id: 'koinx2', nama: 'Koin x2', harga: 3000, ikon: '✖️2', desc: 'Koin ganda selama satu lari.' }
-  ]
-};
 /* Skin level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 skin). Set lengkap bisa ditukar Rp100.000. */
 /* Karakter level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 karakter).
    Kartu gambar di /characters/. Warna [utama, garis, perut] dipakai tint 3D + 2D.
    Cermin dari LEVEL_CHARACTERS di db.js — jaga agar id/level/nama/img sama. */
-const LEVEL_CHARACTERS = [
-  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: ['#1a1a1a', '#000000', '#424242'] , gradasi: ['#2b2b2b', '#c62828', '#ff5252'] },
-  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: ['#d32f2f', '#9a0007', '#ffcdd2'] , gradasi: ['#ff1744', '#c62828', '#7f0000'] },
-  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: ['#4fc3f7', '#0288d1', '#e1f5fe'] , gradasi: ['#b3e5fc', '#4fc3f7', '#01579b'] },
-  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: ['#90caf9', '#42a5f5', '#e3f2fd'] , gradasi: ['#e3f2fd', '#90caf9', '#1565c0'] },
-  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: ['#66bb6a', '#388e3c', '#e8f5e9'] , gradasi: ['#a5d6a7', '#43a047', '#1b5e20'] },
-  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: ['#ab47bc', '#6a1b9a', '#f3e5f5'] , gradasi: ['#ce93d8', '#8e24aa', '#4a148c'] },
-  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: ['#fb8c00', '#e65100', '#fff3e0'] , gradasi: ['#ffcc80', '#fb8c00', '#bf360c'] },
-  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: ['#f06292', '#c2185b', '#fce4ec'] , gradasi: ['#f8bbd0', '#ec407a', '#880e4f'] },
-  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: ['#fdd835', '#f9a825', '#fffde7'] , gradasi: ['#fff176', '#fdd835', '#f57f17'] },
-  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: ['#26a69a', '#00695c', '#e0f2f1'] , gradasi: ['#80cbc4', '#26a69a', '#004d40'] },
-  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: ['#546e7a', '#263238', '#eceff1'] , gradasi: ['#90a4ae', '#546e7a', '#11171c'] },
-  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: ['#ffd700', '#b8860b', '#fffde7'] , gradasi: ['#ffe082', '#ffd700', '#8d6e00'] },
-];
 function karakterLevel(id) { return LEVEL_CHARACTERS.find((c) => c.id === id) || null; }
 /* Gradasi latar kartu per karakter (Batch 7.1) — dipakai kartu grid, hero login,
    dan kartu Beranda supaya latarnya menarik, bukan putih polos.
@@ -563,7 +607,6 @@ function karakterLevel(id) { return LEVEL_CHARACTERS.find((c) => c.id === id) ||
    berlatar putih, Sky berlatar hitam, Frost berlatar biru — blend akan merusak
    2 gambar itu (diuji visual dengan PIL: multiply gagal di bg hitam/biru,
    screen memutihkan karakter; frame + gradasi bagus untuk semuanya). */
-const GRADASI_DEFAULT = ['#4a2d7a', '#2d1b4d', '#8a6d00'];
 function gradasiCSS(k) {
   const g = (k && k.gradasi) || GRADASI_DEFAULT;
   return 'radial-gradient(circle at 50% 22%, rgba(255,255,255,.55), rgba(255,255,255,0) 55%), linear-gradient(135deg, ' + g[0] + ' 0%, ' + g[1] + ' 55%, ' + g[2] + ' 100%)';
@@ -579,48 +622,8 @@ function gambarKarakterAktif() {
   const k = karakterAktif();
   return k ? k.img : '/characters/char-01.jpg';
 }
-const LEVEL_SKINS = [
-  { id: 'es', level: 5, nama: 'Es', ikon: '❄️', desc: 'Xbot biru es yang sejuk.' },
-  { id: 'sakura', level: 10, nama: 'Sakura', ikon: '🌸', desc: 'Xbot pink bunga sakura.' },
-  { id: 'laut', level: 15, nama: 'Laut', ikon: '🌊', desc: 'Xbot biru laut dalam.' },
-  { id: 'hutan', level: 20, nama: 'Hutan', ikon: '🌿', desc: 'Xbot hijau rimba.' },
-  { id: 'senja', level: 25, nama: 'Senja', ikon: '🌇', desc: 'Xbot ungu senja.' },
-  { id: 'salju', level: 30, nama: 'Salju', ikon: '⛄', desc: 'Xbot putih salju.' },
-  { id: 'lava', level: 35, nama: 'Lava', ikon: '🌋', desc: 'Xbot oranye lava panas.' },
-  { id: 'galaksi', level: 40, nama: 'Galaksi', ikon: '🌌', desc: 'Xbot ungu galaksi.' },
-  { id: 'madu', level: 45, nama: 'Madu', ikon: '🍯', desc: 'Xbot kuning madu.' },
-  { id: 'mint', level: 50, nama: 'Mint', ikon: '🍃', desc: 'Xbot hijau mint segar.' },
-  { id: 'komet', level: 55, nama: 'Komet', ikon: '☄️', desc: 'Xbot oranye komet.' },
-  { id: 'legenda', level: 60, nama: 'Legenda', ikon: '👑', desc: 'Xbot emas legenda — skin terakhir!' }
-];
 /* Warna skin untuk model 3D (Xbot) — [warna utama, garis, perut].
    Disalin dari logika warnaKarakter() (tampilan 2D) supaya 2D & 3D konsisten. */
-const SKIN3D_WARNA = {
-  // karakter dasar (tanpa skin)
-  jolly: ['#ffd93b', '#d9a400', '#fff3c4'],
-  kiko: ['#a8e6a3', '#6fbf6a', '#e4f7e2'],
-  momo: ['#ffc0cb', '#e88aa0', '#ffe3ea'],
-  rex: ['#ffb74d', '#e08a1e', '#ffe0b3'],
-  // skin toko
-  emas: ['#ffd54a', '#c79a00', '#ffef9e'],
-  ninja: ['#2b2b2b', '#111111', '#444444'],
-  astronot: ['#ffffff', '#b0bec5', '#eef6fb'],
-  pelangi: ['#ffe082', '#ff8a65', '#fff3c4'],
-  shadow: ['#5a5a7a', '#33334d', '#7a7a9a'],
-  // skin level (gratis per 5 level)
-  es: ['#b3e5fc', '#4fc3f7', '#e1f5fe'],
-  sakura: ['#f8bbd0', '#f06292', '#fce4ec'],
-  laut: ['#4fc3f7', '#0288d1', '#e1f5fe'],
-  hutan: ['#81c784', '#43a047', '#e8f5e9'],
-  senja: ['#ce93d8', '#8e24aa', '#f3e5f5'],
-  salju: ['#eceff1', '#90a4ae', '#ffffff'],
-  lava: ['#ff7043', '#d84315', '#ffccbc'],
-  galaksi: ['#7e57c2', '#512da8', '#ede7f6'],
-  madu: ['#ffca28', '#ff8f00', '#fff8e1'],
-  mint: ['#80cbc4', '#00897b', '#e0f2f1'],
-  komet: ['#ff9800', '#e65100', '#fff3e0'],
-  legenda: ['#ffd700', '#b8860b', '#fffde7']
-};
 function warnaSkin3D() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
   const k = karakterLevel(char);
