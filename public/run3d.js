@@ -1,11 +1,11 @@
-/* Nailong Runner — tampilan lari 3D (Three.js r170, WebGL).
+/* Runner Coin — tampilan lari 3D (Three.js r170, WebGL).
  *
  * Karakter Xbot + animasi Mixamo (run / jump / slide / stumble) dan model koin
  * berasal dari repo Cave Runner (tope-olajide/cave-runner, lisensi MIT):
  * https://github.com/tope-olajide/cave-runner
  * Diadaptasi, BUKAN di-port mentah: tidak ada kode PlanetScale / leaderboard
  * Cave Runner di sini — semua itu sudah ditangani server game ini.
- * Karakter 3D di sini Xbot (Mixamo). Model Nailong 3D masih dicari/dibuat.
+ * Karakter 3D di sini Xbot (Mixamo).
  *
  * Modul ini HANYA menggambar. Semua logika game (koin, level, nyawa, skill,
  * validasi server) tetap di app.js; modul ini membaca state game tiap frame
@@ -14,6 +14,7 @@
  */
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 
 /* ---------- Pemetaan koordinat game (2D) -> dunia 3D ---------- */
 export const LANE_X = [-2.2, 0, 2.2]; // x dunia untuk jalur 0 / 1 / 2
@@ -36,6 +37,7 @@ const R = {
   renderer: null, scene: null, camera: null, clock: null,
   char: null, mixer: null, actions: {}, current: null, currentName: null,
   coinTemplate: null, obsTemplates: {},
+  clips: {}, charSurfaceMat: null, skinHex: null, _preloadPromise: null,
   coinSlots: [], coinMap: new Map(), coinFree: [],
   obsSlots: [], obsMap: new Map(), obsFree: [],
   decor: [], decorMats: {},
@@ -288,7 +290,12 @@ async function loadModels() {
   const charGroup = await loader.loadAsync(MODEL_BASE + 'xbot.fbx');
   charGroup.scale.setScalar(CHAR_SCALE);
   charGroup.rotation.y = Math.PI; // membelakangi kamera (lari menjauh)
-  charGroup.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { o.castShadow = false; o.receiveShadow = false; } });
+  charGroup.traverse((o) => {
+    if (o.isMesh || o.isSkinnedMesh) {
+      o.castShadow = false; o.receiveShadow = false;
+      if (o.name === 'Beta_Surface') R.charSurfaceMat = o.material; // badan utama -> diwarnai skin
+    }
+  });
   R.char = charGroup;
   R.scene.add(charGroup);
   R.mixer = new THREE.AnimationMixer(charGroup);
@@ -298,6 +305,7 @@ async function loadModels() {
   });
   // Animasi — masing-masing opsional; kalau satu gagal, animasi itu dilewati.
   const anims = [
+    ['dance', 'xbot@dancing.fbx', true, 1],
     ['run', 'xbot@running.fbx', true, 1],
     ['jump', 'xbot@jumping.fbx', false, 1.7],
     ['slide', 'xbot@sliding.fbx', false, 2.2],
@@ -311,6 +319,7 @@ async function loadModels() {
       clip.name = name;
       if (name === 'jump' || name === 'slide') stripRootMotion(clip);
       R.actions[name] = makeAction(clip, loop, ts);
+      R.clips[name] = clip;
     } catch (e) { console.warn('[run3d] animasi ' + name + ' gagal dimuat:', e.message); }
   }
   // Koin — kalau gagal, pakai torus emas.
@@ -476,26 +485,133 @@ function playStumble() {
 
 /* ---------- Preload (dipanggil setelah login; idempotent) ---------- */
 async function preload() {
-  if (R.ready || R.loading) return R.ready;
+  if (R.ready) return true;
+  if (R._preloadPromise) return R._preloadPromise;
   R.loading = true;
+  R._preloadPromise = (async () => {
+    try {
+      if (!webglOK()) throw new Error('WebGL tidak tersedia di perangkat ini');
+      initRenderer();
+      await loadModels();
+      R.ready = true;
+    } catch (e) {
+      R.failed = true;
+      console.warn('[run3d] Mode 3D tidak aktif, pakai 2D:', e.message);
+    } finally {
+      R.loading = false;
+    }
+    return R.ready;
+  })();
+  return R._preloadPromise;
+}
+
+
+/* ---------- Skin: tint warna badan Xbot mengikuti skin aktif ---------- */
+function applySkin(warnaHex) {
+  if (!R.charSurfaceMat || !warnaHex) return false;
   try {
-    if (!webglOK()) throw new Error('WebGL tidak tersedia di perangkat ini');
-    initRenderer();
-    await loadModels();
-    R.ready = true;
-  } catch (e) {
-    R.failed = true;
-    console.warn('[run3d] Mode 3D tidak aktif, pakai 2D:', e.message);
-  } finally {
-    R.loading = false;
+    R.charSurfaceMat.color.set(hexNum(warnaHex));
+    R.skinHex = warnaHex;
+    return true;
+  } catch (e) { return false; }
+}
+
+/* ---------- Showcase karakter (login + Beranda) ----------
+ * Satu panggung 3D per canvas: klon Xbot (SkeletonUtils.clone — model FBX
+ * TIDAK diunduh ulang), animasi dance (jatuh ke run kalau dance gagal),
+ * geser untuk memutar + putar otomatis pelan biar terasa hidup.
+ * Render dilewati saat canvas tersembunyi (tab lain / sudah login).
+ */
+const SHOWCASES = new Map();
+async function showcase(canvasId) {
+  if (SHOWCASES.has(canvasId)) return SHOWCASES.get(canvasId).ok;
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return false;
+  const ok = await preload();
+  if (!ok || !R.char) return false;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1033);
+  const camera = new THREE.PerspectiveCamera(45, 420 / 300, 0.1, 100);
+  camera.position.set(0, 1.7, 4.6);
+  camera.lookAt(0, 1.05, 0);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a5a, 1.2));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.6);
+  dir.position.set(4, 8, 5);
+  scene.add(dir);
+  // panggung emas
+  const platform = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.25, 1.35, 0.14, 40),
+    new THREE.MeshStandardMaterial({ color: 0x2d1b4d, roughness: 0.7, metalness: 0.2 })
+  );
+  platform.position.y = -0.07;
+  scene.add(platform);
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(1.25, 0.035, 10, 48),
+    new THREE.MeshBasicMaterial({ color: 0xf5b301 })
+  );
+  ring.rotation.x = Math.PI / 2; ring.position.y = 0.01;
+  scene.add(ring);
+  const clone = cloneSkinned(R.char);
+  clone.rotation.y = 0; // menghadap kamera (bukan membelakangi seperti saat lari)
+  clone.position.set(0, 0, 0);
+  scene.add(clone);
+  const mixer = new THREE.AnimationMixer(clone);
+  const clip = R.clips.dance || R.clips.run;
+  if (clip) {
+    const a = mixer.clipAction(clip, clone);
+    a.setLoop(THREE.LoopRepeat, Infinity);
+    a.play();
   }
-  return R.ready;
+  const S = {
+    canvas, renderer, scene, camera, clone, mixer, ok: true,
+    rotY: 0, dragging: false, lastX: 0, lastDragAt: 0, raf: 0,
+    clock: new THREE.Clock(), w: 0, h: 0,
+  };
+  canvas.addEventListener('pointerdown', (e) => { S.dragging = true; S.lastX = e.clientX; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!S.dragging) return;
+    S.rotY += (e.clientX - S.lastX) * 0.008;
+    S.lastX = e.clientX; S.lastDragAt = performance.now();
+  });
+  const endDrag = () => { S.dragging = false; };
+  canvas.addEventListener('pointerup', endDrag);
+  canvas.addEventListener('pointercancel', endDrag);
+  const tickShow = () => {
+    S.raf = requestAnimationFrame(tickShow);
+    if (!canvas.isConnected || canvas.offsetParent === null || canvas.clientWidth === 0) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w !== S.w || h !== S.h) {
+      S.w = w; S.h = h;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+    const dt = Math.min(S.clock.getDelta(), 0.05);
+    mixer.update(dt);
+    if (!S.dragging && performance.now() - S.lastDragAt > 2000) S.rotY += 0.004; // putar pelan sendiri
+    clone.rotation.y = S.rotY;
+    clone.position.y = Math.sin(performance.now() / 500) * 0.02; // bob halus
+    renderer.render(scene, camera);
+  };
+  S.raf = requestAnimationFrame(tickShow);
+  SHOWCASES.set(canvasId, S);
+  return true;
+}
+function showcaseStop(canvasId) {
+  const S = SHOWCASES.get(canvasId);
+  if (!S) return;
+  cancelAnimationFrame(S.raf);
+  try { S.renderer.dispose(); } catch (e) {}
+  SHOWCASES.delete(canvasId);
 }
 
 /* ---------- Jembatan ke app.js (classic script) ---------- */
 if (typeof window !== 'undefined') {
   window.Run3D = {
     laneToX, worldZ, preload, setWorld, render, setIdle, playStumble,
+    showcase, showcaseStop, applySkin,
     playJump() { play('jump'); },
     playSlide() { play('slide'); },
     playRun() { play('run'); },
@@ -503,4 +619,7 @@ if (typeof window !== 'undefined') {
     get loading() { return R.loading; },
     get failed() { return R.failed; },
   };
+  if (typeof window.dispatchEvent === 'function' && typeof Event !== 'undefined') {
+    window.dispatchEvent(new Event('run3d-ready'));
+  }
 }

@@ -1,4 +1,4 @@
-/* Panel Admin — Nailong Runner. Token hanya di memori JS. */
+/* Panel Admin — Runner Coin. Token hanya di memori JS. */
 'use strict';
 let adminToken = null;
 let semuaPemain = [];

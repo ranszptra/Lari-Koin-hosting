@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Nailong Runner — Lari, Kumpulkan Koin, Tukar Jadi Uang</title>
-<meta name="description" content="Nailong Runner: naga kuning gembul lari 3 jalur — kumpulkan koin, selesaikan level, tukar koin jadi uang.">
-<meta name="theme-color" content="#f5b301">
+<title>Runner Coin — Lari, Kumpulkan Koin, Tukar Jadi Uang</title>
+<meta name="description" content="Runner Coin: robot lari 3 jalur — kumpulkan koin, selesaikan level, tukar koin jadi uang.">
+<meta name="theme-color" content="#2d1b4d">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
@@ -23,15 +23,15 @@
 <!-- LAYAR MEMUAT -->
 <div id="loadingScreen">
   <div class="loading-koin"><span>🪙</span><span>🪙</span><span>🪙</span><span>🪙</span></div>
-  <img class="logo-loading" src="/icon-512.png" alt="Logo Nailong Runner">
-  <h1>Nailong Runner</h1>
-  <p>Memuat… 🐲</p>
+  <img class="logo-loading" src="/icon-512.png" alt="Logo Runner Coin">
+  <h1>Runner Coin</h1>
+  <p>Memuat… 🤖</p>
   <div class="loading-bar"><i></i></div>
 </div>
 <script>window.addEventListener('load',function(){setTimeout(function(){var l=document.getElementById('loadingScreen');if(l){l.classList.add('done');setTimeout(function(){l.remove()},600);}},900);});</script>
 <header class="topbar">
-  <img class="logo-img" src="/icon-192.png" alt="Nailong">
-  <div><h1>Nailong Runner</h1><p>Lari • Kumpulkan Koin • Tukar Jadi Uang</p></div>
+  <img class="logo-img" src="/icon-192.png" alt="Runner Coin">
+  <div><h1>Runner Coin</h1><p>Lari • Kumpulkan Koin • Tukar Jadi Uang</p></div>
 </header>
 
 <div id="toast" role="status"></div>
@@ -39,14 +39,16 @@
 <!-- LAYAR MASUK / DAFTAR -->
 <section id="authScreen" class="card" style="margin-top:14px">
   <div class="hero-nailong">
-    <img src="/nailong-hero.jpg" alt="Nailong berlari mengejar koin emas">
+    <canvas id="loginShowcase" width="420" height="280" aria-label="Karakter Xbot 3D"></canvas>
+    <img id="loginShowcaseFallback" class="hidden" src="/runner-coin-logo.png" alt="Runner Coin">
     <div class="hero-koin"><span>🪙</span><span>🪙</span><span>🪙</span><span>🪙</span></div>
   </div>
-  <h2>Nailong Runner! 🐉</h2>
+  <h2>Runner Coin! 🤖</h2>
   <div class="notice">🎁 <b>Download &amp; main — tukar koin jadi uang sampai Rp50.000!</b><br>1.000 koin = Rp15 &bull; Penarikan mulai Rp1.000 &bull; Undang teman dapat Rp5.000 per teman.</div>
   <p>Masuk sekali ketuk dengan akun Google kamu — akun langsung dibuat kalau belum ada.</p>
   <label for="authReferrer">Kode undangan teman (opsional)</label>
   <input id="authReferrer" type="text" placeholder="Nama teman yang mengundang" maxlength="30">
+  <p id="refNote" class="small hidden" style="color:#8a5a00"></p>
   <div id="socialLogin" class="hidden">
     <div class="row">
       <div id="btnGoogleWrap" style="flex:1"></div>
@@ -75,9 +77,19 @@
   <main>
     <!-- TAB: BERANDA -->
     <div class="tab-panel aktif" id="tab-beranda">
+      <!-- KARAKTER 3D -->
+      <section class="card" id="karakterSection">
+        <h2>🤖 Karakterku — Xbot</h2>
+        <div class="showcase-wrap">
+          <canvas id="berandaShowcase" width="420" height="300" aria-label="Karakter Xbot 3D — geser untuk memutar"></canvas>
+          <img id="berandaShowcaseFallback" class="hidden" src="/runner-coin-logo.png" alt="Runner Coin">
+        </div>
+        <p class="muted">👆 Geser kiri/kanan untuk memutar karakter • <span id="skinAktifNama">—</span></p>
+      </section>
+
       <!-- GAME -->
       <section class="card" id="gameSection">
-        <h2>🎮 Main — Nailong Runner <span id="labelBos"></span></h2>
+        <h2>🎮 Main — Runner Coin <span id="labelBos"></span></h2>
         <p class="muted">Geser <b>kiri / kanan</b> untuk pindah jalur. Hindari batu, kotak &amp; pagar. Kumpulkan koin — tiap koin <b>+10 koin</b>. Selesai level = lari sampai jarak target.</p>
         <div class="row">
           <div>
@@ -110,8 +122,8 @@
         </div>
         <div class="lives-bar"><span id="livesBar">❤️ Nyawa: 15/15</span><span id="livesCooldown" class="hidden"></span><button class="btn-emas btn-kecil hidden" id="btnNyawaIklan">📺 +1 Nyawa</button></div>
         <div class="game-wrap">
-          <canvas id="gameCanvas" width="420" height="520" aria-label="Arena game Nailong Runner"></canvas>
-          <canvas id="gameCanvas3d" width="420" height="520" aria-label="Arena 3D Nailong Runner"></canvas>
+          <canvas id="gameCanvas" width="420" height="520" aria-label="Arena game Runner Coin"></canvas>
+          <canvas id="gameCanvas3d" width="420" height="520" aria-label="Arena 3D Runner Coin"></canvas>
           <div id="tekanMulai" class="tekan-mulai" hidden>Tekan ▶ Mulai Lari</div>
           <div class="hud"><span id="hudKoin">🪙 0</span><span id="hudJarak">0 m</span><span id="hudLevel">Lv 1</span></div>
           <div class="pause-overlay hidden" id="pauseOverlay">
@@ -151,13 +163,13 @@
         <h2>🛍 Toko</h2>
         <h3>Karakter</h3>
         <div id="tokoKarakter"></div>
-        <h3>Skin Nailong</h3>
+        <h3>Skin Karakter</h3>
         <div id="tokoSkin"></div>
         <h3>Power-up</h3>
         <div id="tokoPowerup"></div>
       </section>
 
-      <p class="small" style="text-align:center">Nailong Runner • Main gratis, koin dari main, misi, iklan &amp; undang teman.</p>
+      <p class="small" style="text-align:center">Runner Coin • Main gratis, koin dari main, misi, iklan &amp; undang teman.</p>
     </div>
 
     <!-- TAB: WALLET -->
@@ -264,6 +276,16 @@
         <h2>👥 Undang Teman — Bonus Rp5.000</h2>
         <p>Kode undangan kamu (bagikan nama ini): <b id="kodeInvite">—</b></p>
         <p class="muted">Teman daftar pakai kode kamu, lalu nonton iklan + selesaikan level — kamu dapat <b>Rp5.000</b> per teman.</p>
+        <p style="margin-top:12px"><b>🔗 Link undangan kamu:</b></p>
+        <div class="row">
+          <input id="inviteLink" type="text" readonly value="" style="flex:2">
+          <button class="btn-emas btn-kecil" id="btnSalinLink">📋 Salin</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="btn-hijau" id="btnShareInvite" style="flex:1">📤 Bagikan Link</button>
+          <a class="btn-hijau" id="btnWaInvite" href="#" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none;display:flex;align-items:center;justify-content:center">💬 WhatsApp</a>
+        </div>
+        <p class="muted">Teman yang buka link ini langsung terisi kode undanganmu di layar login.</p>
         <div id="daftarTeman"><p class="muted">Belum ada teman yang diundang.</p></div>
       </section>
     </div>
@@ -291,10 +313,10 @@
 <!-- TUR FITUR (pertama daftar) -->
 <div class="modal" id="tourModal" role="dialog" aria-modal="true">
   <div class="modal-box tour-box">
-    <img id="tourImg" src="/nailong-wave.jpg" alt="Nailong">
+    <img id="tourImg" src="/runner-coin-logo.png" alt="Runner Coin">
     <p class="small" id="tourStep" style="text-align:center">Langkah 1 dari 6</p>
-    <h3 id="tourTitle">Selamat datang di Nailong Runner! 🐉</h3>
-    <p id="tourText">Nailong si naga kuning gembul siap lari bersamamu. Lari, kumpulkan koin, tukar koin jadi uang sungguhan.</p>
+    <h3 id="tourTitle">Selamat datang di Runner Coin! 🤖</h3>
+    <p id="tourText">Xbot si robot lincah siap lari bersamamu. Lari, kumpulkan koin, tukar koin jadi uang sungguhan.</p>
     <div class="tour-dots" id="tourDots"></div>
     <div class="row">
       <button class="btn-putih" id="btnTourSkip">Lewati</button>

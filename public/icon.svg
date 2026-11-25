@@ -1,21 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="110" fill="#f5b301"/>
-  <!-- tanduk naga -->
-  <ellipse cx="185" cy="105" rx="30" ry="52" fill="#fff3c4" stroke="#d9a400" stroke-width="7" transform="rotate(-18 185 105)"/>
-  <ellipse cx="327" cy="105" rx="30" ry="52" fill="#fff3c4" stroke="#d9a400" stroke-width="7" transform="rotate(18 327 105)"/>
-  <!-- wajah naga kuning -->
-  <circle cx="256" cy="275" r="172" fill="#ffd93b" stroke="#d9a400" stroke-width="8"/>
-  <ellipse cx="256" cy="345" rx="95" ry="62" fill="#fff3c4"/>
-  <!-- pipi -->
-  <circle cx="148" cy="300" r="26" fill="#ffb6c1" opacity="0.85"/>
-  <circle cx="364" cy="300" r="26" fill="#ffb6c1" opacity="0.85"/>
-  <!-- mata -->
-  <ellipse cx="192" cy="255" rx="27" ry="35" fill="#111"/>
-  <ellipse cx="320" cy="255" rx="27" ry="35" fill="#111"/>
-  <circle cx="201" cy="242" r="9" fill="#fff"/>
-  <circle cx="329" cy="242" r="9" fill="#fff"/>
-  <!-- senyum + taring kecil -->
-  <path d="M222 318 Q256 346 290 318" fill="none" stroke="#5d3a1a" stroke-width="9" stroke-linecap="round"/>
-  <path d="M232 326 L242 326 L237 340 Z" fill="#fff"/>
-  <path d="M270 326 L280 326 L275 340 Z" fill="#fff"/>
+  <rect width="512" height="512" rx="110" fill="#2d1b4d"/>
+  <rect x="14" y="14" width="484" height="484" rx="98" fill="none" stroke="#f5b301" stroke-width="10"/>
+  <!-- koin emas Rp -->
+  <circle cx="256" cy="256" r="168" fill="#f5b301" stroke="#b8860b" stroke-width="10"/>
+  <circle cx="256" cy="256" r="138" fill="#ffd54a"/>
+  <text x="256" y="306" font-family="Arial, sans-serif" font-size="128" font-weight="800" fill="#8a5a00" text-anchor="middle">Rp</text>
+  <!-- antena robot kecil -->
+  <line x1="256" y1="88" x2="256" y2="58" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="256" cy="48" r="14" fill="#fff"/>
 </svg>

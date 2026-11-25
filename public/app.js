@@ -1,4 +1,4 @@
-/* Nailong Runner — halaman pemain. Token & progres hanya di memori JS. */
+/* Runner Coin — halaman pemain. Token & progres hanya di memori JS. */
 'use strict';
 let token = null;
 let player = null;
@@ -14,6 +14,70 @@ const $ = (id) => document.getElementById(id);
 const rupiah = (n) => 'Rp' + Math.floor(n || 0).toLocaleString('id-ID');
 const koinKeRp = (coins) => Math.round((coins || 0) * 15 / 1000);
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3500); }
+
+/* ---------- Link undangan (?ref=<nama>) ----------
+ * Referral berbasis NAMA: server memvalidasi nama pengundang di
+ * /api/auth/social (harus ada, bukan diri sendiri). Tidak butuh ubah server. */
+function parseRefParam(search) {
+  try {
+    const q = new URLSearchParams(search || '');
+    return (q.get('ref') || '').trim().slice(0, 30);
+  } catch (e) { return ''; }
+}
+function inviteUrlFor(name) {
+  const base = (window.location && window.location.origin) || 'https://lari-koin-hosting-production.up.railway.app';
+  return base + '/?ref=' + encodeURIComponent(name || '');
+}
+function waInviteUrl(name) {
+  const url = inviteUrlFor(name);
+  const text = 'Main Runner Coin bareng aku! Daftar lewat link ini, kumpulkan koin, tukar jadi uang: ' + url;
+  return 'https://wa.me/?text=' + encodeURIComponent(text);
+}
+(function isiRefDariLink() {
+  const nama = parseRefParam(window.location.search);
+  if (!nama) return;
+  const inp = $('authReferrer');
+  if (inp) inp.value = nama;
+  const note = $('refNote');
+  if (note) { note.textContent = '🎁 Diundang oleh ' + nama + ' — daftar dengan Google, bonus teman otomatis tercatat.'; note.classList.remove('hidden'); }
+})();
+/* Tombol share di tab Undang */
+(function pasangTombolInvite() {
+  const salin = $('btnSalinLink');
+  if (salin) salin.addEventListener('click', async () => {
+    const url = ($('inviteLink') || {}).value || '';
+    if (!url) return;
+    try { await navigator.clipboard.writeText(url); toast('Link undangan disalin!'); }
+    catch (e) { const i = $('inviteLink'); if (i) { i.select(); document.execCommand('copy'); } toast('Link undangan disalin!'); }
+  });
+  const bagikan = $('btnShareInvite');
+  if (bagikan) bagikan.addEventListener('click', async () => {
+    const nama = (profile && profile.name) || '';
+    const url = inviteUrlFor(nama);
+    if (navigator.share) {
+      try { await navigator.share({ title: 'Runner Coin', text: 'Main Runner Coin bareng aku!', url }); } catch (e) { /* user batal share */ }
+    } else {
+      try { await navigator.clipboard.writeText(url); toast('Link disalin — bagikan ke temanmu!'); } catch (e) { toast('Salin manual: ' + url); }
+    }
+  });
+})();
+
+/* ---------- Showcase 3D (login + Beranda) ---------- */
+function onRun3DReady(cb) {
+  if (window.Run3D) { cb(); return; }
+  window.addEventListener('run3d-ready', cb, { once: true });
+}
+function mulaiShowcase(canvasId, fallbackId) {
+  const R3 = window.Run3D;
+  if (!R3 || typeof R3.showcase !== 'function') return;
+  R3.showcase(canvasId).then((ok) => {
+    if (ok) return; // gagal (WebGL/model) -> tampilkan gambar logo sebagai fallback
+    const fb = $(fallbackId); if (fb) fb.classList.remove('hidden');
+    const cv = $(canvasId); if (cv) cv.classList.add('hidden');
+  });
+}
+onRun3DReady(() => mulaiShowcase('loginShowcase', 'loginShowcaseFallback'));
+
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 async function api(path, method, body) {
@@ -131,6 +195,7 @@ async function sesudahLogin(pesan) {
   await muatOffers();
   await muatNetworks();
   cobaPreload3D(); // muat model 3D di waktu luang (setelah login)
+  onRun3DReady(() => mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback'));
   let tourDone = false;
   try { tourDone = localStorage.getItem('nr_tour_done') === '1'; } catch (e) {}
   if (!tourDone) tampilTour(0);
@@ -152,7 +217,7 @@ document.querySelectorAll('.tab-nav button').forEach((b) => b.addEventListener('
 
 /* ---------- Tur fitur (pertama daftar) ---------- */
 const TOUR_STEPS = [
-  { img: '/nailong-wave.jpg', judul: 'Selamat datang di Nailong Runner! 🐉', teks: 'Nailong si naga kuning gembul siap lari bersamamu. Lari, kumpulkan koin, tukar koin jadi uang sungguhan.' },
+  { img: '/runner-coin-logo.png', judul: 'Selamat datang di Runner Coin! 🤖', teks: 'Xbot si robot lincah siap lari bersamamu. Lari, kumpulkan koin, tukar koin jadi uang sungguhan.' },
   { judul: '🎮 Cara Main', teks: 'Geser kiri / kanan atau ketuk tombol untuk pindah jalur. Hindari batu, kotak & pagar. Ambil koin — tiap koin +10 koin. Selesaikan level dengan lari sampai jarak target.' },
   { judul: '🏆 60 Level, 6 Dunia', teks: 'Level makin sulit sampai level 60. Tiap 10 level ada level BOS dengan hadiah 5x lipat. Dunia baru terbuka tiap 10 level: Kota Senja, Hutan Rimba, Gurun Pasir, Salju Abadi, Luar Angkasa, Lava Berapi.' },
   { judul: '🎯 Misi & Check-in', teks: 'Kerjakan misi harian dan check-in 7 hari berturut-turut untuk koin gratis. Jangan sampai putus — kalau bolos, streak kembali ke hari 1!' },
@@ -244,6 +309,11 @@ function renderProfil() {
   $('streakInfo').textContent = 'Check-in: ' + (profile.streak || 0) + ' hari';
   $('streakText').textContent = (profile.streak || 0) + ' hari';
   $('kodeInvite').textContent = profile.name || (player && player.name) || '—';
+  const namaInvite = profile.name || (player && player.name) || '';
+  const linkEl = $('inviteLink'); if (linkEl) linkEl.value = inviteUrlFor(namaInvite);
+  const waEl = $('btnWaInvite'); if (waEl) waEl.href = waInviteUrl(namaInvite);
+  const skinEl = $('skinAktifNama'); if (skinEl) skinEl.textContent = 'Skin aktif: ' + namaKarakterSkinAktif();
+  applySkin3D();
   const persen = Math.min(100, Math.round(koinKeRp(coins) / 1000 * 100));
   $('progressTarik').style.width = persen + '%';
   $('progressTarikText').textContent = persen + '% menuju penarikan Rp1.000 (' + rupiah(koinKeRp(coins)) + ' dari Rp1.000)';
@@ -384,13 +454,13 @@ $('btnRefreshBoard').addEventListener('click', muatLeaderboard);
 /* ---------- Toko ---------- */
 const KATALOG = {
   character: [
-    { id: 'jolly', nama: 'Nailong', harga: 0, ikon: '🐲', desc: 'Naga kuning gembul kesayangan — sudah dimiliki.' },
-    { id: 'kiko', nama: 'Nailong Hijau', harga: 50000, ikon: '🐲', desc: 'Nailong hijau ceria.' },
-    { id: 'momo', nama: 'Nailong Pink', harga: 100000, ikon: '🐲', desc: 'Nailong pink manis, pita di kepala.' },
-    { id: 'rex', nama: 'Nailong Api', harga: 200000, ikon: '🐲', desc: 'Nailong oranye garang, tanduk naga.' }
+    { id: 'jolly', nama: 'Xbot', harga: 0, ikon: '🤖', desc: 'Robot lincah kesayangan — sudah dimiliki.' },
+    { id: 'kiko', nama: 'Xbot Hijau', harga: 50000, ikon: '🤖', desc: 'Xbot hijau ceria.' },
+    { id: 'momo', nama: 'Xbot Pink', harga: 100000, ikon: '🤖', desc: 'Xbot pink manis, pita di kepala.' },
+    { id: 'rex', nama: 'Xbot Api', harga: 200000, ikon: '🤖', desc: 'Xbot oranye garang, mata laser.' }
   ],
   skin: [
-    { id: 'emas', nama: 'Emas', harga: 25000, ikon: '✨', desc: 'Nailong kuning keemasan.' },
+    { id: 'emas', nama: 'Emas', harga: 25000, ikon: '✨', desc: 'Xbot kuning keemasan.' },
     { id: 'ninja', nama: 'Ninja', harga: 50000, ikon: '🥷', desc: 'Hitam + ikat kepala.' },
     { id: 'astronot', nama: 'Astronot', harga: 75000, ikon: '🧑‍🚀', desc: 'Putih + helm kaca.' },
     { id: 'pelangi', nama: 'Pelangi', harga: 100000, ikon: '🌈', desc: 'Warna-warni ceria.' },
@@ -404,19 +474,67 @@ const KATALOG = {
 };
 /* Skin level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 skin). Set lengkap bisa ditukar Rp100.000. */
 const LEVEL_SKINS = [
-  { id: 'es', level: 5, nama: 'Es', ikon: '❄️', desc: 'Nailong biru es yang sejuk.' },
-  { id: 'sakura', level: 10, nama: 'Sakura', ikon: '🌸', desc: 'Nailong pink bunga sakura.' },
-  { id: 'laut', level: 15, nama: 'Laut', ikon: '🌊', desc: 'Nailong biru laut dalam.' },
-  { id: 'hutan', level: 20, nama: 'Hutan', ikon: '🌿', desc: 'Nailong hijau rimba.' },
-  { id: 'senja', level: 25, nama: 'Senja', ikon: '🌇', desc: 'Nailong ungu senja.' },
-  { id: 'salju', level: 30, nama: 'Salju', ikon: '⛄', desc: 'Nailong putih salju.' },
-  { id: 'lava', level: 35, nama: 'Lava', ikon: '🌋', desc: 'Nailong oranye lava panas.' },
-  { id: 'galaksi', level: 40, nama: 'Galaksi', ikon: '🌌', desc: 'Nailong ungu galaksi.' },
-  { id: 'madu', level: 45, nama: 'Madu', ikon: '🍯', desc: 'Nailong kuning madu.' },
-  { id: 'mint', level: 50, nama: 'Mint', ikon: '🍃', desc: 'Nailong hijau mint segar.' },
-  { id: 'komet', level: 55, nama: 'Komet', ikon: '☄️', desc: 'Nailong oranye komet.' },
-  { id: 'legenda', level: 60, nama: 'Legenda', ikon: '👑', desc: 'Nailong emas legenda — skin terakhir!' }
+  { id: 'es', level: 5, nama: 'Es', ikon: '❄️', desc: 'Xbot biru es yang sejuk.' },
+  { id: 'sakura', level: 10, nama: 'Sakura', ikon: '🌸', desc: 'Xbot pink bunga sakura.' },
+  { id: 'laut', level: 15, nama: 'Laut', ikon: '🌊', desc: 'Xbot biru laut dalam.' },
+  { id: 'hutan', level: 20, nama: 'Hutan', ikon: '🌿', desc: 'Xbot hijau rimba.' },
+  { id: 'senja', level: 25, nama: 'Senja', ikon: '🌇', desc: 'Xbot ungu senja.' },
+  { id: 'salju', level: 30, nama: 'Salju', ikon: '⛄', desc: 'Xbot putih salju.' },
+  { id: 'lava', level: 35, nama: 'Lava', ikon: '🌋', desc: 'Xbot oranye lava panas.' },
+  { id: 'galaksi', level: 40, nama: 'Galaksi', ikon: '🌌', desc: 'Xbot ungu galaksi.' },
+  { id: 'madu', level: 45, nama: 'Madu', ikon: '🍯', desc: 'Xbot kuning madu.' },
+  { id: 'mint', level: 50, nama: 'Mint', ikon: '🍃', desc: 'Xbot hijau mint segar.' },
+  { id: 'komet', level: 55, nama: 'Komet', ikon: '☄️', desc: 'Xbot oranye komet.' },
+  { id: 'legenda', level: 60, nama: 'Legenda', ikon: '👑', desc: 'Xbot emas legenda — skin terakhir!' }
 ];
+/* Warna skin untuk model 3D (Xbot) — [warna utama, garis, perut].
+   Disalin dari logika warnaKarakter() (tampilan 2D) supaya 2D & 3D konsisten. */
+const SKIN3D_WARNA = {
+  // karakter dasar (tanpa skin)
+  jolly: ['#ffd93b', '#d9a400', '#fff3c4'],
+  kiko: ['#a8e6a3', '#6fbf6a', '#e4f7e2'],
+  momo: ['#ffc0cb', '#e88aa0', '#ffe3ea'],
+  rex: ['#ffb74d', '#e08a1e', '#ffe0b3'],
+  // skin toko
+  emas: ['#ffd54a', '#c79a00', '#ffef9e'],
+  ninja: ['#2b2b2b', '#111111', '#444444'],
+  astronot: ['#ffffff', '#b0bec5', '#eef6fb'],
+  pelangi: ['#ffe082', '#ff8a65', '#fff3c4'],
+  shadow: ['#5a5a7a', '#33334d', '#7a7a9a'],
+  // skin level (gratis per 5 level)
+  es: ['#b3e5fc', '#4fc3f7', '#e1f5fe'],
+  sakura: ['#f8bbd0', '#f06292', '#fce4ec'],
+  laut: ['#4fc3f7', '#0288d1', '#e1f5fe'],
+  hutan: ['#81c784', '#43a047', '#e8f5e9'],
+  senja: ['#ce93d8', '#8e24aa', '#f3e5f5'],
+  salju: ['#eceff1', '#90a4ae', '#ffffff'],
+  lava: ['#ff7043', '#d84315', '#ffccbc'],
+  galaksi: ['#7e57c2', '#512da8', '#ede7f6'],
+  madu: ['#ffca28', '#ff8f00', '#fff8e1'],
+  mint: ['#80cbc4', '#00897b', '#e0f2f1'],
+  komet: ['#ff9800', '#e65100', '#fff3e0'],
+  legenda: ['#ffd700', '#b8860b', '#fffde7']
+};
+function warnaSkin3D() {
+  const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
+  const skin = (profile && profile.equipped && profile.equipped.skin) || '';
+  if (skin && SKIN3D_WARNA[skin]) return SKIN3D_WARNA[skin];
+  return SKIN3D_WARNA[char] || SKIN3D_WARNA.jolly;
+}
+/* Terapkan warna skin aktif ke badan Xbot 3D (run view + showcase). */
+function applySkin3D() {
+  if (!window.Run3D || typeof window.Run3D.applySkin !== 'function') return false;
+  const w = warnaSkin3D();
+  return window.Run3D.applySkin(w[0]);
+}
+function namaKarakterSkinAktif() {
+  const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
+  const skin = (profile && profile.equipped && profile.equipped.skin) || '';
+  const cn = (KATALOG.character.find((c) => c.id === char) || {}).nama || 'Xbot';
+  if (!skin) return cn;
+  const sk = LEVEL_SKINS.find((x) => x.id === skin) || KATALOG.skin.find((x) => x.id === skin);
+  return cn + ' • Skin ' + (sk ? sk.nama : skin);
+}
 function dimiliki(kind, id) {
   if (!profile) return false;
   if (kind === 'character') return (profile.characters || ['jolly']).includes(id);
@@ -586,7 +704,7 @@ let r3PreloadDimulai = false, mode3dAktif = false, mode3dToasted = false;
 function cobaPreload3D() {
   if (r3PreloadDimulai || !window.Run3D) return;
   r3PreloadDimulai = true;
-  window.Run3D.preload();
+  window.Run3D.preload().then((ok) => { if (ok) applySkin3D(); });
 }
 function aktifkanMode3D() {
   const tm = $('tekanMulai');
@@ -594,7 +712,7 @@ function aktifkanMode3D() {
   if (mode3dAktif) return;
   mode3dAktif = true;
   document.body.classList.add('mode-3d');
-  if (!mode3dToasted) { mode3dToasted = true; toast('Mode 3D aktif! 🐲'); }
+  if (!mode3dToasted) { mode3dToasted = true; toast('Mode 3D aktif! 🤖'); }
 }
 /* Render lari: 3D kalau siap, kalau tidak 2D lama. Return true kalau 3D. */
 function renderLari3D() {
@@ -720,7 +838,7 @@ function drawObstacle(c, o, x, y, s) {
     for (let i = -1; i <= 1; i++) { c.fillRect(x + i * 20 * s - 3 * s, y - 22 * s, 6 * s, 44 * s); }
   }
 }
-/* ---------- Tampilan 3D ala Subway Surfers (perspektif, kamera di belakang Nailong) ---------- */
+/* ---------- Tampilan 3D ala Subway Surfers (perspektif, kamera di belakang karakter) ---------- */
 const P3 = { hy: 130, bawah: 470, vx: 210 };
 function proyeksi(lanePos, z) {
   const u = Math.max(0, Math.min(1, 1 - z)); // 1 = dekat pemain, 0 = horizon
@@ -1074,7 +1192,7 @@ wrap.addEventListener('click', (e) => {
   if (abaikanKlik) return; if (!game.running && token) mulaiGame(); else if (game.running) $('btnPause').click();
 });
 
-/* Gambar awal di canvas — Nailong bergerak pelan walau belum main */
+/* Gambar awal di canvas — Xbot bergerak pelan walau belum main */
 let idleT = 0;
 const idleCoins = [{ kind: 'koin', lane: 1, z: 0.7 }, { kind: 'koin', lane: 1, z: 0.55 }, { kind: 'koin', lane: 0, z: 0.85 }, { kind: 'koin', lane: 2, z: 0.4 }];
 function gambarAwal() {
