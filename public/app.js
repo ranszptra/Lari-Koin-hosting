@@ -1185,6 +1185,7 @@ function resetGame() {
   game.magnet = pu === 'magnet' || ((profile && profile.equipped && profile.equipped.powerup) === 'magnet') || skillIklan.magnet;
   game.mult = (pu === 'koinx2' || ((profile && profile.equipped && profile.equipped.powerup) === 'koinx2')) ? 2 : 1;
   $('gameResult').classList.remove('show'); $('gameResult').innerHTML = '';
+  const mf = $('modalFinish'); if (mf) mf.classList.remove('show');
   $('hudKoin').textContent = '🪙 0'; $('hudJarak').textContent = '0 m'; $('hudLevel').textContent = 'Lv ' + lv;
   updateDuniaInfo();
   try { renderScene(ctx, game); } catch (e) {} // gambar arena sekali supaya tidak biru kosong sebelum mulai
@@ -1371,7 +1372,7 @@ async function selesaiLevel() {
   resetSkillIklan();
   beep(660, 0.15); setTimeout(() => beep(880, 0.2), 150);
   tampilIklanSelingan(async () => {
-    let pesan = '<h3>🎉 Level ' + lvSelesai + ' Selesai!</h3><p>Koin terkumpul: <b>' + game.coins + '</b>' + (isBos(lvSelesai) ? ' • 👹 LEVEL BOS — bonus 5x!' : '') + '</p>';
+    let pesan = '<p>Koin terkumpul: <b>' + game.coins + '</b>' + (isBos(lvSelesai) ? ' • 👹 LEVEL BOS — bonus 5x!' : '') + '</p>';
     let tersimpan = false;
     try {
       const d = await api('/api/finish-level', 'POST', { level: lvSelesai, coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: Date.now() - (game.mulaiAt || Date.now()) });
@@ -1381,38 +1382,44 @@ async function selesaiLevel() {
       if (d.charsBaru && d.charsBaru.length) pesan += '<p>🎭 Karakter baru terbuka: <b>' + d.charsBaru.map(esc).join(', ') + '</b> — cek di Toko!</p>';
       await muatProfil();
     } catch (e) { pesan += '<p class="muted">Gagal menyimpan ke server (' + esc(e.message) + ') — koin lokal tetap tercatat di panel hasil.</p>'; }
-    const el = $('gameResult'); el.innerHTML = pesan; el.classList.add('show');
+    // Layar finish: gambar KARAKTER AKTIF (foto 2D dari /characters/), bukan statis.
+    const kAktif = karakterAktif();
+    const imgFinish = $('finishCharImg');
+    if (imgFinish) { imgFinish.src = gambarKarakterAktif(); imgFinish.alt = kAktif ? kAktif.nama : 'Karakter'; }
+    const namaFinish = $('finishNama');
+    if (namaFinish) namaFinish.textContent = kAktif ? ('🎭 ' + kAktif.nama + ' • Lv ' + kAktif.level) : '';
+    const tamat = lvSelesai >= 60;
+    $('finishJudul').textContent = tamat ? '🏆 TAMAT!' : '🎉 LEVEL SELESAI!';
+    if (tamat) pesan += '<p>🏆 Kamu sudah menamatkan semua 60 level! Main lagi level 60 kapan saja.</p>';
+    $('finishIsi').innerHTML = pesan;
+    const pHitung = $('finishHitung'), bLanjut = $('btnFinishLanjut'), bUlang = $('btnFinishUlang');
+    pHitung.classList.add('hidden'); bLanjut.classList.add('hidden'); bUlang.classList.add('hidden');
+    const modal = $('modalFinish'); modal.classList.add('show');
     const pill = $('tekanMulai'); if (pill) { pill.textContent = '▶ Main Lagi'; pill.hidden = false; }
-    if (lvSelesai >= 60) {
-      el.innerHTML += '<p>🏆 Kamu sudah menamatkan semua 60 level! Main lagi level 60 kapan saja.</p>';
-      return;
-    }
+    if (tamat) return;
     if (!tersimpan) {
       // simpan gagal — jangan loncat level; pemain ulang level yang sama
-      const b = document.createElement('button'); b.className = 'btn-emas'; b.style.cssText = 'width:100%;margin-top:8px';
-      b.textContent = '▶ Main Lagi (Level ' + lvSelesai + ')';
-      b.addEventListener('click', mulaiGame);
-      el.appendChild(b);
+      bUlang.textContent = '▶ Main Lagi (Level ' + lvSelesai + ')';
+      bUlang.classList.remove('hidden');
+      bUlang.onclick = mulaiGame;
       return;
     }
     // Otomatis lanjut ke level berikutnya — tanpa pilih level manual.
     const nextLv = Math.min(60, (profile && profile.maxLevel) || (lvSelesai + 1));
     let hitung = 3;
-    const pLanjut = document.createElement('p');
-    pLanjut.innerHTML = '⏭ Lanjut ke Level ' + nextLv + ' dalam <b id="hitungLanjut">' + hitung + '</b> detik…';
-    el.appendChild(pLanjut);
-    const bLanjut = document.createElement('button');
-    bLanjut.className = 'btn-emas'; bLanjut.style.cssText = 'width:100%;margin-top:8px';
-    bLanjut.textContent = '▶ Lanjut Sekarang';
-    el.appendChild(bLanjut);
+    $('finishNextLv').textContent = nextLv;
+    $('hitungLanjut').textContent = hitung;
+    pHitung.classList.remove('hidden');
+    bLanjut.textContent = '▶ Lanjut ke Level Berikutnya';
+    bLanjut.classList.remove('hidden');
     const lanjutkan = () => {
       if (autoLanjutTimer) { clearInterval(autoLanjutTimer); autoLanjutTimer = null; }
-      if (!document.body.classList.contains('mode-fullscreen')) return; // pemain sudah keluar
+      if (!document.body.classList.contains('mode-fullscreen')) { modal.classList.remove('show'); return; } // pemain sudah keluar — tutup layar finish
       game.level = nextLv;
-      el.classList.remove('show'); el.innerHTML = '';
+      modal.classList.remove('show');
       mulaiGame(); // tetap lewat /api/run-start (gerbang nyawa)
     };
-    bLanjut.addEventListener('click', lanjutkan);
+    bLanjut.onclick = lanjutkan;
     autoLanjutTimer = setInterval(() => {
       hitung--;
       const hEl = $('hitungLanjut'); if (hEl) hEl.textContent = hitung;
