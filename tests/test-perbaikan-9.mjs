@@ -69,12 +69,12 @@ cek('(f3) index.html: skillHud punya 3 tombol data-skill', (html.split('id="skil
 cek('(f4) app.js: binding skill memakai semua [data-skill]', app.includes("document.querySelectorAll('[data-skill]')"));
 cek('(f5) style.css: .skill-hud hanya tampil di mode-fullscreen', css.includes('body.mode-fullscreen .skill-hud{display:flex'));
 
-// (g) Showcase login = deretan klon 3D berjejer
+// (g) Showcase login DIHAPUS 2026-11-26 (Rans: kepanjangan) — mode baris tetap ada di run3d.js
 cek('(g1) run3d: showcase punya mode baris (row)', run3d.includes('const row = !!opts.row'));
 cek('(g2) run3d: mode baris membuat 5 klon', run3d.includes('const n = row ? 5 : 1'));
 cek('(g3) run3d: klon memakai SkeletonUtils.clone', run3d.includes('cloneSkinned(R.char)'));
 cek('(g4) run3d: klon baris diwarnai warna roster berbeda', run3d.includes('tintKlon(clone, colors[i])'));
-cek('(g5) app.js: login memakai mode baris dengan 5 warna roster (+ accs topi/kacamata)', app.includes("mulaiShowcase('loginShowcase', 'loginShowcaseFallback', { row: true, colors: LEVEL_CHARACTERS.slice(0, 5).map((c) => c.warna), accs: LEVEL_CHARACTERS.slice(0, 5) })"));
+cek('(g5) app.js: showcase login dihapus (login lebih pendek, tanpa canvas 3D)', !app.includes('loginShowcase') && !app.includes('mulaiShowcaseLogin'));
 cek('(g6) index.html: tidak ada lagi kartu gambar login (#loginCharCard)', !html.includes('loginCharCard'));
 cek('(g7) index.html: tidak ada lagi kartu gambar Beranda (#berandaCharCard)', !html.includes('berandaCharCard'));
 cek('(g8) index.html: strip nama Beranda tetap ada (#berandaCharNama)', html.includes('id="berandaCharNama"'));
@@ -102,7 +102,7 @@ cek('(i4) app.js: mulaiGame memanggil /api/run-start (gerbang nyawa)', app.inclu
 cek('(i5) app.js: level 60 tidak auto-lanjut (tamat)', app.includes('const tamat = lvSelesai >= 60;') && app.includes('if (tamat) return;'));
 cek('(i6) app.js: simpan gagal -> ulang level yang sama, bukan loncat', app.includes('if (!tersimpan)') && app.includes("bUlang.textContent = '▶ Main Lagi (Level ' + lvSelesai + ')'"));
 cek('(i7) app.js: autoLanjutTimer dibatalkan saat keluar layar penuh', app.includes('keluarModeLayarPenuh') && /function keluarModeLayarPenuh\(\) \{[\s\S]*?clearInterval\(autoLanjutTimer\)/.test(app));
-cek('(i8) sw.js CACHE = lari-koin-v19', sw.includes("const CACHE = 'lari-koin-v19';"));
+cek('(i8) sw.js CACHE = lari-koin-v20', sw.includes("const CACHE = 'lari-koin-v20';"));
 
 console.log(`\nHasil: ${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

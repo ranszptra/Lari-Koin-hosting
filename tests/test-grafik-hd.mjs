@@ -76,12 +76,12 @@ cek('(g30) resize non-fullscreen juga samakan ukuran normal',
 cek('(g31) aturHalus2D: smoothing kualitas tinggi', app.includes("ctx.imageSmoothingQuality = 'high'"));
 cek('(g32) aturHalus2D dipanggil ulang setelah resize fullscreen',
   app.includes('aturHalus2D(); // ubah ukuran canvas me-reset state ctx'));
-cek('(g33) samakanUkuranBgCanvas ada (DPR maks 1,25, batas 960x1440)',
-  app.includes('function samakanUkuranBgCanvas()') && app.includes("Math.min(window.devicePixelRatio || 1, 1.25)") && app.includes('Math.min(Math.round((bgCanvas.clientWidth || 420) * dpr), 960)'));
-cek('(g34) bgCanvas di-resize berkala di loopLogin', app.includes('if (demo.frame % 120 === 0) samakanUkuranBgCanvas();'));
+cek('(g33) animasi latar login dihapus (tidak ada lagi bgCanvas/loopLogin/samakanUkuranBgCanvas)',
+  !app.includes('bgCanvas') && !app.includes('loopLogin') && !app.includes('samakanUkuranBgCanvas'));
+cek('(g34) index.html: tidak ada lagi #bgCanvas', !baca('public/index.html').includes('bgCanvas'));
 
 console.log('== SW cache ==');
-cek('(g35) sw.js CACHE = lari-koin-v19', sw.includes("const CACHE = 'lari-koin-v19';"));
+cek('(g35) sw.js CACHE = lari-koin-v20', sw.includes("const CACHE = 'lari-koin-v20';"));
 
 console.log(`\nHasil: ${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

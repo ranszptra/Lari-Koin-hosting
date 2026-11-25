@@ -142,7 +142,7 @@ const topiApp = (app.match(/topi: '(cap|beanie)'/g) || []).length;
 cek(`LEVEL_CHARACTERS app.js: 11 karakter bertopi (ketemu ${topiApp})`, topiApp === 11);
 cek('Rex: cap + kacamata merah', app.includes("topi: 'cap', kacamata: '#e53935'"));
 cek('Frost: tanpa topi/kacamata', app.includes("topi: null, kacamata: null"));
-cek('loginShowcase menerima accs 5 karakter pertama', app.includes('accs: LEVEL_CHARACTERS.slice(0, 5)'));
+cek('showcase login dihapus (tidak ada lagi loginShowcase/mulaiShowcaseLogin)', !app.includes('loginShowcase') && !app.includes('mulaiShowcaseLogin'));
 cek('showcase Beranda menerima acc karakter aktif (2 tempat)', (app.match(/\{ acc: karakterAktif\(\) \}/g) || []).length === 2);
 cek('applyAksesoris3D ada + dipanggil di renderProfil dan setelah preload', app.includes('function applyAksesoris3D()') && (app.match(/applyAksesoris3D\(\);/g) || []).length >= 2);
 const topiDb = (db.match(/topi: '(cap|beanie)'/g) || []).length;
@@ -150,7 +150,7 @@ cek(`LEVEL_CHARACTERS db.js cermin: 11 bertopi (ketemu ${topiDb})`, topiDb === 1
 cek('db.js Frost null/null', db.includes('topi: null, kacamata: null'));
 
 console.log('== F. sw.js ==');
-cek('CACHE v19 (showcase + rintangan + tema + hero login)', baca('public/sw.js').includes("lari-koin-v19"));
+cek('CACHE v20 (showcase login dihapus)', baca('public/sw.js').includes("lari-koin-v20"));
 
 console.log(`\n${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

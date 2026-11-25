@@ -279,7 +279,7 @@ cek('template dinding + geser dibuat', r3.includes("['batu', 'kotak', 'pagar', '
 cek('pool rintangan diperbesar (OBS_POOL 18)', r3.includes('const OBS_POOL = 18;'));
 cek('syncObjects memakai belokJalan + x dinding/geser', r3.includes('belokJalan(wz)') && r3.includes("o.type === 'geser'") && r3.includes("o.type === 'dinding'"));
 cek('karakter + kamera mengikuti belokan', r3.includes('belokJalan(0)') && r3.includes('belokJalan(-12)'));
-cek('sw.js CACHE v19', readFileSync(join(ROOT, 'public/sw.js'), 'utf8').includes("lari-koin-v19"));
+cek('sw.js CACHE v19', readFileSync(join(ROOT, 'public/sw.js'), 'utf8').includes("lari-koin-v20"));
 
 console.log(`\n${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

@@ -1,4 +1,4 @@
-// Hero login: logo Rex utuh + terpisah dari showcase 3D
+// Hero login: logo Rex utuh, showcase login + animasi latar DIHAPUS 2026-11-26
 // (tindak lanjut screenshot Rans 2026-11-26 06:29 — logo atas kepotong,
 // teks RUNNER COIN tidak kelihatan, logo nempel dengan showcase di bawahnya).
 // Penyebab: aturan generik `.hero-nailong img` memaksa height:230px +
@@ -48,14 +48,14 @@ cek('(h6) .hero-nailong punya padding pemisah', /padding\s*:\s*12px/.test(heroWr
 cek('(h6b) .hero-nailong tetap overflow:hidden (koin jatuh tetap terpotong rapi)',
   /overflow\s*:\s*hidden/.test(heroWrap));
 
-// h7: fallback showcase tetap eksplisit (tidak ikut aturan generik lama).
-const fallback = aturan(css, '#loginShowcaseFallback');
-cek('(h7) #loginShowcaseFallback display:block + object-fit:contain + height:300px',
-  /display\s*:\s*block/.test(fallback) && /object-fit\s*:\s*contain/.test(fallback) && /height\s*:\s*300px/.test(fallback));
+// h7: showcase login dihapus (Rans 2026-11-26: kepanjangan).
+cek('(h7) tidak ada lagi #loginShowcaseFallback di CSS', !css.includes('#loginShowcaseFallback'));
+cek('(h7b) tidak ada lagi aturan .hero-nailong canvas', !css.includes('.hero-nailong canvas'));
 
-// h8: canvas showcase tidak berubah ukurannya.
-const canvas = aturan(css, '.hero-nailong canvas');
-cek('(h8) canvas login tetap height:300px', /height\s*:\s*300px/.test(canvas));
+// h8: animasi latar login (bgCanvas) juga dihapus — tidak ada lagi kaki
+// karakter yang mengintip di bawah layar login.
+cek('(h8) tidak ada lagi #bgCanvas di CSS', !css.includes('#bgCanvas'));
+cek('(h8b) tidak ada lagi bgCanvas/loopLogin di app.js', !baca('public/app.js').includes('bgCanvas') && !baca('public/app.js').includes('loopLogin'));
 
 // h9: logo sumber memang persegi 1600x1600 (teks RUNNER COIN ada di dalam gambar).
 const logoPath = join(ROOT, 'public/runner-coin-logo.png');
@@ -68,13 +68,13 @@ if (existsSync(logoPath)) {
 }
 cek('(h9) runner-coin-logo.png ada dan persegi 1600x1600', logoOk, logoInfo);
 
-// h10: urutan DOM — logo di atas canvas showcase.
+// h10: login tanpa showcase — logo tetap ada, canvas showcase + bgCanvas hilang.
 const iLogo = html.indexOf('class="hero-logo"');
-const iCanvas = html.indexOf('id="loginShowcase"');
-cek('(h10) index.html: logo di atas canvas showcase', iLogo > 0 && iCanvas > iLogo);
+cek('(h10) index.html: logo hero tetap ada, tidak ada lagi loginShowcase/bgCanvas',
+  iLogo > 0 && !html.includes('id="loginShowcase"') && !html.includes('id="bgCanvas"') && !html.includes('loginShowcaseFallback'));
 
-// h11: SW cache naik ke v19 (perubahan CSS ikut terkirim ke HP).
-cek('(h11) sw.js CACHE v19', sw.includes("const CACHE = 'lari-koin-v19';"));
+// h11: SW cache naik ke v20 (perubahan ikut terkirim ke HP).
+cek('(h11) sw.js CACHE v19', sw.includes("const CACHE = 'lari-koin-v20';"));
 
 console.log(`\nLogin hero: ${lolos} lolos, ${gagal} gagal`);
 process.exitCode = gagal ? 1 : 0;
