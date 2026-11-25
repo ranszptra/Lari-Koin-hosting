@@ -24,15 +24,15 @@ def twaManifest = [
     applicationId: 'id.ranszshop.larikoin',
     hostName: 'lari-koin-hosting-production.up.railway.app', // The domain being opened in the TWA.
     launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
-    name: 'Nailong Runner', // The application name.
-    launcherName: 'Nailong Runner', // The name shown on the Android Launcher.
-    themeColor: '#F5B301', // The color used for the status bar.
-    themeColorDark: '#3B2410', // The color used for the dark status bar.
-    navigationColor: '#3B2410', // The color used for the navigation bar.
-    navigationColorDark: '#3B2410', // The color used for the dark navbar.
+    name: 'Runner Coin', // The application name.
+    launcherName: 'Runner Coin', // The name shown on the Android Launcher.
+    themeColor: '#2D1B4D', // The color used for the status bar.
+    themeColorDark: '#1A1033', // The color used for the dark status bar.
+    navigationColor: '#2D1B4D', // The color used for the navigation bar.
+    navigationColorDark: '#1A1033', // The color used for the dark navbar.
     navigationDividerColor: '#F5B301', // The navbar divider color.
     navigationDividerColorDark: '#F5B301', // The dark navbar divider color.
-    backgroundColor: '#3B2410', // The color used for the splash screen background.
+    backgroundColor: '#2D1B4D', // The color used for the splash screen background.
     enableNotifications: false, // Set to true to enable notification delegation.
     // Every shortcut must include the following fields:
     // - name: String that will show up in the shortcut.
@@ -57,8 +57,8 @@ android {
         applicationId "id.ranszshop.larikoin"
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 3
+        versionName "1.2.0"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name
