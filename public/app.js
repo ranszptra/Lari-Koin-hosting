@@ -277,11 +277,13 @@ $('btnTourSkip').addEventListener('click', tutupTour);
 $('btnCaraMain').addEventListener('click', () => tampilTour(0));
 
 /* ---------- Login sosial (Google, sekali ketuk) ---------- */
-function muatScript(src) {
+function muatScript(src, timeoutMs) {
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = src; s.async = true; s.defer = true;
-    s.onload = resolve; s.onerror = () => reject(new Error('Gagal memuat ' + src));
+    const t = setTimeout(() => reject(new Error('Timeout memuat ' + src)), timeoutMs || 15000);
+    s.onload = () => { clearTimeout(t); resolve(); };
+    s.onerror = () => { clearTimeout(t); reject(new Error('Gagal memuat ' + src)); };
     document.head.appendChild(s);
   });
 }
@@ -296,14 +298,14 @@ async function masukSosial(provider, tokenSosial) {
     await sesudahLogin('Selamat datang, ' + (player.name || '') + '!');
   } catch (e) { $('socialMsg').textContent = e.message; }
 }
-(async function initSosial() {
+async function initSosial() {
   let cfg = {};
   try { cfg = await api('/api/auth/social-config'); } catch { return; }
   if (!cfg.google) return; // belum dikonfigurasi — tombol tetap sembunyi
   $('socialLogin').classList.remove('hidden');
   if (cfg.google && cfg.googleClientId) {
     try {
-      await muatScript('https://accounts.google.com/gsi/client');
+      await muatScript('https://accounts.google.com/gsi/client', 15000);
       google.accounts.id.initialize({
         client_id: cfg.googleClientId,
         callback: (resp) => { if (resp && resp.credential) masukSosial('google', resp.credential); },
@@ -311,9 +313,25 @@ async function masukSosial(provider, tokenSosial) {
       });
       google.accounts.id.renderButton($('btnGoogleWrap'), { theme: 'outline', size: 'large', text: 'signin_with' });
       google.accounts.id.prompt(); // One Tap: pemain lama langsung masuk otomatis
-    } catch (e) { $('btnGoogleWrap').style.display = 'none'; }
+    } catch (e) {
+      // Jangan sembunyikan diam-diam: tampilkan penyebab + tombol coba lagi
+      $('btnGoogleWrap').style.display = '';
+      const alasan = (e && e.message) ? e.message : String(e);
+      const msg = $('socialMsg');
+      if (msg) msg.textContent = 'Tombol Google gagal dimuat: ' + alasan + '. Coba lagi di bawah, atau pakai WiFi.';
+      if (!$('btnGoogleUlangi')) {
+        const btn = document.createElement('button');
+        btn.id = 'btnGoogleUlangi';
+        btn.className = 'btn-emas';
+        btn.textContent = '🔄 Coba lagi login Google';
+        btn.onclick = () => { if (msg) msg.textContent = ''; btn.remove(); initSosial(); };
+        const wrap = $('socialLogin');
+        if (wrap) wrap.appendChild(btn);
+      }
+    }
   } else { $('btnGoogleWrap').style.display = 'none'; }
-})();
+}
+initSosial();
 
 /* ---------- Profil & render ---------- */
 async function muatProfil() {
