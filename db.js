@@ -105,18 +105,18 @@ const POWERUPS = { magnet: 2000, perisai: 2000, koinx2: 3000 };
 // Kartu gambar di public/characters/char-01.jpg..char-12.webp (gaya streetwear Rans).
 // `warna` = warna utama karakter (dipakai tint Xbot 3D + tampilan 2D fallback).
 const LEVEL_CHARACTERS = [
-  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: '#1a1a1a' },
-  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: '#d32f2f' },
-  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: '#4fc3f7' },
-  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: '#90caf9' },
-  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: '#66bb6a' },
-  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: '#ab47bc' },
-  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: '#fb8c00' },
-  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: '#f06292' },
-  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: '#fdd835' },
-  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: '#26a69a' },
-  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: '#546e7a' },
-  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: '#ffd700' },
+  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: '#1a1a1a', gradasi: ['#2b2b2b', '#c62828', '#ff5252'] },
+  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: '#d32f2f', gradasi: ['#ff1744', '#c62828', '#7f0000'] },
+  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: '#4fc3f7', gradasi: ['#b3e5fc', '#4fc3f7', '#01579b'] },
+  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: '#90caf9', gradasi: ['#e3f2fd', '#90caf9', '#1565c0'] },
+  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: '#66bb6a', gradasi: ['#a5d6a7', '#43a047', '#1b5e20'] },
+  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: '#ab47bc', gradasi: ['#ce93d8', '#8e24aa', '#4a148c'] },
+  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: '#fb8c00', gradasi: ['#ffcc80', '#fb8c00', '#bf360c'] },
+  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: '#f06292', gradasi: ['#f8bbd0', '#ec407a', '#880e4f'] },
+  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: '#fdd835', gradasi: ['#fff176', '#fdd835', '#f57f17'] },
+  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: '#26a69a', gradasi: ['#80cbc4', '#26a69a', '#004d40'] },
+  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: '#546e7a', gradasi: ['#90a4ae', '#546e7a', '#11171c'] },
+  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: '#ffd700', gradasi: ['#ffe082', '#ffd700', '#8d6e00'] },
 ];
 
 // Karakter level yang BARU terbuka untuk pemain (murni — dipakai server + tes).
