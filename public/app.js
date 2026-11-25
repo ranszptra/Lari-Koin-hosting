@@ -115,21 +115,6 @@ function gambarLatar(duniaIdx, frame) {
 }
 
 /* ---------- Auth ---------- */
-async function doAuth(mode) {
-  const name = $('authName').value.trim();
-  const pin = $('authPin').value.trim();
-  const referrer = $('authReferrer').value.trim();
-  if (!name) { $('authMsg').textContent = 'Isi nama pemain dulu.'; return; }
-  if (pin.length < 4 || pin.length > 12) { $('authMsg').textContent = 'PIN harus 4–12 karakter.'; return; }
-  $('authMsg').textContent = 'Memproses…';
-  try {
-    const body = { name, pin };
-    if (mode === 'register' && referrer) body.referrer = referrer;
-    const data = await api(mode === 'register' ? '/api/register' : '/api/login', 'POST', body);
-    token = data.token; player = data.player;
-    await sesudahLogin(mode === 'register' ? 'Akun dibuat, selamat datang ' + name + '!' : 'Selamat datang kembali, ' + name + '!');
-  } catch (e) { $('authMsg').textContent = e.message; }
-}
 async function sesudahLogin(pesan) {
   if (player && player.banned) {
     $('authMsg').textContent = 'Akun ini otomatis diblokir: IP kamu sudah dipakai akun lain. Hubungi admin untuk buka blokir.';
@@ -160,9 +145,6 @@ function pindahTab(nama) {
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('.tab-nav button').forEach((b) => b.addEventListener('click', () => pindahTab(b.dataset.tab)));
-$('btnLogin').addEventListener('click', () => doAuth('login'));
-$('btnRegister').addEventListener('click', () => doAuth('register'));
-$('authPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') doAuth('login'); });
 
 /* ---------- Tur fitur (pertama daftar) ---------- */
 const TOUR_STEPS = [
@@ -209,7 +191,10 @@ function muatScript(src) {
 async function masukSosial(provider, tokenSosial) {
   $('socialMsg').textContent = 'Memeriksa akun ' + provider + '…';
   try {
-    const data = await api('/api/auth/social', 'POST', { provider, token: tokenSosial });
+    const referrer = $('authReferrer') ? $('authReferrer').value.trim() : '';
+    const body = { provider, token: tokenSosial };
+    if (referrer) body.referrer = referrer;
+    const data = await api('/api/auth/social', 'POST', body);
     token = data.token; player = data.player;
     await sesudahLogin('Selamat datang, ' + (player.name || '') + '!');
   } catch (e) { $('socialMsg').textContent = e.message; }
