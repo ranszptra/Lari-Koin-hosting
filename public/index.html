@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<canvas id="bgCanvas" width="420" height="520" aria-hidden="true"></canvas>
 <!-- LAYAR MEMUAT -->
 <div id="loadingScreen">
   <div class="loading-koin"><span>🪙</span><span>🪙</span><span>🪙</span><span>🪙</span></div>
@@ -100,6 +101,7 @@
             <button class="btn-emas btn-kecil" data-skill="perisai">▶ Nonton Iklan</button>
           </div>
         </div>
+        <div class="lives-bar"><span id="livesBar">❤️ Nyawa: 15/15</span><span id="livesCooldown" class="hidden"></span><button class="btn-emas btn-kecil hidden" id="btnNyawaIklan">📺 +1 Nyawa</button></div>
         <div class="game-wrap">
           <canvas id="gameCanvas" width="420" height="520" aria-label="Arena game Nailong Runner"></canvas>
           <div class="hud"><span id="hudKoin">🪙 0</span><span id="hudJarak">0 m</span><span id="hudLevel">Lv 1</span></div>

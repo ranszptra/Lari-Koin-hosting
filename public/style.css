@@ -17,7 +17,11 @@ a{color:#8a5a00}
 .saldo small{display:block;color:#8a6d2b;font-size:11px;font-weight:700;letter-spacing:.5px}
 .saldo b{font-size:20px}
 .saldo span{font-size:12px;color:#666}
-main{padding:12px 14px 40px}
+main{padding:12px 14px 40px;position:relative;z-index:1}
+#bgCanvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:0}
+#authScreen{background:rgba(255,255,255,.93);position:relative;z-index:1}
+.lives-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;background:#fff;border:2px solid var(--emas);border-radius:12px;padding:8px 12px;margin:10px 0;font-weight:700;font-size:14px}
+.lives-bar #livesCooldown{font-weight:400;font-size:12px;color:#8a5a00}
 .card{background:#fff;border-radius:16px;padding:14px;margin:12px 0;box-shadow:0 2px 8px rgba(90,50,0,.12)}
 .card h2{margin:0 0 4px;font-size:17px}
 .card h3{margin:14px 0 6px;font-size:15px}

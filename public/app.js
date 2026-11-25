@@ -92,25 +92,26 @@ function initPartikel(duniaIdx) {
   partikel = [];
   for (let i = 0; i < 26; i++) partikel.push({ x: Math.random() * 420, y: Math.random() * 520, s: 1 + Math.random() * 3, v: 0.4 + Math.random() * 1.2, f: Math.random() * Math.PI * 2 });
 }
-function gambarLatar(duniaIdx, frame) {
+function gambarLatar(duniaIdx, frame, c) {
+  const g2 = c || ctx;
   const d = DUNIA[duniaIdx];
   if (partikelDunia !== duniaIdx) initPartikel(duniaIdx);
-  const g = ctx.createLinearGradient(0, 0, 0, 110);
+  const g = g2.createLinearGradient(0, 0, 0, 130);
   g.addColorStop(0, d.langit); g.addColorStop(1, d.tanah);
-  ctx.fillStyle = g; ctx.fillRect(0, 0, 420, 110);
-  ctx.fillStyle = duniaIdx === 4 ? '#f5f3ce' : '#fff3b0';
-  ctx.beginPath(); ctx.arc(368, 52, duniaIdx === 4 ? 20 : 26, 0, Math.PI * 2); ctx.fill();
-  if (duniaIdx === 4) { ctx.fillStyle = '#c9c9a8'; ctx.beginPath(); ctx.arc(360, 46, 5, 0, Math.PI * 2); ctx.arc(376, 58, 4, 0, Math.PI * 2); ctx.fill(); }
+  g2.fillStyle = g; g2.fillRect(0, 0, 420, 130);
+  g2.fillStyle = duniaIdx === 4 ? '#f5f3ce' : '#fff3b0';
+  g2.beginPath(); g2.arc(368, 52, duniaIdx === 4 ? 20 : 26, 0, Math.PI * 2); g2.fill();
+  if (duniaIdx === 4) { g2.fillStyle = '#c9c9a8'; g2.beginPath(); g2.arc(360, 46, 5, 0, Math.PI * 2); g2.arc(376, 58, 4, 0, Math.PI * 2); g2.fill(); }
   partikel.forEach((p) => {
     p.f += 0.02;
     if (duniaIdx === 5) { p.y -= p.v; if (p.y < -6) { p.y = 526; p.x = Math.random() * 420; } }
     else { p.y += p.v; p.x += Math.sin(p.f) * 0.4; if (p.y > 526) { p.y = -6; p.x = Math.random() * 420; } }
-    if (duniaIdx === 0) { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.s * 5, p.s * 2.2, 0, 0, Math.PI * 2); ctx.fill(); }
-    else if (duniaIdx === 1) { ctx.fillStyle = 'rgba(120,220,120,.9)'; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.f); ctx.fillRect(-p.s * 2, -p.s, p.s * 4, p.s * 2); ctx.restore(); }
-    else if (duniaIdx === 2) { ctx.fillStyle = 'rgba(230,200,140,.8)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2); ctx.fill(); }
-    else if (duniaIdx === 3) { ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2); ctx.fill(); }
-    else if (duniaIdx === 4) { ctx.fillStyle = 'rgba(255,255,255,' + (0.4 + 0.6 * Math.abs(Math.sin(p.f))).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.s * 0.8, 0, Math.PI * 2); ctx.fill(); }
-    else { ctx.fillStyle = 'rgba(255,' + (100 + Math.floor(80 * Math.abs(Math.sin(p.f)))) + ',40,.95)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2); ctx.fill(); }
+    if (duniaIdx === 0) { g2.fillStyle = 'rgba(255,255,255,.85)'; g2.beginPath(); g2.ellipse(p.x, p.y, p.s * 5, p.s * 2.2, 0, 0, Math.PI * 2); g2.fill(); }
+    else if (duniaIdx === 1) { g2.fillStyle = 'rgba(120,220,120,.9)'; g2.save(); g2.translate(p.x, p.y); g2.rotate(p.f); g2.fillRect(-p.s * 2, -p.s, p.s * 4, p.s * 2); g2.restore(); }
+    else if (duniaIdx === 2) { g2.fillStyle = 'rgba(230,200,140,.8)'; g2.beginPath(); g2.arc(p.x, p.y, p.s, 0, Math.PI * 2); g2.fill(); }
+    else if (duniaIdx === 3) { g2.fillStyle = 'rgba(255,255,255,.95)'; g2.beginPath(); g2.arc(p.x, p.y, p.s, 0, Math.PI * 2); g2.fill(); }
+    else if (duniaIdx === 4) { g2.fillStyle = 'rgba(255,255,255,' + (0.4 + 0.6 * Math.abs(Math.sin(p.f))).toFixed(2) + ')'; g2.beginPath(); g2.arc(p.x, p.y, p.s * 0.8, 0, Math.PI * 2); g2.fill(); }
+    else { g2.fillStyle = 'rgba(255,' + (100 + Math.floor(80 * Math.abs(Math.sin(p.f)))) + ',40,.95)'; g2.beginPath(); g2.arc(p.x, p.y, p.s, 0, Math.PI * 2); g2.fill(); }
   });
 }
 
@@ -121,6 +122,7 @@ async function sesudahLogin(pesan) {
     return;
   }
   $('authScreen').classList.add('hidden');
+  const bg = $('bgCanvas'); if (bg) bg.style.display = 'none';
   $('app').classList.remove('hidden');
   $('authMsg').textContent = '';
   if (pesan) toast(pesan);
@@ -248,7 +250,7 @@ function renderProfil() {
   $('adsToday').textContent = profile.adsToday || 0;
   renderLevelSelect(maxLv);
   renderMisi(); renderPrestasi(); renderCheckin(); renderTeman(); renderToko(); renderTarik();
-  updateIklanBtn();
+  updateIklanBtn(); renderNyawa();
 }
 function renderLevelSelect(maxLv) {
   const sel = $('levelSelect');
@@ -548,7 +550,7 @@ $('btnNontonIklan').addEventListener('click', async () => {
 const canvas = $('gameCanvas');
 const ctx = canvas.getContext('2d');
 const LANES = [80, 210, 340];
-const game = { running: false, paused: false, lane: 1, level: 1, coins: 0, coinCount: 0, distance: 0, target: 500, speed: 4, objects: [], spawnT: 0, frame: 0, shield: false, magnet: false, mult: 1, hiasY: 0, mulaiAt: 0 };
+const game = { running: false, paused: false, lane: 1, level: 1, coins: 0, coinCount: 0, distance: 0, target: 500, speed: 4, objects: [], spawnT: 0, frame: 0, shield: false, magnet: false, mult: 1, hiasY: 0, mulaiAt: 0, lanePos: 1, roadScroll: 0 };
 
 function drawNailong(x, y, r, skinId, charId) {
   const char = charId || (profile && profile.equipped && profile.equipped.character) || 'jolly';
@@ -643,28 +645,145 @@ function drawNailong(x, y, r, skinId, charId) {
   if (game.shield) { ctx.strokeStyle = 'rgba(68,138,255,.8)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r + 10, 0, Math.PI * 2); ctx.stroke(); }
   ctx.restore();
 }
-function drawCoin(x, y, r) {
-  ctx.fillStyle = '#f5b301'; ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#b8860b'; ctx.font = 'bold ' + Math.round(r) + 'px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('Rp', x, y + 1);
+function drawCoin(c, x, y, r) {
+  c.fillStyle = '#f5b301'; c.strokeStyle = '#b8860b'; c.lineWidth = Math.max(1, 3 * (r / 15));
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.fillStyle = '#b8860b'; c.font = 'bold ' + Math.round(r) + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText('Rp', x, y + 1);
 }
-function drawObstacle(o) {
-  const x = LANES[o.lane], y = o.y;
+function drawObstacle(c, o, x, y, s) {
+  const lw = Math.max(1, 3 * s);
   if (o.type === 'batu') {
-    ctx.fillStyle = '#8d8d8d'; ctx.strokeStyle = '#5d5d5d'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(x, y, 26, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#a9a9a9'; ctx.beginPath(); ctx.arc(x - 8, y - 8, 10, 0, Math.PI * 2); ctx.fill();
+    c.fillStyle = '#8d8d8d'; c.strokeStyle = '#5d5d5d'; c.lineWidth = lw;
+    c.beginPath(); c.arc(x, y, 26 * s, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.fillStyle = '#a9a9a9'; c.beginPath(); c.arc(x - 8 * s, y - 8 * s, 10 * s, 0, Math.PI * 2); c.fill();
   } else if (o.type === 'kotak') {
-    ctx.fillStyle = '#a06a2c'; ctx.strokeStyle = '#6b4210'; ctx.lineWidth = 3;
-    ctx.fillRect(x - 26, y - 26, 52, 52); ctx.strokeRect(x - 26, y - 26, 52, 52);
-    ctx.beginPath(); ctx.moveTo(x - 26, y - 26); ctx.lineTo(x + 26, y + 26); ctx.moveTo(x + 26, y - 26); ctx.lineTo(x - 26, y + 26); ctx.stroke();
+    c.fillStyle = '#a06a2c'; c.strokeStyle = '#6b4210'; c.lineWidth = lw;
+    c.fillRect(x - 26 * s, y - 26 * s, 52 * s, 52 * s); c.strokeRect(x - 26 * s, y - 26 * s, 52 * s, 52 * s);
+    c.beginPath(); c.moveTo(x - 26 * s, y - 26 * s); c.lineTo(x + 26 * s, y + 26 * s); c.moveTo(x + 26 * s, y - 26 * s); c.lineTo(x - 26 * s, y + 26 * s); c.stroke();
   } else {
-    ctx.fillStyle = '#8d5a2b'; ctx.strokeStyle = '#5d3a1a'; ctx.lineWidth = 3;
-    ctx.fillRect(x - 28, y - 14, 56, 28); ctx.strokeRect(x - 28, y - 14, 56, 28);
-    for (let i = -1; i <= 1; i++) { ctx.fillRect(x + i * 20 - 3, y - 22, 6, 44); }
+    c.fillStyle = '#8d5a2b'; c.strokeStyle = '#5d3a1a'; c.lineWidth = lw;
+    c.fillRect(x - 28 * s, y - 14 * s, 56 * s, 28 * s); c.strokeRect(x - 28 * s, y - 14 * s, 56 * s, 28 * s);
+    for (let i = -1; i <= 1; i++) { c.fillRect(x + i * 20 * s - 3 * s, y - 22 * s, 6 * s, 44 * s); }
   }
 }
+/* ---------- Tampilan 3D ala Subway Surfers (perspektif, kamera di belakang Nailong) ---------- */
+const P3 = { hy: 130, bawah: 470, vx: 210 };
+function proyeksi(lanePos, z) {
+  const u = Math.max(0, Math.min(1, 1 - z)); // 1 = dekat pemain, 0 = horizon
+  const k = Math.pow(u, 1.6);
+  const s = 0.12 + 0.88 * k;
+  return { x: P3.vx + (lanePos - 1) * 150 * s, y: P3.hy + (P3.bawah - P3.hy) * k, s };
+}
+function warnaKarakter() {
+  const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
+  const skin = (profile && profile.equipped && profile.equipped.skin) || '';
+  let warna = '#ffd93b', garis = '#d9a400', perut = '#fff3c4';
+  if (char === 'kiko') { warna = '#a8e6a3'; garis = '#6fbf6a'; perut = '#e4f7e2'; }
+  if (char === 'momo') { warna = '#ffc0cb'; garis = '#e88aa0'; perut = '#ffe3ea'; }
+  if (char === 'rex') { warna = '#ffb74d'; garis = '#e08a1e'; perut = '#ffe0b3'; }
+  if (skin === 'emas') { warna = '#ffd54a'; garis = '#c79a00'; perut = '#ffef9e'; }
+  if (skin === 'ninja') { warna = '#2b2b2b'; garis = '#111'; perut = '#444444'; }
+  if (skin === 'astronot') { warna = '#ffffff'; garis = '#b0bec5'; perut = '#eef6fb'; }
+  if (skin === 'shadow') { warna = '#5a5a7a'; garis = '#33334d'; perut = '#7a7a9a'; }
+  if (skin === 'pelangi') { warna = '#ffe082'; garis = '#ff8a65'; perut = '#fff3c4'; }
+  const WARNA_SKIN_LEVEL = {
+    es: ['#b3e5fc', '#4fc3f7', '#e1f5fe'], sakura: ['#f8bbd0', '#f06292', '#fce4ec'],
+    laut: ['#4fc3f7', '#0288d1', '#e1f5fe'], hutan: ['#81c784', '#43a047', '#e8f5e9'],
+    senja: ['#ce93d8', '#8e24aa', '#f3e5f5'], salju: ['#eceff1', '#90a4ae', '#ffffff'],
+    lava: ['#ff7043', '#d84315', '#ffccbc'], galaksi: ['#7e57c2', '#512da8', '#ede7f6'],
+    madu: ['#ffca28', '#ff8f00', '#fff8e1'], mint: ['#80cbc4', '#00897b', '#e0f2f1'],
+    komet: ['#ff9800', '#e65100', '#fff3e0'], legenda: ['#ffd700', '#b8860b', '#fffde7']
+  };
+  if (WARNA_SKIN_LEVEL[skin]) { warna = WARNA_SKIN_LEVEL[skin][0]; garis = WARNA_SKIN_LEVEL[skin][1]; perut = WARNA_SKIN_LEVEL[skin][2]; }
+  return { warna, garis, perut, skin, char };
+}
+function drawNailongBelakang(c, x, y, r, lean, frame, shield) {
+  const { warna, garis, skin, char } = warnaKarakter();
+  const f = frame || 0;
+  const lari = Math.sin(f / 4);
+  const goyang = Math.sin(f / 6) * 0.12;
+  const sy = 1 + Math.sin(f / 4) * 0.05, sx = 1 - Math.sin(f / 4) * 0.04;
+  c.save();
+  c.translate(x, y); c.rotate(lean || 0); c.scale(sx, sy); c.translate(-x, -y);
+  c.fillStyle = warna; c.strokeStyle = garis; c.lineWidth = 3;
+  c.beginPath();
+  c.moveTo(x - r * 0.5, y + r * 0.5);
+  c.quadraticCurveTo(x - r * 1.3, y + r * (0.7 + goyang), x - r * 1.2, y + r * 0.05);
+  c.quadraticCurveTo(x - r * 0.9, y + r * 0.3, x - r * 0.45, y + r * 0.3);
+  c.closePath(); c.fill(); c.stroke();
+  const kakiY1 = y + r * 0.95 + Math.max(0, lari) * r * 0.25;
+  const kakiY2 = y + r * 0.95 + Math.max(0, -lari) * r * 0.25;
+  c.beginPath(); c.ellipse(x - r * 0.35, kakiY1, r * 0.28, r * 0.16, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.beginPath(); c.ellipse(x + r * 0.35, kakiY2, r * 0.28, r * 0.16, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.fillStyle = '#ffb6c1';
+  c.beginPath(); c.ellipse(x - r * 0.35, kakiY1 + r * 0.07, r * 0.17, r * 0.07, 0, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(x + r * 0.35, kakiY2 + r * 0.07, r * 0.17, r * 0.07, 0, 0, Math.PI * 2); c.fill();
+  c.fillStyle = warna;
+  c.beginPath(); c.ellipse(x - r * 0.95, y + r * (0.1 - lari * 0.15), r * 0.16, r * 0.3, -0.4, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.beginPath(); c.ellipse(x + r * 0.95, y + r * (0.1 + lari * 0.15), r * 0.16, r * 0.3, 0.4, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.fillStyle = '#fff3c4';
+  c.beginPath(); c.ellipse(x - r * 0.45, y - r * 1.05, r * 0.14, r * 0.3, -0.35, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.beginPath(); c.ellipse(x + r * 0.45, y - r * 1.05, r * 0.14, r * 0.3, 0.35, 0, Math.PI * 2); c.fill(); c.stroke();
+  if (char === 'rex') { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(x, y - r * 1.15); c.lineTo(x - r * 0.25, y - r * 0.7); c.lineTo(x + r * 0.25, y - r * 0.7); c.closePath(); c.fill(); }
+  if (char === 'momo') { c.fillStyle = '#ff5c8a'; c.beginPath(); c.arc(x + r * 0.45, y - r * 0.9, r * 0.18, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = warna;
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = garis; c.lineWidth = 3; c.stroke();
+  if (skin === 'astronot') { c.strokeStyle = 'rgba(120,180,220,.9)'; c.lineWidth = 5; c.beginPath(); c.arc(x, y, r + 6, 0, Math.PI * 2); c.stroke(); }
+  if (skin === 'ninja') { c.fillStyle = '#c62828'; c.fillRect(x - r, y - r * 0.55, r * 2, r * 0.22); }
+  if (skin === 'pelangi') { c.strokeStyle = '#ff5252'; c.lineWidth = 4; c.beginPath(); c.arc(x, y, r * 0.75, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); c.strokeStyle = '#448aff'; c.beginPath(); c.arc(x, y, r * 0.6, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); }
+  if (char === 'jolly' && !skin) {
+    c.fillStyle = '#8bc34a';
+    c.beginPath(); c.arc(x - r * 0.28, y - r * 0.62, r * 0.09, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(x, y - r * 0.78, r * 0.09, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.arc(x + r * 0.28, y - r * 0.62, r * 0.09, 0, Math.PI * 2); c.fill();
+  }
+  if (shield) { c.strokeStyle = 'rgba(68,138,255,.8)'; c.lineWidth = 4; c.beginPath(); c.arc(x, y, r + 10, 0, Math.PI * 2); c.stroke(); }
+  c.restore();
+}
+function renderScene(c, st) {
+  const d = duniaUntuk(st.level);
+  gambarLatar(Math.min(5, Math.floor(((st.level || 1) - 1) / 10)), st.frame, c);
+  c.fillStyle = d.tanah; c.fillRect(0, P3.hy, 420, 520 - P3.hy);
+  c.fillStyle = 'rgba(0,0,0,.25)';
+  c.beginPath(); c.moveTo(0, P3.hy); c.lineTo(186, P3.hy); c.lineTo(10, 520); c.lineTo(0, 520); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(234, P3.hy); c.lineTo(420, P3.hy); c.lineTo(420, 520); c.lineTo(410, 520); c.closePath(); c.fill();
+  c.fillStyle = 'rgba(255,255,255,.10)';
+  c.beginPath(); c.moveTo(186, P3.hy); c.lineTo(234, P3.hy); c.lineTo(410, 520); c.lineTo(10, 520); c.closePath(); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 5; c.setLineDash([26, 34]);
+  c.lineDashOffset = -(((st.roadScroll || 0) * 520) % 60);
+  for (const b of [-0.5, 0.5]) {
+    c.beginPath();
+    c.moveTo(210 + b * 150 * 0.12, P3.hy);
+    c.lineTo(210 + b * 150, 520);
+    c.stroke();
+  }
+  c.setLineDash([]);
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (let i = 0; i < 6; i++) {
+    const z = (((i * 0.2 + (st.roadScroll || 0)) % 1) + 1) % 1;
+    const u = 1 - z, k = Math.pow(u, 1.6), s = 0.12 + 0.88 * k;
+    const y = P3.hy + (P3.bawah - P3.hy) * k;
+    c.font = Math.max(8, Math.round(30 * s)) + 'px sans-serif';
+    c.fillText(d.hias, 210 - (200 * s + 28 * s), y);
+    c.fillText(d.hias, 210 + (200 * s + 28 * s), y);
+  }
+  const objs = (st.objects || []).slice().sort((a, b) => b.z - a.z);
+  for (const o of objs) {
+    const p = proyeksi(o.lane, o.z);
+    if (o.kind === 'koin') drawCoin(c, p.x, p.y, Math.max(4, 15 * p.s));
+    else drawObstacle(c, o, p.x, p.y, p.s);
+  }
+  (st.debu || []).forEach((dd) => { c.fillStyle = 'rgba(210,180,140,' + dd.a.toFixed(2) + ')'; c.beginPath(); c.arc(dd.x, dd.y, dd.r, 0, Math.PI * 2); c.fill(); });
+  const pp = proyeksi(st.lanePos, 0);
+  const lompat = Math.abs(Math.sin(st.frame / 8)) * 6;
+  c.fillStyle = 'rgba(0,0,0,.25)';
+  c.beginPath(); c.ellipse(pp.x, 478, 26, 8, 0, 0, Math.PI * 2); c.fill();
+  const lean = ((st.lane || 1) - st.lanePos) * 0.25;
+  drawNailongBelakang(c, pp.x, 448 - lompat, 34, lean, st.frame, st.shield);
+}
+
 /* Skill iklan: 3 item — aktif setelah nonton iklan, berlaku 1x lari */
 const skillIklan = { cepat: false, magnet: false, perisai: false };
 function resetSkillIklan() {
@@ -688,7 +807,7 @@ function resetGame() {
   game.target = (isBos(lv) ? 700 : 450) + lv * 30;
   game.speed = 4 + lv * 0.18;
   if (skillIklan.cepat) game.speed = Math.round(game.speed * 1.5);
-  game.objects = []; game.spawnT = 0; game.frame = 0; game.debu = [];
+  game.objects = []; game.spawnT = 0; game.frame = 0; game.debu = []; game.lanePos = 1; game.roadScroll = 0;
   game.shield = pu === 'perisai' || ((profile && profile.equipped && profile.equipped.powerup) === 'perisai') || skillIklan.perisai;
   game.magnet = pu === 'magnet' || ((profile && profile.equipped && profile.equipped.powerup) === 'magnet') || skillIklan.magnet;
   game.mult = (pu === 'koinx2' || ((profile && profile.equipped && profile.equipped.powerup) === 'koinx2')) ? 2 : 1;
@@ -701,16 +820,16 @@ function spawnObject() {
   const r = Math.random();
   const lane = Math.floor(Math.random() * 3);
   if (r < 0.42) {
-    game.objects.push({ kind: 'koin', lane, y: -30 });
-    if (Math.random() < 0.5) game.objects.push({ kind: 'koin', lane, y: -80 });
-    if (Math.random() < 0.3) game.objects.push({ kind: 'koin', lane: (lane + 1) % 3, y: -30 });
+    game.objects.push({ kind: 'koin', lane, z: 1 });
+    if (Math.random() < 0.5) game.objects.push({ kind: 'koin', lane, z: 0.94 });
+    if (Math.random() < 0.3) game.objects.push({ kind: 'koin', lane: (lane + 1) % 3, z: 1 });
   } else {
     const types = ['batu', 'kotak', 'pagar'];
-    game.objects.push({ kind: 'rintangan', type: types[Math.floor(Math.random() * 3)], lane, y: -40 });
+    game.objects.push({ kind: 'rintangan', type: types[Math.floor(Math.random() * 3)], lane, z: 1 });
     // kadang 2 rintangan sekaligus di level tinggi (selalu sisakan 1 jalur aman)
     if (lv >= 5 && Math.random() < 0.35) {
       const lane2 = (lane + 1 + Math.floor(Math.random() * 2)) % 3;
-      game.objects.push({ kind: 'rintangan', type: types[Math.floor(Math.random() * 3)], lane: lane2, y: -40 });
+      game.objects.push({ kind: 'rintangan', type: types[Math.floor(Math.random() * 3)], lane: lane2, z: 1 });
     }
   }
 }
@@ -718,50 +837,33 @@ function loop() {
   if (!game.running) return;
   if (!game.paused) {
     game.frame++;
-    const d = duniaUntuk(game.level);
     game.distance += game.speed * 0.06;
-    game.hiasY = (game.hiasY + game.speed) % 80;
+    game.roadScroll += game.speed * 0.002;
     // spawn: makin cepat & padat tiap level
     game.spawnT -= 1;
     if (game.spawnT <= 0) { spawnObject(); game.spawnT = Math.max(28, 75 - game.level * 1.6); }
-    const px = LANES[game.lane], py = 430;
+    game.lanePos += (game.lane - game.lanePos) * 0.22;
     game.objects.forEach((o) => {
-      o.y += game.speed;
-      if (game.magnet && o.kind === 'koin' && o.y > 250 && o.y < 480) o.y += 3; // magnet: koin jatuh lebih cepat ke arah pemain
-      if (o.kind === 'koin' && Math.abs(o.y - py) < 42 && o.lane === game.lane) {
+      o.z -= game.speed * 0.002;
+      if (game.magnet && o.kind === 'koin' && o.z > 0.08 && o.z < 0.6) o.z -= game.speed * 0.002 * 1.2; // magnet: koin melaju ke arah pemain
+      if (o.kind === 'koin' && o.z <= 0.12 && o.z > -0.02 && o.lane === game.lane) {
         if (!o.taken) { o.taken = true; game.coinCount++; game.coins += 10 * game.mult; beep(880, 0.08, 'sine'); }
       }
-      if (o.kind === 'rintangan' && Math.abs(o.y - py) < 48 && o.lane === game.lane && !o.hit) {
+      if (o.kind === 'rintangan' && o.z <= 0.10 && o.z > -0.02 && o.lane === game.lane && !o.hit) {
         o.hit = true;
         if (game.shield) { game.shield = false; beep(300, 0.2, 'square'); toast('Perisai menahan tabrakan!'); }
         else { beep(120, 0.4, 'sawtooth'); gameOver(); return; }
       }
     });
-    game.objects = game.objects.filter((o) => o.y < 560 && !o.taken);
+    game.objects = game.objects.filter((o) => o.z > -0.08 && !o.taken);
     $('hudKoin').textContent = '🪙 ' + game.coins;
     $('hudJarak').textContent = Math.floor(game.distance) + ' / ' + game.target + ' m';
-    // gambar
-    ctx.fillStyle = d.langit; ctx.fillRect(0, 0, 420, 520);
-    ctx.fillStyle = d.tanah; ctx.fillRect(0, 0, 420, 520);
-    gambarLatar(Math.min(5, Math.floor(((game.level || 1) - 1) / 10)), game.frame);
-    ctx.fillStyle = 'rgba(255,255,255,.08)';
-    for (let y = -80 + game.hiasY; y < 520; y += 80) { ctx.fillRect(8, y, 34, 50); ctx.fillRect(378, y, 34, 50); }
-    ctx.fillStyle = 'rgba(255,255,255,.25)';
-    ctx.fillRect(135, 0, 6, 520); ctx.fillRect(279, 0, 6, 520);
-    ctx.fillStyle = 'rgba(0,0,0,.12)';
-    for (let y = -40 + game.hiasY; y < 520; y += 80) { ctx.fillRect(138, y, 6, 40); ctx.fillRect(282, y, 6, 40); }
-    ctx.font = '22px sans-serif'; ctx.textAlign = 'left';
-    ctx.fillText(d.hias, 14, 40); ctx.fillText(d.hias, 384, 120);
-    game.objects.forEach((o) => { if (o.kind === 'koin') drawCoin(LANES[o.lane], o.y, 15); else drawObstacle(o); });
-    // bayangan + Nailong (loncat kecil saat lari) + debu kaki
-    const lompat = Math.abs(Math.sin(game.frame / 8)) * 6;
-    ctx.fillStyle = 'rgba(0,0,0,.25)';
-    ctx.beginPath(); ctx.ellipse(px, py + 34, 26, 8, 0, 0, Math.PI * 2); ctx.fill();
-    if (game.frame % 5 === 0) game.debu.push({ x: px + (Math.random() * 30 - 15), y: py + 32, r: 3 + Math.random() * 3, a: 0.3 });
-    game.debu.forEach((d) => { d.y -= 1; d.a -= 0.012; d.r += 0.4; });
-    game.debu = game.debu.filter((d) => d.a > 0);
-    game.debu.forEach((d) => { ctx.fillStyle = 'rgba(210,180,140,' + d.a.toFixed(2) + ')'; ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill(); });
-    drawNailong(px, py - lompat, 30);
+    // debu kaki (di posisi pemain, perspektif)
+    const pp = proyeksi(game.lanePos, 0);
+    if (game.frame % 5 === 0) game.debu.push({ x: pp.x + (Math.random() * 30 - 15), y: 478, r: 3 + Math.random() * 3, a: 0.3 });
+    game.debu.forEach((dd) => { dd.y -= 1; dd.a -= 0.012; dd.r += 0.4; });
+    game.debu = game.debu.filter((dd) => dd.a > 0);
+    renderScene(ctx, game);
     if (game.distance >= game.target) { selesaiLevel(); return; }
   }
   requestAnimationFrame(loop);
@@ -775,7 +877,7 @@ function gameOver() {
   el.innerHTML = '<h3>💥 Kena Halangan!</h3><p>Lari selesai di level ' + game.level + '. Koin terkumpul: <b>' + game.coins + '</b> (jarak ' + Math.floor(game.distance) + ' m).</p><p class="muted">Koin tetap dihitung — tekan Main Lagi untuk mencoba lagi.</p>';
   el.classList.add('show');
   $('btnStart').textContent = '▶ Main Lagi';
-  if (game.coins > 0) { const durBank = Date.now() - (game.mulaiAt || Date.now()); api('/api/bank-run-coins', 'POST', { coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: durBank, level: game.level }).then(() => muatProfil()).catch(() => {}); }
+  if (game.coins > 0) { const durBank = Date.now() - (game.mulaiAt || Date.now()); api('/api/bank-run-coins', 'POST', { coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: durBank, level: game.level }).then(() => muatProfil()).catch(() => {}); } else { muatProfil(); }
 }
 async function selesaiLevel() {
   game.running = false;
@@ -811,8 +913,17 @@ function tampilIklanSelingan(cb) {
   }, 1000);
   btn.onclick = () => { modal.classList.remove('show'); cb(); };
 }
-function mulaiGame() {
-  if (!token) { toast('Masuk dulu dengan nama + PIN.'); return; }
+async function mulaiGame() {
+  if (!token) { toast('Masuk dulu dengan Google.'); return; }
+  try {
+    const d = await api('/api/run-start', 'POST', {});
+    if (player) { player.lives = d.lives; player.livesCooldownUntil = d.cooldownUntil || null; }
+    renderNyawa();
+  } catch (e) {
+    toast(e.message);
+    await muatProfil();
+    return;
+  }
   resetGame();
   mulaiMusik();
   game.running = true; game.paused = false;
@@ -882,23 +993,73 @@ canvas.addEventListener('click', () => { if (abaikanKlik) return; if (!game.runn
 
 /* Gambar awal di canvas — Nailong bergerak pelan walau belum main */
 let idleT = 0;
+const idleCoins = [{ kind: 'koin', lane: 1, z: 0.7 }, { kind: 'koin', lane: 1, z: 0.55 }, { kind: 'koin', lane: 0, z: 0.85 }, { kind: 'koin', lane: 2, z: 0.4 }];
 function gambarAwal() {
   if (game.running) return;
-  const d = DUNIA[0];
-  ctx.fillStyle = d.langit; ctx.fillRect(0, 0, 420, 520);
-  ctx.fillStyle = d.tanah; ctx.fillRect(0, 0, 420, 520);
-  gambarLatar(0, game.frame);
-  ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(135, 0, 6, 520); ctx.fillRect(279, 0, 6, 520);
   game.frame = idleT++;
-  const lompat = Math.abs(Math.sin(game.frame / 8)) * 6;
-  ctx.fillStyle = 'rgba(0,0,0,.25)';
-  ctx.beginPath(); ctx.ellipse(210, 464, 26, 8, 0, 0, Math.PI * 2); ctx.fill();
-  drawNailong(210, 430 - lompat, 30);
+  idleCoins.forEach((o) => { o.z -= 0.004; if (o.z < 0.05) o.z = 1; });
+  const st = { level: 1, frame: game.frame, lane: 1, lanePos: 1 + Math.sin(game.frame / 40) * 0.12, objects: idleCoins, roadScroll: game.frame * 0.004, debu: [], shield: false };
+  renderScene(ctx, st);
   ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('Tekan ▶ Mulai Lari', 210, 120);
+  ctx.fillText('Tekan ▶ Mulai Lari', 210, 110);
 }
 gambarAwal();
 setInterval(gambarAwal, 100);
+
+/* ---------- Nyawa (15/hari, cooldown 15 menit kalau habis) ---------- */
+function renderNyawa() {
+  const bar = $('livesBar'); if (!bar || !player) return;
+  const lives = player.lives == null ? 15 : player.lives;
+  bar.textContent = '❤️ Nyawa: ' + lives + '/15';
+  const cd = $('livesCooldown'), btn = $('btnNyawaIklan');
+  const aktif = lives <= 0 && player.livesCooldownUntil && new Date(player.livesCooldownUntil).getTime() > Date.now();
+  if (cd) cd.classList.toggle('hidden', !aktif);
+  if (btn) btn.classList.toggle('hidden', !(lives < 15));
+  if (aktif) tickNyawa();
+}
+function tickNyawa() {
+  const el = $('livesCooldown');
+  if (!el || !player || !player.livesCooldownUntil) return;
+  const sisa = Math.max(0, new Date(player.livesCooldownUntil).getTime() - Date.now());
+  if (sisa <= 0) { el.classList.add('hidden'); const b = $('btnNyawaIklan'); if (b) b.classList.add('hidden'); muatProfil(); return; }
+  const m = Math.floor(sisa / 60000), s = Math.floor(sisa % 60000 / 1000);
+  el.textContent = '⏳ Cooldown nyawa: ' + m + ':' + String(s).padStart(2, '0') + ' — atau nonton iklan buat +1 nyawa';
+}
+$('btnNyawaIklan').addEventListener('click', () => {
+  tampilIklanSelingan(async () => {
+    try {
+      const d = await api('/api/lives/ad', 'POST', {});
+      toast('+1 nyawa! Sekarang ' + d.lives + '/15 ❤️');
+      await muatProfil();
+    } catch (e) { toast(e.message); }
+  });
+});
+setInterval(tickNyawa, 1000);
+
+/* ---------- Login: animasi live full-screen (attract mode 3D) ---------- */
+const bgCanvas = $('bgCanvas');
+const bgCtx = bgCanvas ? bgCanvas.getContext('2d') : null;
+const demo = { level: 1, frame: 0, lane: 1, lanePos: 1, objects: [], spawnT: 0, roadScroll: 0, debu: [], shield: false, speed: 4.5 };
+function loopLogin() {
+  if (!bgCtx || !bgCanvas || bgCanvas.style.display === 'none') return;
+  if ($('authScreen').classList.contains('hidden')) return;
+  demo.frame++;
+  demo.roadScroll += demo.speed * 0.002;
+  demo.lanePos += (demo.lane - demo.lanePos) * 0.1;
+  if (demo.frame % 120 === 0) demo.lane = Math.floor(Math.random() * 3);
+  demo.spawnT -= 1;
+  if (demo.spawnT <= 0) {
+    const lane = Math.floor(Math.random() * 3);
+    if (Math.random() < 0.5) demo.objects.push({ kind: 'koin', lane, z: 1 });
+    else demo.objects.push({ kind: 'rintangan', type: ['batu', 'kotak', 'pagar'][Math.floor(Math.random() * 3)], lane, z: 1 });
+    demo.spawnT = 45;
+  }
+  demo.objects.forEach((o) => { o.z -= demo.speed * 0.002; });
+  demo.objects = demo.objects.filter((o) => o.z > -0.08);
+  renderScene(bgCtx, demo);
+  requestAnimationFrame(loopLogin);
+}
+if (bgCtx) requestAnimationFrame(loopLogin);
 
 /* Service worker */
 if ('serviceWorker' in navigator) {
