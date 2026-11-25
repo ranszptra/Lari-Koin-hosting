@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS players (
   maxLevel integer NOT NULL DEFAULT 1,
   characters jsonb NOT NULL DEFAULT '["jolly"]'::jsonb,
   skins jsonb NOT NULL DEFAULT '[]'::jsonb,
+  levelChars jsonb NOT NULL DEFAULT '[]'::jsonb,
   equipped jsonb NOT NULL DEFAULT '{"character":"jolly","skin":null}'::jsonb,
   powerups jsonb NOT NULL DEFAULT '{}'::jsonb,
   streak integer NOT NULL DEFAULT 0,
@@ -174,4 +175,5 @@ ALTER TABLE players ADD COLUMN IF NOT EXISTS fullset_claimed integer NOT NULL DE
 ALTER TABLE players ADD COLUMN IF NOT EXISTS lives integer NOT NULL DEFAULT 15;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS livesDay text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS livesCooldownUntil text;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS levelChars jsonb NOT NULL DEFAULT '[]'::jsonb;
 ALTER TABLE daily_state ADD COLUMN IF NOT EXISTS runCoinsToday integer NOT NULL DEFAULT 0;

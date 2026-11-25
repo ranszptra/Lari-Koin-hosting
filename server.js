@@ -20,7 +20,7 @@ const {
   GIFT_CODES, REFERRAL_REWARD_COINS,
   NETWORKS, estRevenueRp,
   CHARACTERS, SKINS, POWERUPS,
-  LEVEL_SKINS, FULLSET_COINS,
+  LEVEL_CHARACTERS, levelCharactersBaru, LEVEL_SKINS, FULLSET_COINS,
   MISSION_POOL, ACHIEVEMENTS,
   publicPlayer, parseJson,
   getDailyState, todaysMissions, ensureMissionRows, addMissionProgress,
@@ -137,10 +137,10 @@ app.post('/api/auth/social', ah(async (req, res) => {
     const { salt, hash } = hashPin(crypto.randomBytes(32).toString('hex'));
     const now = nowIso();
     const info = await db.prepare(
-      `INSERT INTO players(name,pinHash,pinSalt,coins,maxLevel,characters,skins,equipped,powerups,
+      `INSERT INTO players(name,pinHash,pinSalt,coins,maxLevel,characters,skins,levelChars,equipped,powerups,
        streak,lastCheckin,referrer,totalEarned,totalAds,totalLevels,createdAt,lastActive,ip,lastIp,provider,providerId,banned,bannedReason)
-       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-    ).run(name, hash, salt, 500, 1, '["jolly"]', '[]', '{"character":"jolly","skin":null}', '{}',
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).run(name, hash, salt, 500, 1, '["jolly"]', '[]', '["char-01"]', '{"character":"char-01","skin":null}', '{}',
       0, null, referrerRow ? referrerRow.name : null, 0, 0, 0, now, now, ip, ip, provider, verified.providerId, banned, bannedReason);
     if (referrerRow) {
       await db.prepare('INSERT OR IGNORE INTO referrals(referrerId,friendId,status,createdAt) VALUES(?,?,?,?)')
@@ -167,10 +167,33 @@ async function grantLevelSkins(p) {
   return baru;
 }
 
+// Karakter level: beri semua karakter yang levelnya sudah dicapai pemain (idempotent).
+async function grantLevelCharacters(p) {
+  const owned = parseJson(p.levelChars, []);
+  const baru = levelCharactersBaru(p.maxLevel, owned);
+  if (!baru.length) return [];
+  const all = [...owned, ...baru.map((c) => c.id)];
+  await db.prepare('UPDATE players SET levelChars=? WHERE id=?').run(JSON.stringify(all), p.id);
+  return baru;
+}
+
 app.get('/api/profile', ah(requirePlayer), ah(async (req, res) => {
   let p = await freshPlayer(req.player.id);
   // Skin level: beri otomatis semua skin yang levelnya sudah dicapai (idempotent).
   if ((await grantLevelSkins(p)).length) p = await freshPlayer(p.id);
+  // Karakter level: beri otomatis semua karakter yang levelnya sudah dicapai.
+  if ((await grantLevelCharacters(p)).length) p = await freshPlayer(p.id);
+  // Migrasi default: pemain lama yang masih pakai karakter default 'jolly'
+  // (tidak pernah beli/pakai karakter toko) ikut ke flagship baru char-01 "Rex".
+  {
+    const eq = parseJson(p.equipped, { character: 'jolly', skin: null });
+    const ownedLc = parseJson(p.levelChars, []);
+    if (eq.character === 'jolly' && ownedLc.includes('char-01')) {
+      eq.character = 'char-01';
+      await db.prepare('UPDATE players SET equipped=? WHERE id=?').run(JSON.stringify(eq), p.id);
+      p = await freshPlayer(p.id);
+    }
+  }
   // Nyawa: reset harian otomatis kalau hari sudah berganti.
   await getLives(p);
   p = await freshPlayer(p.id);
@@ -283,10 +306,11 @@ app.post('/api/finish-level', ah(requirePlayer), ah(async (req, res) => {
   await db.prepare('UPDATE daily_state SET runCoinsToday=runCoinsToday+? WHERE playerId=? AND date=?').run(coinsEarned, p.id, today);
   lastFinishAt.set(p.id, nowMs);
   const skinsBaru = await grantLevelSkins(await freshPlayer(p.id));
+  const charsBaru = await grantLevelCharacters(await freshPlayer(p.id));
   await addMissionProgress(p.id, 'm_level3', 1, today);
   await addMissionProgress(p.id, 'm_coins500', coinsEarned, today);
   if (isBoss) await addMissionProgress(p.id, 'm_boss', 1, today);
-  res.json({ ok: true, coinsEarned, bonus, isBoss, newMaxLevel, skinsBaru: skinsBaru.map((s) => s.nama), coins: (await freshPlayer(p.id)).coins });
+  res.json({ ok: true, coinsEarned, bonus, isBoss, newMaxLevel, skinsBaru: skinsBaru.map((s) => s.nama), charsBaru: charsBaru.map((c) => c.nama), coins: (await freshPlayer(p.id)).coins });
 }));
 
 // --- Bank koin lari yang gagal (tanpa bonus level / buka level) -------------
@@ -528,6 +552,21 @@ app.post('/api/equip', ah(requirePlayer), ah(async (req, res) => {
   }
   await db.prepare('UPDATE players SET equipped=? WHERE id=?').run(JSON.stringify(equipped), p.id);
   res.json({ ok: true, equipped });
+}));
+
+// --- Pilih karakter level (roster 12 karakter) --------------------------------
+// Karakter toko lama (jolly/kiko/momo/rex, beli pakai koin) tetap lewat /api/equip.
+app.post('/api/character/select', ah(requirePlayer), ah(async (req, res) => {
+  const id = String(req.body?.id || '');
+  const def = LEVEL_CHARACTERS.find((c) => c.id === id);
+  if (!def) return fail(res, 'Karakter tidak dikenal');
+  const p = await freshPlayer(req.player.id);
+  const owned = parseJson(p.levelChars, []);
+  if (!owned.includes(id)) return fail(res, `Karakter ${def.nama} belum terbuka — capai Lv ${def.level} dulu`);
+  const equipped = parseJson(p.equipped, { character: 'jolly', skin: null });
+  equipped.character = id;
+  await db.prepare('UPDATE players SET equipped=? WHERE id=?').run(JSON.stringify(equipped), p.id);
+  res.json({ ok: true, equipped, character: def });
 }));
 
 // --- Tukar set lengkap skin level → Rp100.000 (sekali saja) ---------------------

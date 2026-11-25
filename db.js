@@ -101,6 +101,30 @@ const CHARACTERS = { jolly: 0, kiko: 50000, momo: 100000, rex: 200000 };
 const SKINS = { emas: 25000, ninja: 50000, astronot: 75000, pelangi: 100000, shadow: 150000 };
 const POWERUPS = { magnet: 2000, perisai: 2000, koinx2: 3000 };
 
+// Karakter level — GRATIS, terbuka otomatis tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 karakter).
+// Kartu gambar di public/characters/char-01.jpg..char-12.webp (gaya streetwear Rans).
+// `warna` = warna utama karakter (dipakai tint Xbot 3D + tampilan 2D fallback).
+const LEVEL_CHARACTERS = [
+  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: '#1a1a1a' },
+  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: '#d32f2f' },
+  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: '#4fc3f7' },
+  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: '#90caf9' },
+  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: '#66bb6a' },
+  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: '#ab47bc' },
+  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: '#fb8c00' },
+  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: '#f06292' },
+  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: '#fdd835' },
+  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: '#26a69a' },
+  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: '#546e7a' },
+  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: '#ffd700' },
+];
+
+// Karakter level yang BARU terbuka untuk pemain (murni — dipakai server + tes).
+function levelCharactersBaru(maxLevel, owned) {
+  const o = new Set(owned || []);
+  return LEVEL_CHARACTERS.filter((c) => maxLevel >= c.level && !o.has(c.id));
+}
+
 // Skin level — GRATIS, terbuka otomatis tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 skin).
 const LEVEL_SKINS = [
   { id: 'es', level: 5, nama: 'Es', ikon: '❄️' },
@@ -154,7 +178,8 @@ CREATE TABLE IF NOT EXISTS players (
   maxLevel INTEGER NOT NULL DEFAULT 1,
   characters TEXT NOT NULL DEFAULT '["jolly"]',
   skins TEXT NOT NULL DEFAULT '[]',
-  equipped TEXT NOT NULL DEFAULT '{"character":"jolly","skin":null}',
+  levelChars TEXT NOT NULL DEFAULT '[]',
+  equipped TEXT NOT NULL DEFAULT '{"character":"char-01","skin":null}',
   powerups TEXT NOT NULL DEFAULT '{}',
   streak INTEGER NOT NULL DEFAULT 0,
   lastCheckin TEXT,
@@ -261,6 +286,7 @@ const PG_KEY_MAP = {
   maxlevel: 'maxLevel', lastcheckin: 'lastCheckin', totalearned: 'totalEarned',
   totalads: 'totalAds', totallevels: 'totalLevels', createdat: 'createdAt',
   lastactive: 'lastActive', amountrp: 'amountRp', offerid: 'offerId',
+  levelchars: 'levelChars',
   partnerrp: 'partnerRp', rewardcoins: 'rewardCoins', missionid: 'missionId',
   achievementid: 'achievementId', adstoday: 'adsToday', lastadat: 'lastAdAt',
   wheelleft: 'wheelLeft', chestleft: 'chestLeft', referrerid: 'referrerId',
@@ -433,7 +459,7 @@ async function initDb() {
       sqliteDb.exec('PRAGMA foreign_keys = ON;');
       sqliteDb.exec(SQLITE_DDL);
       // Migrasi kolom baru untuk DB SQLite lama (aman diulang — gagal = sudah ada).
-      for (const col of ['ip TEXT', 'lastIp TEXT', 'provider TEXT', 'providerId TEXT', 'banned INTEGER NOT NULL DEFAULT 0', 'bannedReason TEXT', 'fullset_claimed INTEGER NOT NULL DEFAULT 0', 'lives INTEGER NOT NULL DEFAULT 15', 'livesDay TEXT', 'livesCooldownUntil TEXT']) {
+      for (const col of ['ip TEXT', 'lastIp TEXT', 'provider TEXT', 'providerId TEXT', 'banned INTEGER NOT NULL DEFAULT 0', 'bannedReason TEXT', 'fullset_claimed INTEGER NOT NULL DEFAULT 0', 'lives INTEGER NOT NULL DEFAULT 15', 'livesDay TEXT', 'livesCooldownUntil TEXT', 'levelChars TEXT NOT NULL DEFAULT \'[]\'']) {
         try { sqliteDb.exec(`ALTER TABLE players ADD COLUMN ${col};`); } catch { /* kolom sudah ada */ }
       }
       try { sqliteDb.exec('ALTER TABLE daily_state ADD COLUMN runCoinsToday INTEGER NOT NULL DEFAULT 0;'); } catch { /* kolom sudah ada */ }
@@ -463,6 +489,7 @@ function publicPlayer(row) {
     maxLevel: row.maxLevel,
     characters: parseJson(row.characters, ['jolly']),
     skins: parseJson(row.skins, []),
+    levelChars: parseJson(row.levelChars, []),
     equipped: parseJson(row.equipped, { character: 'jolly', skin: null }),
     powerups: parseJson(row.powerups, {}),
     banned: row.banned ? true : false,
@@ -529,7 +556,7 @@ module.exports = {
   GIFT_CODES, REFERRAL_REWARD_COINS,
   NETWORKS, estRevenueRp,
   CHARACTERS, SKINS, POWERUPS,
-  LEVEL_SKINS, FULLSET_COINS,
+  LEVEL_CHARACTERS, levelCharactersBaru, LEVEL_SKINS, FULLSET_COINS,
   MISSION_POOL, ACHIEVEMENTS,
   publicPlayer, parseJson,
   getDailyState, todaysMissions, ensureMissionRows, addMissionProgress,
