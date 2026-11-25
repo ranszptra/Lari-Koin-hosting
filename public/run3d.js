@@ -35,6 +35,9 @@ const COIN_SCALE = 0.004; // koin FBX 157 cm -> diameter ~0,63 unit
 const MODEL_BASE = '/models/';
 const CAM_POS = { x: 0, y: 3.0, z: 5.6 }; // lebih dekat: pelari tampak lebih besar di layar
 const CAM_LOOK = { x: 0, y: 1.0, z: -12 };
+/* Kualitas render adaptif (HD tapi anti-freeze): mulai di DPR 1,5 (aman),
+ * naik ke 2 hanya bila frame stabil 60fps, turun lagi bila nge-lag. */
+const PR_MIN = 1, PR_AWAL = 1.5, PR_MAX = 2, PR_LANGKAH = 0.25;
 const COIN_POOL = 24;
 const OBS_POOL = 18; // pola bisa menaruh ~6 rintangan sekaligus di layar
 const DECOR_PER_SIDE = 7;
@@ -49,7 +52,8 @@ const R = {
   coinSlots: [], coinMap: new Map(), coinFree: [],
   obsSlots: [], obsMap: new Map(), obsFree: [],
   decor: [], decorMats: {},
-  groundMat: null, roadMat: null, dashTex: null, hemi: null, shieldRing: null,
+  groundMat: null, roadMat: null, roadTex: null, _roadTanah: null, hemi: null, shieldRing: null,
+  _pr: 1.5, _prEMA: null, _prHitung: 0, // pixel ratio adaptif (HD): mulai 1,5, naik ke 2 bila stabil
   ready: false, loading: false, failed: false,
   _phase2Promise: null, phase2Done: false, // fase 2 (animasi tambahan) jalan di latar belakang
   worldIdx: -1, world: null,
@@ -60,8 +64,48 @@ const R = {
 };
 
 /* ---------- Geometri & material bersama (dibuat sekali, dipakai ulang) ---------- */
-let GEO = null, MAT = null;
+let GEO = null, MAT = null, TEX = null;
 function initShared() {
+  // Tekstur prosedural (canvas) — tajam tanpa file eksternal.
+  TEX = {
+    kotak: teksturKanvas(128, 128, (g) => {
+      g.fillStyle = '#a06a2c'; g.fillRect(0, 0, 128, 128);
+      g.strokeStyle = 'rgba(60,30,0,.55)'; g.lineWidth = 3;
+      for (let y = 0; y <= 128; y += 32) { g.beginPath(); g.moveTo(0, y); g.lineTo(128, y); g.stroke(); }
+      g.strokeStyle = '#6b4210'; g.lineWidth = 8; g.strokeRect(4, 4, 120, 120);
+      g.fillStyle = '#3a2200';
+      for (const [x, y] of [[14, 14], [114, 14], [14, 114], [114, 114]]) { g.beginPath(); g.arc(x, y, 3, 0, Math.PI * 2); g.fill(); }
+      g.strokeStyle = 'rgba(60,30,0,.35)'; g.lineWidth = 2;
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(128, 128); g.moveTo(128, 0); g.lineTo(0, 128); g.stroke();
+    }),
+    batu: teksturKanvas(128, 128, (g) => {
+      g.fillStyle = '#8d8d8d'; g.fillRect(0, 0, 128, 128);
+      for (let i = 0; i < 500; i++) {
+        g.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.14)';
+        g.fillRect(Math.random() * 128, Math.random() * 128, 2 + Math.random() * 3, 2 + Math.random() * 3);
+      }
+    }),
+    dinding: teksturKanvas(256, 128, (g) => {
+      g.fillStyle = '#b03a2e'; g.fillRect(0, 0, 256, 128);
+      g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(0, 0, 256, 14);
+      g.fillStyle = 'rgba(0,0,0,.25)';
+      for (let x = 0; x <= 256; x += 42) g.fillRect(x, 0, 3, 128);
+      for (let i = 0; i < 200; i++) {
+        g.fillStyle = 'rgba(0,0,0,.10)';
+        g.fillRect(Math.random() * 256, Math.random() * 128, 2, 2);
+      }
+    }),
+    ground: teksturKanvas(256, 256, (g) => {
+      // Alas putih: warna dunia (tanah) yang mengalikan map tetap terlihat,
+      // bintiknya memberi detail tanah (bukan pelat datar).
+      g.fillStyle = '#ffffff'; g.fillRect(0, 0, 256, 256);
+      for (let i = 0; i < 900; i++) {
+        g.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,.10)' : 'rgba(120,90,40,.10)';
+        g.fillRect(Math.random() * 256, Math.random() * 256, 2 + Math.random() * 4, 2 + Math.random() * 4);
+      }
+    }),
+  };
+  TEX.ground.wrapS = THREE.RepeatWrapping; TEX.ground.wrapT = THREE.RepeatWrapping; TEX.ground.repeat.set(10, 10);
   GEO = {
     batu: new THREE.DodecahedronGeometry(0.55),
     kotak: new THREE.BoxGeometry(1.15, 1.15, 1.15),
@@ -79,14 +123,14 @@ function initShared() {
     fallbackCoin: new THREE.TorusGeometry(0.3, 0.11, 10, 24),
   };
   MAT = {
-    batu: new THREE.MeshStandardMaterial({ color: 0x8d8d8d, roughness: 1 }),
-    kotak: new THREE.MeshStandardMaterial({ color: 0xa06a2c, roughness: 0.9 }),
+    batu: new THREE.MeshStandardMaterial({ map: TEX.batu, roughness: 1 }),
+    kotak: new THREE.MeshStandardMaterial({ map: TEX.kotak, roughness: 0.9 }),
     pagar: new THREE.MeshStandardMaterial({ color: 0x8d5a2b, roughness: 0.9 }),
-    dinding: new THREE.MeshStandardMaterial({ color: 0xb03a2e, roughness: 0.9 }),
+    dinding: new THREE.MeshStandardMaterial({ map: TEX.dinding, roughness: 0.9 }),
     dindingTop: new THREE.MeshStandardMaterial({ color: 0xf5b301, roughness: 0.7 }),
     geser: new THREE.MeshStandardMaterial({ color: 0xe65100, roughness: 0.85 }),
     shield: new THREE.MeshBasicMaterial({ color: 0x448aff, transparent: true, opacity: 0.7 }),
-    coinGold: new THREE.MeshStandardMaterial({ color: 0xf5b301, metalness: 0.6, roughness: 0.35 }),
+    coinGold: new THREE.MeshStandardMaterial({ color: 0xf5b301, metalness: 0.75, roughness: 0.28, emissive: 0x442200, emissiveIntensity: 0.5 }),
   };
 }
 
@@ -98,6 +142,19 @@ function webglOK() {
   } catch (e) { return false; }
 }
 function hexNum(hex) { return parseInt(String(hex).replace('#', ''), 16); }
+
+/* Tekstur prosedural dari canvas: tajam tanpa unduh file. Anisotropy
+ * (maks 8) menjaga permukaan miring tetap tajam dari kejauhan — ini
+ * peningkatan ketajaman terbesar untuk jalan/tanah yang dilihat dari
+ * sudut landai. */
+function teksturKanvas(w, h, gambar) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  gambar(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = (R.renderer && R.renderer.capabilities) ? Math.min(R.renderer.capabilities.getMaxAnisotropy(), 8) : 4;
+  return t;
+}
 
 /* ---------- Template rintangan ---------- */
 function buildObstacleTemplate(type) {
@@ -134,20 +191,25 @@ function buildObstacleTemplate(type) {
 let _jendelaTex = null;
 function jendelaTex() {
   if (_jendelaTex) return _jendelaTex;
-  const c = document.createElement('canvas'); c.width = 128; c.height = 256;
+  // 256x512: jendela lebih tajam (bingkai 1px, variasi nyala), garis lantai tipis.
+  const c = document.createElement('canvas'); c.width = 256; c.height = 512;
   const g = c.getContext('2d');
-  g.fillStyle = '#000000'; g.fillRect(0, 0, 128, 256);
-  const warnaJendela = ['#ffd27a', '#ffbf47', '#fff3b0', '#ff9a3c'];
-  for (let y = 10; y < 246; y += 22) {
-    for (let x = 10; x < 118; x += 18) {
+  g.fillStyle = '#000000'; g.fillRect(0, 0, 256, 512);
+  const warnaJendela = ['#ffd27a', '#ffbf47', '#fff3b0', '#ff9a3c', '#cfe8ff'];
+  for (let y = 12; y < 500; y += 24) {
+    g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(0, y + 20, 256, 2); // garis lantai
+    for (let x = 12; x < 244; x += 20) {
       if (Math.random() < 0.3) continue; // sebagian jendela gelap
+      g.fillStyle = '#1a1a22'; g.fillRect(x - 1, y - 1, 15, 18); // bingkai
       g.fillStyle = warnaJendela[(Math.random() * warnaJendela.length) | 0];
       g.globalAlpha = 0.75 + Math.random() * 0.25;
-      g.fillRect(x, y, 11, 14);
+      g.fillRect(x, y, 13, 16);
+      g.globalAlpha = 1;
     }
   }
-  g.globalAlpha = 1;
   _jendelaTex = new THREE.CanvasTexture(c);
+  _jendelaTex.colorSpace = THREE.SRGBColorSpace;
+  _jendelaTex.anisotropy = 4;
   return _jendelaTex;
 }
 function decorMaterials(idx) {
@@ -235,16 +297,53 @@ function rebuildDecor(idx) {
   }
 }
 
+/* Tekstur jalan HD (prosedural, 256x1024): aspal + bintik + jejak ban +
+ * garis tepi + garis putus-putus — semua dalam satu tekstur, jadi tidak
+ * perlu bidang garis terpisah (lebih sedikit draw call). Warna dasar
+ * diambil dari warna tanah dunia (digelapkan seperti dulu), jadi tiap
+ * dunia tetap punya jalan sendiri; tekstur dibuat ulang saat dunia ganti
+ * (sekali per level, murah). 3 garis per tekstur x repeat 10 = 30 garis
+ * per 110 unit — jarak garis sama seperti dulu (repeat 30). */
+function buatTeksturJalan(tanahHex) {
+  const dasar = new THREE.Color(hexNum(tanahHex)).multiplyScalar(0.65);
+  const dasarCss = '#' + dasar.getHexString();
+  const t = teksturKanvas(256, 1024, (g) => {
+    g.fillStyle = dasarCss; g.fillRect(0, 0, 256, 1024);
+    // bintik aspal
+    for (let i = 0; i < 2600; i++) {
+      g.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,.13)' : 'rgba(255,255,255,.08)';
+      g.fillRect(Math.random() * 256, Math.random() * 1024, 2, 2);
+    }
+    // jejak ban (dua strip gelap per jalur: jalur di px 52 / 128 / 204)
+    g.fillStyle = 'rgba(0,0,0,.10)';
+    for (const cx of [52, 128, 204]) { g.fillRect(cx - 16, 0, 12, 1024); g.fillRect(cx + 4, 0, 12, 1024); }
+    // garis tepi (kuning pucat, di tepi jalan)
+    g.fillStyle = '#ffe9a8';
+    g.fillRect(5, 0, 5, 1024); g.fillRect(246, 0, 5, 1024);
+    // garis putus-putus di pembatas jalur (px 88 & 168), 3 garis per tekstur
+    g.fillStyle = '#ffffff';
+    for (let k = 0; k < 3; k++) {
+      const y0 = k * (1024 / 3) + 70;
+      g.fillRect(84, y0, 8, 200); g.fillRect(164, y0, 8, 200);
+    }
+  });
+  t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping; t.repeat.set(1, 10);
+  return t;
+}
+
 /* ---------- Scene dasar ---------- */
 function initRenderer() {
   const canvas = document.getElementById('gameCanvas3d');
   if (!canvas) throw new Error('canvas #gameCanvas3d tidak ditemukan');
   R.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  R.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); // batas 1,5: hemat GPU HP (anti-freeze)
+  R.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, PR_AWAL)); // mulai 1,5 (aman); naik ke 2 bila stabil, turun bila lag
+  R.renderer.toneMapping = THREE.ACESFilmicToneMapping; // tampilan filmik: highlight tidak pecah, warna lebih dalam
+  R.renderer.toneMappingExposure = 1.12;
+  R._pr = Math.min(window.devicePixelRatio || 1, PR_AWAL);
   R.clock = new THREE.Clock();
   R.scene = new THREE.Scene();
   R.scene.background = new THREE.Color(0xff9a5c);
-  R.scene.fog = new THREE.Fog(0xff9a5c, 20, 65);
+  R.scene.fog = new THREE.Fog(0xff9a5c, 30, 110); // kabut lebih jauh: pemandangan jauh tetap jelas
   R.camera = new THREE.PerspectiveCamera(60, 420 / 520, 0.1, 200);
   R.camera.position.set(CAM_POS.x, CAM_POS.y, CAM_POS.z);
   R.camera.lookAt(CAM_LOOK.x, CAM_LOOK.y, CAM_LOOK.z);
@@ -261,11 +360,13 @@ function initRenderer() {
   initShared();
   // tanah + jalan (jalan DITEKUK mengikuti belokJalan: tiap verteks digeser x
   // sesuai z dunianya, jadi jalan tampak membelok, bukan lurus monoton)
-  R.groundMat = new THREE.MeshStandardMaterial({ color: 0x7a5a3a, roughness: 1 });
+  R.groundMat = new THREE.MeshStandardMaterial({ color: 0x7a5a3a, roughness: 1, map: TEX.ground });
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(180, 180), R.groundMat);
   ground.rotation.x = -Math.PI / 2; ground.position.set(0, 0, -30);
   R.scene.add(ground);
-  R.roadMat = new THREE.MeshStandardMaterial({ color: 0x3d2d1d, roughness: 1 });
+  R.roadMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.95 });
+  R.roadTex = buatTeksturJalan('#7a5a3a'); R._roadTanah = '#7a5a3a';
+  R.roadMat.map = R.roadTex;
   const roadGeo = new THREE.PlaneGeometry(7.4, 110, 1, 24);
   roadGeo.rotateX(-Math.PI / 2);
   {
@@ -276,27 +377,8 @@ function initRenderer() {
   const road = new THREE.Mesh(roadGeo, R.roadMat);
   road.position.set(0, 0.01, -40);
   R.scene.add(road);
-  // garis jalur putus-putus (tekstur canvas, digeser mengikuti roadScroll)
-  const dc = document.createElement('canvas'); dc.width = 8; dc.height = 64;
-  const dctx = dc.getContext('2d');
-  dctx.fillStyle = 'rgba(255,255,255,0)'; dctx.fillRect(0, 0, 8, 64);
-  dctx.fillStyle = 'rgba(255,255,255,.75)'; dctx.fillRect(2, 6, 4, 34);
-  const dtex = new THREE.CanvasTexture(dc);
-  dtex.wrapS = THREE.RepeatWrapping; dtex.wrapT = THREE.RepeatWrapping; dtex.repeat.set(1, 30);
-  R.dashTex = dtex;
-  const dashMat = new THREE.MeshBasicMaterial({ map: dtex, transparent: true });
-  for (const x of [-1.1, 1.1]) {
-    const dg = new THREE.PlaneGeometry(0.16, 110, 1, 24);
-    dg.rotateX(-Math.PI / 2);
-    {
-      const pos = dg.attributes.position;
-      for (let i = 0; i < pos.count; i++) pos.setX(i, pos.getX(i) + belokJalan(pos.getZ(i) - 40));
-      pos.needsUpdate = true;
-    }
-    const dash = new THREE.Mesh(dg, dashMat);
-    dash.position.set(x, 0.02, -40);
-    R.scene.add(dash);
-  }
+  // Garis jalur + tepi jalan sudah menyatu di tekstur jalan (R.roadTex) —
+  // tidak ada lagi bidang garis terpisah (lebih sedikit draw call).
   // ring perisai (disembunyikan sampai skill aktif)
   R.shieldRing = new THREE.Mesh(GEO.shield, MAT.shield);
   R.shieldRing.visible = false;
@@ -323,7 +405,15 @@ function applyWorld(idx, d) {
   R.scene.background = sky;
   R.scene.fog.color.copy(sky);
   R.groundMat.color.set(hexNum(d.tanah));
-  R.roadMat.color.set(hexNum(d.tanah)).multiplyScalar(0.65); // jalan lebih terang: kontras pelari
+  // Jalan: warna dasar tekstur mengikuti tanah dunia (dibuat ulang bila ganti
+  // dunia — sekali per level, murah). roadMat.color tetap putih supaya
+  // garis putih/kuning di tekstur tidak ikut menggelap.
+  if (R.roadTex && R._roadTanah !== d.tanah) {
+    const lama = R.roadTex;
+    R.roadTex = buatTeksturJalan(d.tanah); R._roadTanah = d.tanah;
+    R.roadMat.map = R.roadTex; R.roadMat.needsUpdate = true;
+    if (lama) lama.dispose();
+  }
   R.hemi.color.set(hexNum(d.langit));
   R.hemi.groundColor.set(hexNum(d.tanah));
 }
@@ -559,10 +649,29 @@ function ensureSize() {
     R.camera.updateProjectionMatrix();
   }
 }
+/* Pixel ratio adaptif (HD): ukur waktu frame (EMA) tiap frame lari; tiap
+ * ~90 frame, naik 0,25 bila stabil 60fps (EMA < 17,5 ms) sampai maks 2,
+ * turun 0,25 bila mulai lag (EMA > 26 ms) sampai min 1. Histeresis
+ * (ambang naik/turun berjauhan) mencegah naik-turun terus-menerus. */
+function aturPixelRatioAdaptif(dtMs, st) {
+  if (!R.renderer || !st || st.paused || document.hidden) return;
+  R._prEMA = R._prEMA == null ? dtMs : R._prEMA * 0.95 + dtMs * 0.05;
+  if (++R._prHitung < 90) return;
+  R._prHitung = 0;
+  const maks = Math.min(window.devicePixelRatio || 1, PR_MAX);
+  if (R._prEMA < 17.5 && R._pr < maks) {
+    R._pr = Math.min(maks, R._pr + PR_LANGKAH);
+    R.renderer.setPixelRatio(R._pr);
+  } else if (R._prEMA > 26 && R._pr > PR_MIN) {
+    R._pr = Math.max(PR_MIN, R._pr - PR_LANGKAH);
+    R.renderer.setPixelRatio(R._pr);
+  }
+}
 function render(st) {
   if (!R.ready) return false;
   ensureSize();
   const dt = Math.min(R.clock.getDelta(), 0.05);
+  aturPixelRatioAdaptif(dt * 1000, st);
   if (R.mixer) R.mixer.update(dt);
   // karakter mengikuti lanePos + lompatan; miring saat pindah jalur.
   // Semua x ditambah belokJalan(0): karakter berdiri di tengah jalan yang membelok.
@@ -574,7 +683,7 @@ function render(st) {
   R.camera.lookAt(CAM_LOOK.x + belokJalan(-12) * 0.35, CAM_LOOK.y, CAM_LOOK.z);
   syncObjects(st);
   advanceDecor((st.speed || 4) * 0.08);
-  if (R.dashTex) R.dashTex.offset.y = ((st.roadScroll || 0) * 10.9) % 1;
+  if (R.roadTex) R.roadTex.offset.y = ((st.roadScroll || 0) * 10.9 / 3) % 1; // /3: repeat tekstur 10 (dulu 30) — kecepatan visual garis sama
   if (R.shieldRing) {
     R.shieldRing.visible = !!st.shield;
     if (st.shield) R.shieldRing.position.set(cx, 1.0 + (st.jumpY || 0), 0);
@@ -609,7 +718,7 @@ function tick() {
   }
   syncObjects({ objects: R.idleCoins });
   advanceDecor(0.24);
-  if (R.dashTex) R.dashTex.offset.y = (R.idleT * 0.004 * 10.9) % 1;
+  if (R.roadTex) R.roadTex.offset.y = (R.idleT * 0.004 * 10.9 / 3) % 1;
   if (R.shieldRing) R.shieldRing.visible = false;
   ensureSize();
   R.renderer.render(R.scene, R.camera);
@@ -764,7 +873,9 @@ async function showcase(canvasId, opts) {
   const row = !!opts.row;
   const colors = row ? (opts.colors || []) : null;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); // panggung ringan: DPR penuh aman
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.12;
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x352a5e); // panggung lebih terang (dulu 0x1a1033, nyaris hitam)
   const camera = new THREE.PerspectiveCamera(45, 420 / 300, 0.1, 100);

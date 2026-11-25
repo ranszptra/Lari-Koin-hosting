@@ -811,6 +811,9 @@ $('btnNontonIklan').addEventListener('click', async () => {
 /* ================= GAME CANVAS ================= */
 const canvas = $('gameCanvas');
 const ctx = canvas.getContext('2d');
+/* Penajaman 2D: smoothing kualitas tinggi (teks/emoji/koin lebih halus). */
+function aturHalus2D() { try { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; } catch (e) {} }
+aturHalus2D();
 const LANES = [80, 210, 340];
 const game = { running: false, paused: false, lane: 1, level: 1, coins: 0, coinCount: 0, distance: 0, target: 500, speed: 4, objects: [], polaAntrian: [], spawnT: 0, frame: 0, shield: false, magnet: false, mult: 1, hiasY: 0, mulaiAt: 0, lanePos: 1, roadScroll: 0, jumpY: 0, vy: 0, sliding: false, slideT: 0, noIdleUntil: 0 };
 
@@ -1504,7 +1507,19 @@ function samakanUkuranCanvasLayarPenuh() {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   canvas.width = Math.max(1, Math.round(w * dpr));
   canvas.height = Math.max(1, Math.round(h * dpr));
+  aturHalus2D(); // ubah ukuran canvas me-reset state ctx
 }
+/* Backing store mode normal mengikuti DPR (tajam di layar HP): arena logis
+ * tetap 420x520, tapi piksel backing = 420x520 x DPR (maks 2). renderScene
+ * me-letterbox lewat skalaCanvas, jadi gambar vektor langsung tajam.
+ * (Dulu backing selalu 420x520 — di HP DPR 2-3 gambar di-upscale browser
+ * dan terlihat buram.) */
+function samakanUkuranCanvasNormal() {
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const w = Math.max(1, Math.round(FS_W * dpr)), h = Math.max(1, Math.round(FS_H * dpr));
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; aturHalus2D(); }
+}
+samakanUkuranCanvasNormal(); // terapkan sekali saat load
 function bukaModeLayarPenuh() {
   if (document.body.classList.contains('mode-fullscreen')) return;
   document.body.classList.add('mode-fullscreen');
@@ -1515,10 +1530,10 @@ function keluarModeLayarPenuh() {
   if (autoLanjutTimer) { clearInterval(autoLanjutTimer); autoLanjutTimer = null; }
   if (game.running) gameOver(); // akhiri lari seperti tombol "Akhiri Lari"
   document.body.classList.remove('mode-fullscreen');
-  canvas.width = FS_W; canvas.height = FS_H; // kembali ke ukuran normal
+  samakanUkuranCanvasNormal(); // kembali ke ukuran normal (tetap x DPR, tajam)
   try { renderScene(ctx, game); } catch (e) {} // gambar ulang arena di Beranda
 }
-window.addEventListener('resize', () => { if (document.body.classList.contains('mode-fullscreen')) samakanUkuranCanvasLayarPenuh(); });
+window.addEventListener('resize', () => { if (document.body.classList.contains('mode-fullscreen')) samakanUkuranCanvasLayarPenuh(); else samakanUkuranCanvasNormal(); });
 $('btnFsJeda').addEventListener('click', toggleJeda);
 $('btnFsKeluar').addEventListener('click', keluarModeLayarPenuh);
 const _bfm = $('btnFsMusik'); if (_bfm) _bfm.addEventListener('click', toggleMusik);
@@ -1644,11 +1659,26 @@ setInterval(tickNyawa, 1000);
 /* ---------- Login: animasi live full-screen (attract mode 3D) ---------- */
 const bgCanvas = $('bgCanvas');
 const bgCtx = bgCanvas ? bgCanvas.getContext('2d') : null;
+/* Backing store canvas latar login mengikuti DPR (maks 1,25, dibatasi
+ * 960x1440 supaya animasi latar tidak memberatkan HP). */
+function samakanUkuranBgCanvas() {
+  if (!bgCanvas) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
+  const w = Math.max(1, Math.min(Math.round((bgCanvas.clientWidth || 420) * dpr), 960));
+  const h = Math.max(1, Math.min(Math.round((bgCanvas.clientHeight || 520) * dpr), 1440));
+  if (bgCanvas.width !== w || bgCanvas.height !== h) {
+    bgCanvas.width = w; bgCanvas.height = h;
+    try { bgCtx.imageSmoothingEnabled = true; bgCtx.imageSmoothingQuality = 'high'; } catch (e) {}
+  }
+}
+samakanUkuranBgCanvas();
+window.addEventListener('resize', samakanUkuranBgCanvas);
 const demo = { level: 1, frame: 0, lane: 1, lanePos: 1, objects: [], spawnT: 0, roadScroll: 0, debu: [], shield: false, speed: 4.5 };
 function loopLogin() {
   if (!bgCtx || !bgCanvas || bgCanvas.style.display === 'none') return;
   if ($('authScreen').classList.contains('hidden')) return;
   demo.frame++;
+  if (demo.frame % 120 === 0) samakanUkuranBgCanvas(); // canvas sempat display:none saat load
   demo.roadScroll += demo.speed * 0.002;
   demo.lanePos += (demo.lane - demo.lanePos) * 0.1;
   if (demo.frame % 120 === 0) demo.lane = Math.floor(Math.random() * 3);
