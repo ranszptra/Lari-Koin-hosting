@@ -43,7 +43,13 @@ CREATE TABLE IF NOT EXISTS players (
   totalAds integer NOT NULL DEFAULT 0,
   totalLevels integer NOT NULL DEFAULT 0,
   createdAt text NOT NULL,
-  lastActive text NOT NULL
+  lastActive text NOT NULL,
+  ip text,
+  lastIp text,
+  provider text,
+  providerId text,
+  banned integer NOT NULL DEFAULT 0,
+  bannedReason text
 );
 
 CREATE TABLE IF NOT EXISTS withdrawals (
@@ -151,3 +157,11 @@ INSERT INTO offers (id, provider, title, "desc", partnerRp, rewardCoins, secret)
   ('offer_13', 'adjoe', 'Main Game RPG 30 Menit', 'Main game RPG selama 30 menit.', 3000, 100000, encode(gen_random_bytes(16), 'hex')),
   ('offer_14', 'adjoe', 'Instal & Main Game Arcade', 'Instal game arcade dan mainkan 3 ronde.', 7000, 233333, encode(gen_random_bytes(16), 'hex'))
 ON CONFLICT (id) DO NOTHING;
+
+-- Migrasi: kolom IP + login sosial (idempotent, aman diulang tiap boot)
+ALTER TABLE players ADD COLUMN IF NOT EXISTS ip text;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS lastIp text;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS provider text;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS providerId text;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS banned integer NOT NULL DEFAULT 0;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS bannedReason text;

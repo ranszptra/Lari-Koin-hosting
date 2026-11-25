@@ -27,6 +27,12 @@ const {
 } = require('./db');
 
 const app = express();
+app.set('trust proxy', true); // Railway: IP asli pemain ada di X-Forwarded-For
+function clientIp(req) {
+  const xff = req.headers['x-forwarded-for'];
+  let ip = (typeof xff === 'string' && xff.trim() ? xff.split(',')[0].trim() : (req.ip || '')).replace(/^::ffff:/, '');
+  return (ip || '').slice(0, 45) || null;
+}
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
@@ -57,7 +63,8 @@ async function requirePlayer(req, res, next) {
   const row = await db.prepare('SELECT * FROM players WHERE id=?').get(Number(id));
   if (!row) return err(res, 401, 'Pemain tidak ditemukan');
   req.player = row;
-  await db.prepare('UPDATE players SET lastActive=? WHERE id=?').run(nowIso(), row.id);
+  if (row.banned) return err(res, 403, 'Akun diblokir: ' + (row.bannedReason || 'hubungi admin'));
+  await db.prepare('UPDATE players SET lastActive=?, lastIp=? WHERE id=?').run(nowIso(), clientIp(req), row.id);
   next();
 }
 function requireAdmin(req, res, next) {
@@ -99,12 +106,18 @@ app.post('/api/register', ah(async (req, res) => {
   }
   const { salt, hash } = hashPin(pin);
   const now = nowIso();
+  const ip = clientIp(req);
+  let banned = 0, bannedReason = null;
+  if (ip) {
+    const dupe = await db.prepare('SELECT name FROM players WHERE ip=? ORDER BY createdAt').all(ip);
+    if (dupe.length) { banned = 1; bannedReason = 'IP sama dengan akun: ' + dupe.map((x) => x.name).join(', '); }
+  }
   const info = await db.prepare(
     `INSERT INTO players(name,pinHash,pinSalt,coins,maxLevel,characters,skins,equipped,powerups,
-     streak,lastCheckin,referrer,totalEarned,totalAds,totalLevels,createdAt,lastActive)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+     streak,lastCheckin,referrer,totalEarned,totalAds,totalLevels,createdAt,lastActive,ip,lastIp,banned,bannedReason)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(name, hash, salt, 500, 1, '["jolly"]', '[]', '{"character":"jolly","skin":null}', '{}',
-    0, null, referrerRow ? referrerRow.name : null, 0, 0, 0, now, now);
+    0, null, referrerRow ? referrerRow.name : null, 0, 0, 0, now, now, ip, ip, banned, bannedReason);
   const playerId = info.lastInsertRowid;
   if (referrerRow) {
     await db.prepare('INSERT OR IGNORE INTO referrals(referrerId,friendId,status,createdAt) VALUES(?,?,?,?)')
@@ -124,10 +137,79 @@ app.post('/api/login', ah(async (req, res) => {
   let okPin = false;
   try { okPin = verifyPin(pin, row.pinSalt, row.pinHash); } catch { okPin = false; }
   if (!okPin) return fail(res, 'Nama atau PIN salah');
-  await db.prepare('UPDATE players SET lastActive=? WHERE id=?').run(nowIso(), row.id);
+  if (row.banned) return fail(res, 'Akun diblokir: ' + (row.bannedReason || 'hubungi admin'));
+  await db.prepare('UPDATE players SET lastActive=?, lastIp=? WHERE id=?').run(nowIso(), clientIp(req), row.id);
   const token = makeToken(row.id);
   res.cookie('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/' });
   res.json({ ok: true, token, player: publicPlayer(await freshPlayer(row.id)) });
+}));
+
+// --- Login sosial (Google / Facebook, sekali ketuk) -------------------------
+// Butuh env: GOOGLE_CLIENT_ID, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET.
+// Kalau belum diset, tombol sosial disembunyikan (lihat /api/auth/social-config).
+// Akun sosial tersimpan di server (provider + providerId) — hapus aplikasi pun
+// akun & koin tetap ada, tinggal ketuk Google/Facebook lagi.
+app.get('/api/auth/social-config', (req, res) => {
+  res.json({
+    ok: true,
+    google: Boolean(process.env.GOOGLE_CLIENT_ID),
+    googleClientId: process.env.GOOGLE_CLIENT_ID || null,
+    facebook: Boolean(process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET),
+    facebookAppId: process.env.FACEBOOK_APP_ID || null,
+  });
+});
+async function verifyGoogleToken(idToken) {
+  const r = await fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(idToken));
+  if (!r.ok) return null;
+  const d = await r.json();
+  if (!d || d.aud !== process.env.GOOGLE_CLIENT_ID || d.email_verified !== 'true' || !d.sub) return null;
+  return { providerId: d.sub, name: d.name || String(d.email || '').split('@')[0] };
+}
+async function verifyFacebookToken(accessToken) {
+  const appToken = process.env.FACEBOOK_APP_ID + '|' + process.env.FACEBOOK_APP_SECRET;
+  const r = await fetch('https://graph.facebook.com/debug_token?input_token=' + encodeURIComponent(accessToken) + '&access_token=' + encodeURIComponent(appToken));
+  if (!r.ok) return null;
+  const d = await r.json();
+  if (!d || !d.data || !d.data.is_valid || d.data.app_id !== process.env.FACEBOOK_APP_ID || !d.data.user_id) return null;
+  const r2 = await fetch('https://graph.facebook.com/' + encodeURIComponent(d.data.user_id) + '?fields=id,name&access_token=' + encodeURIComponent(accessToken));
+  if (!r2.ok) return null;
+  const me = await r2.json();
+  if (!me || !me.id) return null;
+  return { providerId: me.id, name: me.name || ('FB-' + String(me.id).slice(-6)) };
+}
+app.post('/api/auth/social', ah(async (req, res) => {
+  const provider = String(req.body?.provider || '');
+  const token = String(req.body?.token || '');
+  if (!['google', 'facebook'].includes(provider) || !token) return fail(res, 'Provider/token tidak valid');
+  const verified = provider === 'google' ? await verifyGoogleToken(token) : await verifyFacebookToken(token);
+  if (!verified) return fail(res, 'Verifikasi ' + provider + ' gagal — coba lagi');
+  const ip = clientIp(req);
+  let row = await db.prepare('SELECT * FROM players WHERE provider=? AND providerId=?').get(provider, verified.providerId);
+  if (!row) {
+    let banned = 0, bannedReason = null;
+    if (ip) {
+      const dupe = await db.prepare('SELECT name FROM players WHERE ip=? ORDER BY createdAt').all(ip);
+      if (dupe.length) { banned = 1; bannedReason = 'IP sama dengan akun: ' + dupe.map((x) => x.name).join(', '); }
+    }
+    let name = String(verified.name || '').trim().slice(0, 30) || (provider === 'google' ? 'Pemain Google' : 'Pemain FB');
+    const taken = await db.prepare('SELECT id FROM players WHERE name=? COLLATE NOCASE').get(name);
+    if (taken) name = (name.slice(0, 24) + '-' + Math.floor(1000 + Math.random() * 9000)).slice(0, 30);
+    const { salt, hash } = hashPin(crypto.randomBytes(32).toString('hex'));
+    const now = nowIso();
+    const info = await db.prepare(
+      `INSERT INTO players(name,pinHash,pinSalt,coins,maxLevel,characters,skins,equipped,powerups,
+       streak,lastCheckin,referrer,totalEarned,totalAds,totalLevels,createdAt,lastActive,ip,lastIp,provider,providerId,banned,bannedReason)
+       VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).run(name, hash, salt, 500, 1, '["jolly"]', '[]', '{"character":"jolly","skin":null}', '{}',
+      0, null, null, 0, 0, 0, now, now, ip, ip, provider, verified.providerId, banned, bannedReason);
+    row = await freshPlayer(info.lastInsertRowid);
+  } else {
+    await db.prepare('UPDATE players SET lastActive=?, lastIp=? WHERE id=?').run(nowIso(), ip, row.id);
+    row = await freshPlayer(row.id);
+  }
+  const outToken = makeToken(row.id);
+  res.cookie('token', outToken, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/' });
+  res.json({ ok: true, token: outToken, player: publicPlayer(row) });
 }));
 
 // --- Profile ---------------------------------------------------------------
@@ -508,7 +590,13 @@ app.get('/api/admin/dashboard', requireAdmin, ah(async (req, res) => {
   const withdrawals = await db.prepare('SELECT w.id,w.playerId,w.amountRp,w.method,w.number,w.status,w.createdAt,p.name AS playerName FROM withdrawals w JOIN players p ON p.id=w.playerId ORDER BY w.createdAt DESC').all();
   const grouped = { Menunggu: [], Diproses: [], Selesai: [] };
   withdrawals.forEach((w) => { if (grouped[w.status]) grouped[w.status].push(w); });
-  const players = await db.prepare('SELECT id,name,coins,maxLevel AS level,lastActive FROM players ORDER BY lastActive DESC LIMIT 100').all();
+  const players = await db.prepare('SELECT id,name,coins,maxLevel AS level,lastActive,ip,lastIp,banned FROM players ORDER BY lastActive DESC LIMIT 100').all();
+  const sameIpRows = await db.prepare("SELECT ip, COUNT(*) AS c FROM players WHERE ip IS NOT NULL AND ip <> '' GROUP BY ip HAVING COUNT(*) > 1 ORDER BY c DESC").all();
+  const sameIp = [];
+  for (const g of sameIpRows) {
+    const ps = await db.prepare('SELECT id,name,coins,createdAt FROM players WHERE ip=? ORDER BY createdAt').all(g.ip);
+    sameIp.push({ ip: g.ip, count: g.c, players: ps });
+  }
   const mediation = (await db.prepare('SELECT network, COUNT(*) AS impressions FROM ad_impressions GROUP BY network').all())
     .map((r) => {
       const net = NETWORKS.find((n) => n.name === r.network);
@@ -526,6 +614,7 @@ app.get('/api/admin/dashboard', requireAdmin, ah(async (req, res) => {
     totals: { players: playersCount, newToday, coinsCirculating: coinsSum, coinsCirculatingRp: coinsToRp(coinsSum) },
     withdrawals: grouped,
     players,
+    sameIp,
     mediation,
     offerwall,
   });
@@ -538,6 +627,14 @@ app.post('/api/admin/withdrawal', requireAdmin, ah(async (req, res) => {
   if (!row) return fail(res, 'Penarikan tidak ditemukan');
   await db.prepare('UPDATE withdrawals SET status=? WHERE id=?').run(status, id);
   res.json({ ok: true, withdrawal: { ...row, status } });
+}));
+app.post('/api/admin/unban', requireAdmin, ah(async (req, res) => {
+  const id = Number(req.body?.id);
+  if (!id) return fail(res, 'ID pemain tidak valid');
+  const row = await db.prepare('SELECT * FROM players WHERE id=?').get(id);
+  if (!row) return fail(res, 'Pemain tidak ditemukan');
+  await db.prepare('UPDATE players SET banned=0, bannedReason=NULL WHERE id=?').run(id);
+  res.json({ ok: true, id });
 }));
 app.post('/api/admin/change-pin', requireAdmin, ah(async (req, res) => {
   const oldPin = String(req.body?.oldPin || '');

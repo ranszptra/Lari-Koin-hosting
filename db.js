@@ -145,7 +145,13 @@ CREATE TABLE IF NOT EXISTS players (
   totalAds INTEGER NOT NULL DEFAULT 0,
   totalLevels INTEGER NOT NULL DEFAULT 0,
   createdAt TEXT NOT NULL,
-  lastActive TEXT NOT NULL
+  lastActive TEXT NOT NULL,
+  ip TEXT,
+  lastIp TEXT,
+  provider TEXT,
+  providerId TEXT,
+  banned INTEGER NOT NULL DEFAULT 0,
+  bannedReason TEXT
 );
 CREATE TABLE IF NOT EXISTS withdrawals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -403,6 +409,10 @@ async function initDb() {
       sqliteDb.exec('PRAGMA journal_mode = WAL;');
       sqliteDb.exec('PRAGMA foreign_keys = ON;');
       sqliteDb.exec(SQLITE_DDL);
+      // Migrasi kolom baru untuk DB SQLite lama (aman diulang — gagal = sudah ada).
+      for (const col of ['ip TEXT', 'lastIp TEXT', 'provider TEXT', 'providerId TEXT', 'banned INTEGER NOT NULL DEFAULT 0', 'bannedReason TEXT']) {
+        try { sqliteDb.exec(`ALTER TABLE players ADD COLUMN ${col};`); } catch { /* kolom sudah ada */ }
+      }
       console.log('[db] SQLite lokal aktif (DATABASE_URL tidak diset).');
     }
     await seed();
@@ -431,6 +441,8 @@ function publicPlayer(row) {
     skins: parseJson(row.skins, []),
     equipped: parseJson(row.equipped, { character: 'jolly', skin: null }),
     powerups: parseJson(row.powerups, {}),
+    banned: row.banned ? true : false,
+    bannedReason: row.bannedReason || null,
   };
 }
 async function getDailyState(playerId, date) {
