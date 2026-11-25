@@ -33,11 +33,15 @@ jobs:
       # (/usr/local/lib/android/sdk) — jangan pakai android-actions/setup-android,
       # karena action itu gagal: ia mencoba memasang paket "tools" yang sudah
       # tidak didistribusikan Google lagi (sdkmanager exit 1).
+      # Bubblewrap memvalidasi SDK dengan memeriksa folder `tools/` atau `bin/`
+      # di root SDK — SDK bawaan runner tidak punya keduanya, jadi buat symlink.
       - name: Pakai Android SDK bawaan runner
         run: |
           echo "ANDROID_HOME=$ANDROID_HOME"
           echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ln -sfn "$ANDROID_HOME/cmdline-tools/latest" "$ANDROID_HOME/tools"
           ls "$ANDROID_HOME/cmdline-tools" "$ANDROID_HOME/build-tools" "$ANDROID_HOME/platforms" | head -20
+          ls "$ANDROID_HOME/tools/bin" | head -5
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
