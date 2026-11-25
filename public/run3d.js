@@ -24,15 +24,19 @@ export const LANE_X = [-2.2, 0, 2.2]; // x dunia untuk jalur 0 / 1 / 2
 export const WORLD_Z_FAR = -40; // game z=1 (spawn di horizon) -> dunia z=-40
 export function laneToX(lanePos) { return (lanePos - 1) * 2.2; }
 export function worldZ(gameZ) { return -40 * gameZ; }
+/* Jalan membelok (bukan lurus monoton): pusat jalan bergeser sinusoidal
+ * mengikuti z dunia. Dipakai geometri jalan, dekor, koin, rintangan,
+ * karakter, dan kamera — semua mengikuti kurva yang sama, jadi konsisten. */
+export function belokJalan(z) { return Math.sin(z * 0.045 + 0.7) * 1.4; }
 
 const CHAR_FILE = 'traveller.fbx'; // manusia (Polyfork "Traveller", rangka Mixamo, gratis)
 const CHAR_SCALE = 0.01; // Traveller ~175 cm -> ~1,75 unit dunia
 const COIN_SCALE = 0.004; // koin FBX 157 cm -> diameter ~0,63 unit
 const MODEL_BASE = '/models/';
-const CAM_POS = { x: 0, y: 3.4, z: 7.0 };
+const CAM_POS = { x: 0, y: 3.0, z: 5.6 }; // lebih dekat: pelari tampak lebih besar di layar
 const CAM_LOOK = { x: 0, y: 1.0, z: -12 };
 const COIN_POOL = 24;
-const OBS_POOL = 12;
+const OBS_POOL = 18; // pola bisa menaruh ~6 rintangan sekaligus di layar
 const DECOR_PER_SIDE = 7;
 const DECOR_SPAN = 105; // panjang daur hiasan pinggir jalan
 
@@ -63,6 +67,10 @@ function initShared() {
     kotak: new THREE.BoxGeometry(1.15, 1.15, 1.15),
     pagarPost: new THREE.BoxGeometry(0.18, 1.7, 0.18),
     pagarBar: new THREE.BoxGeometry(2.1, 0.35, 0.18),
+    dinding: new THREE.BoxGeometry(4.6, 2.0, 0.35),
+    dindingTop: new THREE.BoxGeometry(4.6, 0.3, 0.4),
+    geserPost: new THREE.BoxGeometry(0.18, 1.9, 0.18),
+    geserBar: new THREE.BoxGeometry(2.1, 0.4, 0.18),
     decorBox: new THREE.BoxGeometry(1, 1, 1),
     decorCone: new THREE.ConeGeometry(1, 1, 6),
     decorTrunk: new THREE.CylinderGeometry(0.25, 0.35, 1.2, 6),
@@ -74,6 +82,9 @@ function initShared() {
     batu: new THREE.MeshStandardMaterial({ color: 0x8d8d8d, roughness: 1 }),
     kotak: new THREE.MeshStandardMaterial({ color: 0xa06a2c, roughness: 0.9 }),
     pagar: new THREE.MeshStandardMaterial({ color: 0x8d5a2b, roughness: 0.9 }),
+    dinding: new THREE.MeshStandardMaterial({ color: 0xb03a2e, roughness: 0.9 }),
+    dindingTop: new THREE.MeshStandardMaterial({ color: 0xf5b301, roughness: 0.7 }),
+    geser: new THREE.MeshStandardMaterial({ color: 0xe65100, roughness: 0.85 }),
     shield: new THREE.MeshBasicMaterial({ color: 0x448aff, transparent: true, opacity: 0.7 }),
     coinGold: new THREE.MeshStandardMaterial({ color: 0xf5b301, metalness: 0.6, roughness: 0.35 }),
   };
@@ -97,6 +108,17 @@ function buildObstacleTemplate(type) {
   } else if (type === 'kotak') {
     const m = new THREE.Mesh(GEO.kotak, MAT.kotak);
     m.position.y = 0.58; g.add(m);
+  } else if (type === 'dinding') {
+    // tembok tinggi 2 jalur (lebar 4,6 = 2 jalur + celah): tidak bisa dilompat
+    const m = new THREE.Mesh(GEO.dinding, MAT.dinding);
+    m.position.y = 1.0; g.add(m);
+    const top = new THREE.Mesh(GEO.dindingTop, MAT.dindingTop);
+    top.position.y = 2.1; g.add(top);
+  } else if (type === 'geser') {
+    // gerbang geser: dua tiang + palang oranye (lebih tinggi dari pagar)
+    const p1 = new THREE.Mesh(GEO.geserPost, MAT.geser); p1.position.set(-0.95, 0.95, 0); g.add(p1);
+    const p2 = new THREE.Mesh(GEO.geserPost, MAT.geser); p2.position.set(0.95, 0.95, 0); g.add(p2);
+    const bar = new THREE.Mesh(GEO.geserBar, MAT.geser); bar.position.set(0, 1.6, 0); g.add(bar);
   } else { // pagar: dua tiang + palang atas (celah bawah untuk guling)
     const p1 = new THREE.Mesh(GEO.pagarPost, MAT.pagar); p1.position.set(-0.95, 0.85, 0); g.add(p1);
     const p2 = new THREE.Mesh(GEO.pagarPost, MAT.pagar); p2.position.set(0.95, 0.85, 0); g.add(p2);
@@ -106,13 +128,37 @@ function buildObstacleTemplate(type) {
 }
 
 /* ---------- Hiasan pinggir jalan per dunia ---------- */
+/* Tekstur jendela kota (sekali buat, dipakai ulang): kanvas hitam + petak
+ * jendela kuning hangat — dipakai sebagai emissiveMap, jadi jendela gedung
+ * menyala di senja dan gedung tidak lagi kotak abu-abu polos. */
+let _jendelaTex = null;
+function jendelaTex() {
+  if (_jendelaTex) return _jendelaTex;
+  const c = document.createElement('canvas'); c.width = 128; c.height = 256;
+  const g = c.getContext('2d');
+  g.fillStyle = '#000000'; g.fillRect(0, 0, 128, 256);
+  const warnaJendela = ['#ffd27a', '#ffbf47', '#fff3b0', '#ff9a3c'];
+  for (let y = 10; y < 246; y += 22) {
+    for (let x = 10; x < 118; x += 18) {
+      if (Math.random() < 0.3) continue; // sebagian jendela gelap
+      g.fillStyle = warnaJendela[(Math.random() * warnaJendela.length) | 0];
+      g.globalAlpha = 0.75 + Math.random() * 0.25;
+      g.fillRect(x, y, 11, 14);
+    }
+  }
+  g.globalAlpha = 1;
+  _jendelaTex = new THREE.CanvasTexture(c);
+  return _jendelaTex;
+}
 function decorMaterials(idx) {
   if (R.decorMats[idx]) return R.decorMats[idx];
   const m = {};
-  if (idx === 0) { // Kota Senja: gedung
-    m.a = new THREE.MeshStandardMaterial({ color: 0x8d8d8d, roughness: 1 });
-    m.b = new THREE.MeshStandardMaterial({ color: 0x6b5a3a, roughness: 1 });
-    m.c = new THREE.MeshStandardMaterial({ color: 0xd9a441, roughness: 1 });
+  if (idx === 0) { // Kota Senja: gedung + jendela menyala
+    const jen = jendelaTex();
+    const em = { emissive: 0xffffff, emissiveMap: jen, emissiveIntensity: 0.7 };
+    m.a = new THREE.MeshStandardMaterial(Object.assign({ color: 0x7a7f9e, roughness: 1 }, em));
+    m.b = new THREE.MeshStandardMaterial(Object.assign({ color: 0x6b5a3a, roughness: 1 }, em));
+    m.c = new THREE.MeshStandardMaterial(Object.assign({ color: 0xd9a441, roughness: 1 }, em));
   } else if (idx === 1) { // Hutan: pohon
     m.a = new THREE.MeshStandardMaterial({ color: 0x2e7d32, roughness: 1 });
     m.b = new THREE.MeshStandardMaterial({ color: 0x43a047, roughness: 1 });
@@ -180,9 +226,11 @@ function rebuildDecor(idx) {
   for (let side = -1; side <= 1; side += 2) {
     for (let i = 0; i < DECOR_PER_SIDE; i++) {
       const g = buildDecorItem(idx, m);
-      g.position.set(side * (5.4 + Math.random() * 3.5), 0, 8 - i * (DECOR_SPAN / DECOR_PER_SIDE) - Math.random() * 6);
+      const baseX = side * (5.4 + Math.random() * 3.5);
+      const z = 8 - i * (DECOR_SPAN / DECOR_PER_SIDE) - Math.random() * 6;
+      g.position.set(baseX + belokJalan(z), 0, z);
       R.scene.add(g);
-      R.decor.push({ group: g });
+      R.decor.push({ group: g, baseX });
     }
   }
 }
@@ -200,20 +248,33 @@ function initRenderer() {
   R.camera = new THREE.PerspectiveCamera(60, 420 / 520, 0.1, 200);
   R.camera.position.set(CAM_POS.x, CAM_POS.y, CAM_POS.z);
   R.camera.lookAt(CAM_LOOK.x, CAM_LOOK.y, CAM_LOOK.z);
-  R.hemi = new THREE.HemisphereLight(0xffffff, 0x8a7a5a, 1.15);
+  R.hemi = new THREE.HemisphereLight(0xffffff, 0x8a7a5a, 1.5);
   R.scene.add(R.hemi);
   const dir = new THREE.DirectionalLight(0xffffff, 1.5);
   dir.position.set(5, 12, 6);
   R.scene.add(dir);
+  // Lampu isi dari arah kamera — punggung pelari (yang menghadap kamera)
+  // tidak lagi gelap; baju hitam tetap terbaca.
+  const isi = new THREE.DirectionalLight(0xfff2dd, 1.1);
+  isi.position.set(0, 4, 8);
+  R.scene.add(isi);
   initShared();
-  // tanah + jalan
+  // tanah + jalan (jalan DITEKUK mengikuti belokJalan: tiap verteks digeser x
+  // sesuai z dunianya, jadi jalan tampak membelok, bukan lurus monoton)
   R.groundMat = new THREE.MeshStandardMaterial({ color: 0x7a5a3a, roughness: 1 });
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(180, 180), R.groundMat);
   ground.rotation.x = -Math.PI / 2; ground.position.set(0, 0, -30);
   R.scene.add(ground);
   R.roadMat = new THREE.MeshStandardMaterial({ color: 0x3d2d1d, roughness: 1 });
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(7.4, 110), R.roadMat);
-  road.rotation.x = -Math.PI / 2; road.position.set(0, 0.01, -40);
+  const roadGeo = new THREE.PlaneGeometry(7.4, 110, 1, 24);
+  roadGeo.rotateX(-Math.PI / 2);
+  {
+    const pos = roadGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) pos.setX(i, pos.getX(i) + belokJalan(pos.getZ(i) - 40));
+    pos.needsUpdate = true;
+  }
+  const road = new THREE.Mesh(roadGeo, R.roadMat);
+  road.position.set(0, 0.01, -40);
   R.scene.add(road);
   // garis jalur putus-putus (tekstur canvas, digeser mengikuti roadScroll)
   const dc = document.createElement('canvas'); dc.width = 8; dc.height = 64;
@@ -225,8 +286,15 @@ function initRenderer() {
   R.dashTex = dtex;
   const dashMat = new THREE.MeshBasicMaterial({ map: dtex, transparent: true });
   for (const x of [-1.1, 1.1]) {
-    const dash = new THREE.Mesh(new THREE.PlaneGeometry(0.16, 110), dashMat);
-    dash.rotation.x = -Math.PI / 2; dash.position.set(x, 0.02, -40);
+    const dg = new THREE.PlaneGeometry(0.16, 110, 1, 24);
+    dg.rotateX(-Math.PI / 2);
+    {
+      const pos = dg.attributes.position;
+      for (let i = 0; i < pos.count; i++) pos.setX(i, pos.getX(i) + belokJalan(pos.getZ(i) - 40));
+      pos.needsUpdate = true;
+    }
+    const dash = new THREE.Mesh(dg, dashMat);
+    dash.position.set(x, 0.02, -40);
     R.scene.add(dash);
   }
   // ring perisai (disembunyikan sampai skill aktif)
@@ -234,7 +302,7 @@ function initRenderer() {
   R.shieldRing.visible = false;
   R.scene.add(R.shieldRing);
   // template rintangan + pool
-  for (const t of ['batu', 'kotak', 'pagar']) R.obsTemplates[t] = buildObstacleTemplate(t);
+  for (const t of ['batu', 'kotak', 'pagar', 'dinding', 'geser']) R.obsTemplates[t] = buildObstacleTemplate(t);
   for (let i = 0; i < OBS_POOL; i++) {
     const group = new THREE.Group(); group.visible = false; R.scene.add(group);
     const slot = { obj: null, group, type: null };
@@ -255,7 +323,7 @@ function applyWorld(idx, d) {
   R.scene.background = sky;
   R.scene.fog.color.copy(sky);
   R.groundMat.color.set(hexNum(d.tanah));
-  R.roadMat.color.set(hexNum(d.tanah)).multiplyScalar(0.5);
+  R.roadMat.color.set(hexNum(d.tanah)).multiplyScalar(0.65); // jalan lebih terang: kontras pelari
   R.hemi.color.set(hexNum(d.langit));
   R.hemi.groundColor.set(hexNum(d.tanah));
 }
@@ -451,25 +519,32 @@ function syncPool(map, free, slots, objects, place) {
 }
 function syncObjects(st) {
   const objs = st.objects || [];
-  // koin
+  // koin (mengikuti belokan jalan)
   syncPool(R.coinMap, R.coinFree, R.coinSlots, objs.filter((o) => o.kind === 'koin'), (slot, o) => {
-    slot.group.position.set(laneToX(o.lane), 0.9, worldZ(o.z));
+    const wz = worldZ(o.z);
+    slot.group.position.set(laneToX(o.lane) + belokJalan(wz), 0.9, wz);
     slot.pivot.rotation.y += 0.09; // koin berputar
   });
-  // rintangan
+  // rintangan (dinding: tengah 2 jalur; geser: posisi jalur kontinu)
   syncPool(R.obsMap, R.obsFree, R.obsSlots, objs.filter((o) => o.kind === 'rintangan'), (slot, o) => {
     if (slot.type !== o.type) {
       while (slot.group.children.length) slot.group.remove(slot.group.children[0]);
       slot.group.add(R.obsTemplates[o.type].clone());
       slot.type = o.type;
     }
-    slot.group.position.set(laneToX(o.lane), 0, worldZ(o.z));
+    const wz = worldZ(o.z);
+    let lx = laneToX(o.lane);
+    if (o.type === 'geser') lx = laneToX(o.lanePos == null ? o.lane : o.lanePos);
+    else if (o.type === 'dinding' && o.lanes) lx = laneToX((o.lanes[0] + o.lanes[1]) / 2);
+    slot.group.position.set(lx + belokJalan(wz), 0, wz);
   });
 }
 function advanceDecor(speedPerFrame) {
   for (const d of R.decor) {
     d.group.position.z += speedPerFrame;
     if (d.group.position.z > 10) d.group.position.z -= DECOR_SPAN;
+    // dekor mengikuti belokan jalan di z-nya (x dihitung ulang tiap frame)
+    d.group.position.x = (d.baseX || 0) + belokJalan(d.group.position.z);
   }
 }
 
@@ -489,13 +564,14 @@ function render(st) {
   ensureSize();
   const dt = Math.min(R.clock.getDelta(), 0.05);
   if (R.mixer) R.mixer.update(dt);
-  // karakter mengikuti lanePos + lompatan; miring saat pindah jalur
-  const cx = laneToX(st.lanePos == null ? 1 : st.lanePos);
+  // karakter mengikuti lanePos + lompatan; miring saat pindah jalur.
+  // Semua x ditambah belokJalan(0): karakter berdiri di tengah jalan yang membelok.
+  const cx = laneToX(st.lanePos == null ? 1 : st.lanePos) + belokJalan(0);
   R.char.position.set(cx, st.jumpY || 0, 0);
   R.char.rotation.z = -((st.lane == null ? 1 : st.lane) - (st.lanePos == null ? 1 : st.lanePos)) * 0.3;
-  // kamera sedikit mengikuti karakter
+  // kamera sedikit mengikuti karakter (dan arah pandang mengikuti belokan)
   R.camera.position.x = cx * 0.35;
-  R.camera.lookAt(CAM_LOOK.x, CAM_LOOK.y, CAM_LOOK.z);
+  R.camera.lookAt(CAM_LOOK.x + belokJalan(-12) * 0.35, CAM_LOOK.y, CAM_LOOK.z);
   syncObjects(st);
   advanceDecor((st.speed || 4) * 0.08);
   if (R.dashTex) R.dashTex.offset.y = ((st.roadScroll || 0) * 10.9) % 1;
@@ -523,10 +599,10 @@ function tick() {
   R.idleT++;
   if (R.mixer) R.mixer.update(dt);
   const sway = 1 + Math.sin(R.idleT / 40) * 0.12;
-  R.char.position.set(laneToX(sway), 0, 0);
+  R.char.position.set(laneToX(sway) + belokJalan(0), 0, 0);
   R.char.rotation.z = 0;
   R.camera.position.x = 0;
-  R.camera.lookAt(CAM_LOOK.x, CAM_LOOK.y, CAM_LOOK.z);
+  R.camera.lookAt(CAM_LOOK.x + belokJalan(-12) * 0.35, CAM_LOOK.y, CAM_LOOK.z);
   for (const c of R.idleCoins) {
     c.z -= 0.004;
     if (c.z < 0.05) c.z = 1;
@@ -639,12 +715,15 @@ function applySkin(warna) {
  */
 const SHOWCASES = new Map();
 function buatAksiShowcase(S, clip) {
-  for (const c of S.clones) {
+  for (let i = 0; i < S.clones.length; i++) {
+    const c = S.clones[i];
     const mixer = new THREE.AnimationMixer(c);
     if (clip) {
       const a = mixer.clipAction(clip, c);
       a.setLoop(THREE.LoopRepeat, Infinity);
       a.play();
+      // Fase dansa diacak per klon — 5 klon tidak bergerak serempak (kaku/robotik).
+      try { a.time = (i * clip.duration) / S.clones.length; } catch (e) {}
     }
     S.mixers.push(mixer);
   }
@@ -659,6 +738,7 @@ function gantiShowcaseKeDansa() {
     for (const m of S.mixers) m.stopAllAction();
     S.mixers = [];
     buatAksiShowcase(S, clip);
+    for (const c of S.clones) c.position.y = 0; // reset bob darurat
     S.aksi = 'dance';
   }
 }
@@ -686,18 +766,26 @@ async function showcase(canvasId, opts) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x1a1033);
+  scene.background = new THREE.Color(0x352a5e); // panggung lebih terang (dulu 0x1a1033, nyaris hitam)
   const camera = new THREE.PerspectiveCamera(45, 420 / 300, 0.1, 100);
-  camera.position.set(0, 1.9, row ? 8.2 : 4.6);
+  camera.position.set(0, 1.9, row ? 7.6 : 3.9); // lebih dekat: karakter lebih besar
   camera.lookAt(0, 1.0, 0);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a5a, 1.2));
-  const dir = new THREE.DirectionalLight(0xffffff, 1.6);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x9a8a6a, 2.2));
+  const dir = new THREE.DirectionalLight(0xffffff, 2.4);
   dir.position.set(4, 8, 5);
   scene.add(dir);
+  // Lampu isi dari arah kamera + rim ungu dari belakang: baju gelap (mis. Rex
+  // hitam) tetap terbaca, tidak jadi siluet di latar gelap.
+  const isi = new THREE.DirectionalLight(0xffe9c4, 1.1);
+  isi.position.set(-3, 3, 8);
+  scene.add(isi);
+  const rim = new THREE.DirectionalLight(0x9d7bff, 0.9);
+  rim.position.set(0, 4, -6);
+  scene.add(rim);
   // panggung emas (lebih lebar kalau baris)
   const platform = new THREE.Mesh(
     new THREE.CylinderGeometry(row ? 3.4 : 1.25, row ? 3.5 : 1.35, 0.14, 40),
-    new THREE.MeshStandardMaterial({ color: 0x2d1b4d, roughness: 0.7, metalness: 0.2 })
+    new THREE.MeshStandardMaterial({ color: 0x4a3670, roughness: 0.7, metalness: 0.2 })
   );
   platform.position.y = -0.07;
   scene.add(platform);
@@ -711,11 +799,16 @@ async function showcase(canvasId, opts) {
   scene.add(group);
   const clones = [];
   const n = row ? 5 : 1;
+  const accs = row ? (opts.accs || []) : null;
   for (let i = 0; i < n; i++) {
     const clone = cloneSkinned(R.char);
-    clone.rotation.y = 0; // menghadap kamera
+    clone.rotation.y = 0; // menghadap kamera (model menghadap +Z — TERBUKTI dari mesh wajah)
     clone.position.set(row ? (i - 2) * 1.35 : 0, 0, 0);
     if (row && colors && colors[i]) tintKlon(clone, colors[i]);
+    // Topi + kacamata sesuai foto karakter (Rex: cap hitam + kacamata merah, dst).
+    // Klon mewarisi aksesori pelari — pasangAksesoris menghapusnya dulu.
+    if (row) { if (accs[i]) pasangAksesoris(clone, accs[i]); }
+    else if (opts.acc) { pasangAksesoris(clone, opts.acc); }
     group.add(clone);
     clones.push(clone);
   }
@@ -751,9 +844,23 @@ async function showcase(canvasId, opts) {
     }
     const dt = Math.min(S.clock.getDelta(), 0.05);
     for (const m of S.mixers) m.update(dt);
-    if (!S.dragging && performance.now() - S.lastDragAt > 2000) S.rotY += 0.004; // putar pelan sendiri
-    group.rotation.y = S.rotY;
-    group.position.y = Math.sin(performance.now() / 500) * 0.02; // bob halus
+    // Goyang pelan menghadap kamera (bukan putar 360° — putaran penuh yang
+    // membuat karakter membelakangi kamera di screenshot). Setelah digeser,
+    // grup kembali pelan menghadap depan saat didiamkan.
+    const now = performance.now();
+    if (!S.dragging && now - S.lastDragAt > 2000) {
+      const target = Math.round(S.rotY / (Math.PI * 2)) * Math.PI * 2;
+      S.rotY += (target - S.rotY) * 0.03;
+    }
+    group.rotation.y = S.rotY + Math.sin(now / 1400) * 0.35; // goyang ±20°
+    group.position.y = Math.sin(now / 500) * 0.02; // bob halus
+    // Kalau dansa belum ada (fase 2 belum tiba), tiap klon tetap hidup dengan
+    // lompatan kecil berfase beda — tidak kaku diam di tempat.
+    if (S.aksi !== 'dance') {
+      for (let i = 0; i < S.clones.length; i++) {
+        S.clones[i].position.y = Math.abs(Math.sin(now / 450 + i * 1.3)) * 0.05;
+      }
+    }
     renderer.render(scene, camera);
     S.raf = requestAnimationFrame(tickShow);
   };
@@ -770,11 +877,100 @@ function showcaseStop(canvasId) {
   SHOWCASES.delete(canvasId);
 }
 
+/* ---------- Aksesoris kepala (topi & kacamata, sesuai foto karakter) ----------
+ * Foto roster: 11 dari 12 karakter pakai topi (cap/beanie) + kacamata; Frost
+ * tidak pakai keduanya (rambut putih, tanpa kacamata). Geometri baju Traveller
+ * (mantel/denim/boot) tidak bisa diubah tanpa model baru — tapi topi +
+ * kacamata + tint warna membuat model 3D terbaca sebagai karakter fotonya.
+ * Arah hadap TERBUKTI (tests/inspect/probe-facing.mjs): fitur wajah
+ * (mata/alis) ada di sisi +Z model dan sumbu +Z lokal tulang Head -> dunia
+ * +Z, jadi aksesori ditaruh di +Z lokal kepala (depan wajah). Dipasang
+ * sebagai anak tulang Head supaya ikut gerakan dansa/lari. */
+function cariKepala(root) {
+  let kepala = null;
+  root.traverse((o) => { if (o.isBone && o.name === 'Head') kepala = o; });
+  return kepala;
+}
+function buatTopi(jenis, warnaHex) {
+  const g = new THREE.Group();
+  g.userData.aksesoris = true;
+  const mat = new THREE.MeshStandardMaterial({ color: hexNum(warnaHex || '#222222'), roughness: 0.85 });
+  if (jenis === 'beanie') {
+    const kubah = new THREE.Mesh(new THREE.SphereGeometry(0.155, 20, 12, 0, Math.PI * 2, 0, 1.85), mat);
+    kubah.scale.y = 0.85; kubah.position.set(0, 0.10, -0.005);
+    g.add(kubah);
+    const lipat = new THREE.Mesh(new THREE.CylinderGeometry(0.156, 0.158, 0.045, 20), mat);
+    lipat.position.set(0, 0.035, 0);
+    g.add(lipat);
+  } else { // cap
+    const mahkota = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.155, 0.09, 20), mat);
+    mahkota.position.set(0, 0.15, -0.005);
+    g.add(mahkota);
+    const lidah = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.015, 0.12), mat);
+    lidah.position.set(0, 0.115, 0.11);
+    lidah.rotation.x = 0.15;
+    g.add(lidah);
+  }
+  return g;
+}
+function buatKacamata(warnaHex) {
+  const g = new THREE.Group();
+  g.userData.aksesoris = true;
+  const mat = new THREE.MeshStandardMaterial({ color: hexNum(warnaHex || '#111111'), roughness: 0.15, metalness: 0.4 });
+  for (const s of [-1, 1]) {
+    const lensa = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.04, 0.018), mat);
+    lensa.position.set(s * 0.048, 0.09, 0.115); // di depan permukaan wajah (z maks ~0.108)
+    g.add(lensa);
+  }
+  const jembatan = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.012, 0.015), mat);
+  jembatan.position.set(0, 0.09, 0.115);
+  g.add(jembatan);
+  return g;
+}
+function hapusAksesoris(root) {
+  const kepala = cariKepala(root);
+  if (!kepala) return;
+  for (const ch of [...kepala.children]) {
+    if (ch.userData && ch.userData.aksesoris) kepala.remove(ch);
+  }
+}
+/* spec: { topi: 'cap'|'beanie'|null, kacamata: hex|null, warna: [utama,..] }.
+ * Warna topi = warna utama karakter (warna[0]) bila tidak disebut khusus. */
+function pasangAksesoris(root, spec) {
+  if (!root) return false;
+  hapusAksesoris(root);
+  const kepala = cariKepala(root);
+  if (!kepala || !spec) return false;
+  let kena = false;
+  if (spec.topi) {
+    kepala.add(buatTopi(spec.topi, (spec.warna && spec.warna[0]) || '#222222'));
+    kena = true;
+  }
+  if (spec.kacamata) {
+    kepala.add(buatKacamata(spec.kacamata));
+    kena = true;
+  }
+  return kena;
+}
+/* Pakai aksesori karakter aktif ke pelari utama (dipanggil app.js bareng applySkin3D). */
+function applyAksesoris(spec) {
+  if (!R.char) return false;
+  return pasangAksesoris(R.char, spec);
+}
+/* Ganti aksesori klon showcase yang sudah jalan (mis. pemain ganti karakter di Toko). */
+function setShowcaseAcc(canvasId, spec) {
+  const S = SHOWCASES.get(canvasId);
+  if (!S) return false;
+  let kena = false;
+  for (const c of S.clones) if (pasangAksesoris(c, spec)) kena = true;
+  return kena;
+}
+
 /* ---------- Jembatan ke app.js (classic script) ---------- */
 if (typeof window !== 'undefined') {
   window.Run3D = {
-    laneToX, worldZ, preload, setWorld, render, setIdle, playStumble,
-    showcase, showcaseStop, applySkin, lanjutkanPhase2,
+    laneToX, worldZ, belokJalan, preload, setWorld, render, setIdle, playStumble,
+    showcase, showcaseStop, applySkin, applyAksesoris, setShowcaseAcc, lanjutkanPhase2,
     get phase2Done() { return R.phase2Done; },
     playJump() { play('jump'); },
     playSlide() { play('slide'); },

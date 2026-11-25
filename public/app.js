@@ -15,7 +15,12 @@ const rupiah = (n) => 'Rp' + Math.floor(n || 0).toLocaleString('id-ID');
 const koinKeRp = (coins) => Math.round((coins || 0) * 15 / 1000);
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3500); }
 
-/* ---------- Dunia (6 dunia, tiap 10 level) ---------- */
+/* ---------- Dunia (6 dunia, BERGANTI TIAP LEVEL) ----------
+ * Dulu 1 dunia dipakai 10 level berturut-turut (membosankan). Sekarang tema
+ * berputar tiap level: Lv 1 Kota Senja, Lv 2 Hutan Rimba, Lv 3 Gurun Pasir,
+ * Lv 4 Salju Abadi, Lv 5 Luar Angkasa, Lv 6 Lava Berapi, Lv 7 Kota Senja lagi,
+ * dst. Deterministik: level yang sama = tema yang sama. Dunia HANYA visual
+ * (langit/tanah/partikel/gedung) — ekonomi/koin/level tidak berubah. */
 const DUNIA = [
   { nama: 'Kota Senja', langit: '#ff9a5c', tanah: '#7a5a3a', aksen: '#ffd54a', hias: '🏙' },
   { nama: 'Hutan Rimba', langit: '#7ec850', tanah: '#3e6b2f', aksen: '#c8f7a0', hias: '🌳' },
@@ -24,7 +29,8 @@ const DUNIA = [
   { nama: 'Luar Angkasa', langit: '#1a1033', tanah: '#2d1b4d', aksen: '#b388ff', hias: '⭐' },
   { nama: 'Lava Berapi', langit: '#5c1a00', tanah: '#8a2a00', aksen: '#ff7043', hias: '🌋' }
 ];
-function duniaUntuk(level) { return DUNIA[Math.min(5, Math.floor(((level || 1) - 1) / 10))]; }
+function duniaIdx(level) { return (((level || 1) - 1) % 6 + 6) % 6; }
+function duniaUntuk(level) { return DUNIA[duniaIdx(level)]; }
 function isBos(level) { return level % 10 === 0; }
 
 /* Render aman: satu bagian gagal tidak boleh mengosongkan semua fitur. */
@@ -52,18 +58,18 @@ const KATALOG = {
   ]
 };
 const LEVEL_CHARACTERS = [
-  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: ['#1a1a1a', '#000000', '#424242'] , gradasi: ['#2b2b2b', '#c62828', '#ff5252'] },
-  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: ['#d32f2f', '#9a0007', '#ffcdd2'] , gradasi: ['#ff1744', '#c62828', '#7f0000'] },
-  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: ['#4fc3f7', '#0288d1', '#e1f5fe'] , gradasi: ['#b3e5fc', '#4fc3f7', '#01579b'] },
-  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: ['#90caf9', '#42a5f5', '#e3f2fd'] , gradasi: ['#e3f2fd', '#90caf9', '#1565c0'] },
-  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: ['#66bb6a', '#388e3c', '#e8f5e9'] , gradasi: ['#a5d6a7', '#43a047', '#1b5e20'] },
-  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: ['#ab47bc', '#6a1b9a', '#f3e5f5'] , gradasi: ['#ce93d8', '#8e24aa', '#4a148c'] },
-  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: ['#fb8c00', '#e65100', '#fff3e0'] , gradasi: ['#ffcc80', '#fb8c00', '#bf360c'] },
-  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: ['#f06292', '#c2185b', '#fce4ec'] , gradasi: ['#f8bbd0', '#ec407a', '#880e4f'] },
-  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: ['#fdd835', '#f9a825', '#fffde7'] , gradasi: ['#fff176', '#fdd835', '#f57f17'] },
-  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: ['#26a69a', '#00695c', '#e0f2f1'] , gradasi: ['#80cbc4', '#26a69a', '#004d40'] },
-  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: ['#546e7a', '#263238', '#eceff1'] , gradasi: ['#90a4ae', '#546e7a', '#11171c'] },
-  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: ['#ffd700', '#b8860b', '#fffde7'] , gradasi: ['#ffe082', '#ffd700', '#8d6e00'] },
+  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: ['#1a1a1a', '#000000', '#424242'] , gradasi: ['#2b2b2b', '#c62828', '#ff5252'], topi: 'cap', kacamata: '#e53935' },
+  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: ['#d32f2f', '#9a0007', '#ffcdd2'] , gradasi: ['#ff1744', '#c62828', '#7f0000'], topi: 'beanie', kacamata: '#e53935' },
+  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: ['#4fc3f7', '#0288d1', '#e1f5fe'] , gradasi: ['#b3e5fc', '#4fc3f7', '#01579b'], topi: 'beanie', kacamata: '#1565c0' },
+  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: ['#90caf9', '#42a5f5', '#e3f2fd'] , gradasi: ['#e3f2fd', '#90caf9', '#1565c0'], topi: null, kacamata: null },
+  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: ['#66bb6a', '#388e3c', '#e8f5e9'] , gradasi: ['#a5d6a7', '#43a047', '#1b5e20'], topi: 'cap', kacamata: '#111111' },
+  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: ['#ab47bc', '#6a1b9a', '#f3e5f5'] , gradasi: ['#ce93d8', '#8e24aa', '#4a148c'], topi: 'beanie', kacamata: '#111111' },
+  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: ['#fb8c00', '#e65100', '#fff3e0'] , gradasi: ['#ffcc80', '#fb8c00', '#bf360c'], topi: 'cap', kacamata: '#111111' },
+  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: ['#f06292', '#c2185b', '#fce4ec'] , gradasi: ['#f8bbd0', '#ec407a', '#880e4f'], topi: 'beanie', kacamata: '#111111' },
+  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: ['#fdd835', '#f9a825', '#fffde7'] , gradasi: ['#fff176', '#fdd835', '#f57f17'], topi: 'cap', kacamata: '#111111' },
+  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: ['#26a69a', '#00695c', '#e0f2f1'] , gradasi: ['#80cbc4', '#26a69a', '#004d40'], topi: 'beanie', kacamata: '#111111' },
+  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: ['#546e7a', '#263238', '#eceff1'] , gradasi: ['#90a4ae', '#546e7a', '#11171c'], topi: 'cap', kacamata: '#111111' },
+  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: ['#ffd700', '#b8860b', '#fffde7'] , gradasi: ['#ffe082', '#ffd700', '#8d6e00'], topi: 'cap', kacamata: '#111111' },
 ];
 const GRADASI_DEFAULT = ['#4a2d7a', '#2d1b4d', '#8a6d00'];
 const LEVEL_SKINS = [
@@ -171,7 +177,7 @@ function mulaiShowcase(canvasId, fallbackId, opts) {
 }
 /* Login: deretan 5 karakter 3D berjejer (warna 5 roster pertama), bukan gambar. */
 function mulaiShowcaseLogin() {
-  mulaiShowcase('loginShowcase', 'loginShowcaseFallback', { row: true, colors: LEVEL_CHARACTERS.slice(0, 5).map((c) => c.warna) });
+  mulaiShowcase('loginShowcase', 'loginShowcaseFallback', { row: true, colors: LEVEL_CHARACTERS.slice(0, 5).map((c) => c.warna), accs: LEVEL_CHARACTERS.slice(0, 5) });
 }
 onRun3DReady(() => mulaiShowcaseLogin());
 
@@ -288,10 +294,11 @@ async function sesudahLogin(pesan) {
   await muatProfil();
   await muatLeaderboard();
   await muatOffers();
+  perbaruiStatusTapjoy();
   await muatNetworks();
   cobaPreload3D(); // muat model 3D di waktu luang (setelah login)
   if (window.Run3D && window.Run3D.showcaseStop) window.Run3D.showcaseStop('loginShowcase'); // bebaskan konteks WebGL login (HP cuma kuat 2 konteks)
-  onRun3DReady(() => mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback'));
+  onRun3DReady(() => mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback', { acc: karakterAktif() }));
   let tourDone = false;
   try { tourDone = localStorage.getItem('nr_tour_done') === '1'; } catch (e) {}
   if (!tourDone) tampilTour(0);
@@ -305,7 +312,7 @@ function pindahTab(nama) {
   if (nama !== 'beranda' && typeof game !== 'undefined' && game.running && !game.paused) {
     jedaGame(); // pindah tab = jeda
   }
-  if (nama === 'beranda') { if (token) mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback'); }
+  if (nama === 'beranda') { if (token) mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback', { acc: karakterAktif() }); }
   else if (window.Run3D && window.Run3D.showcaseStop) window.Run3D.showcaseStop('berandaShowcase');
   if (nama !== 'beranda' && window.Run3D) window.Run3D.setIdle(false); // matikan loop idle 3D di tab lain
   window.scrollTo(0, 0);
@@ -315,7 +322,7 @@ document.querySelectorAll('.tab-nav button').forEach((b) => b.addEventListener('
 /* ---------- Tur fitur (pertama daftar) ---------- */
 const TOUR_STEPS = [
   { img: '/runner-coin-logo.png', judul: 'Selamat datang di Runner Coin! 🏃', teks: 'Karaktermu siap lari bersamamu. Lari, kumpulkan koin, tukar koin jadi uang sungguhan.' },
-  { judul: '🎮 Cara Main', teks: 'Geser kiri / kanan atau ketuk tombol untuk pindah jalur. Hindari batu, kotak & pagar. Ambil koin — tiap koin +10 koin. Selesaikan level dengan lari sampai jarak target.' },
+  { judul: '🎮 Cara Main', teks: 'Geser kiri / kanan atau ketuk tombol untuk pindah jalur. Hindari batu, kotak, pagar, tembok 2 jalur & gerbang geser — tembok dan gerbang tidak bisa dilompat, harus pindah jalur. Ambil koin — tiap koin +10 koin. Tema dunia berganti tiap level. Selesaikan level dengan lari sampai jarak target.' },
   { judul: '🏆 60 Level, 6 Dunia', teks: 'Level makin sulit sampai level 60. Tiap 10 level ada level BOS dengan hadiah 5x lipat. Dunia baru terbuka tiap 10 level: Kota Senja, Hutan Rimba, Gurun Pasir, Salju Abadi, Luar Angkasa, Lava Berapi.' },
   { judul: '🎯 Misi & Check-in', teks: 'Kerjakan misi harian dan check-in 7 hari berturut-turut untuk koin gratis. Jangan sampai putus — kalau bolos, streak kembali ke hari 1!' },
   { judul: '👥 Undang Teman', teks: 'Bagikan link undanganmu. Tiap teman yang daftar, nonton iklan, dan menyelesaikan level, kamu dapat Rp5.000.' },
@@ -432,6 +439,7 @@ function renderProfil() {
   const nB = $('berandaCharNama'); if (nB) nB.textContent = kAktif ? (kAktif.nama + ' • Lv ' + kAktif.level) : 'Rex';
   const hB = $('karakterJudul'); if (hB) hB.textContent = '🎭 Karakterku — ' + (kAktif ? kAktif.nama : 'Xbot');
   applySkin3D();
+  applyAksesoris3D();
   const persen = Math.min(100, Math.round(koinKeRp(coins) / 1000 * 100));
   $('progressTarik').style.width = persen + '%';
   $('progressTarikText').textContent = persen + '% menuju penarikan Rp1.000 (' + rupiah(koinKeRp(coins)) + ' dari Rp1.000)';
@@ -445,8 +453,8 @@ function renderProfil() {
 function updateDuniaInfo() {
   const lv = game.level || 1;
   const d = duniaUntuk(lv);
-  const idx = Math.min(5, Math.floor((lv - 1) / 10)) + 1;
-  $('duniaInfo').textContent = '🌍 Dunia ' + idx + ': ' + d.nama + ' (Level ' + (idx * 10 - 9) + '–' + idx * 10 + ')' + (isBos(lv) ? ' • 👹 LEVEL BOS — hadiah 5x!' : '');
+  const idx = duniaIdx(lv) + 1;
+  $('duniaInfo').textContent = '🌍 Lv ' + lv + ' — ' + d.nama + ' (tema ' + idx + '/6, berganti tiap level)' + (isBos(lv) ? ' • 👹 LEVEL BOS — hadiah 5x!' : '');
   $('labelBos').innerHTML = isBos(lv) ? '<span class="badge-bos">👹 BOS</span>' : '';
   $('hudLevel').textContent = 'Lv ' + lv;
 }
@@ -597,6 +605,15 @@ function applySkin3D() {
   if (!window.Run3D || typeof window.Run3D.applySkin !== 'function') return false;
   return window.Run3D.applySkin(warnaSkin3D()); // array [utama, garis, perut] -> tint per bagian baju
 }
+/* Terapkan topi + kacamata karakter aktif ke pelari 3D + kartu Beranda.
+   Dipanggil bareng applySkin3D (renderProfil + setelah preload) supaya
+   ganti karakter di Toko langsung kelihatan di model 3D. */
+function applyAksesoris3D() {
+  const k = karakterAktif();
+  if (window.Run3D && typeof window.Run3D.applyAksesoris === 'function') window.Run3D.applyAksesoris(k);
+  if (window.Run3D && typeof window.Run3D.setShowcaseAcc === 'function') window.Run3D.setShowcaseAcc('berandaShowcase', k);
+  return true;
+}
 function namaKarakterSkinAktif() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
   const skin = (profile && profile.equipped && profile.equipped.skin) || '';
@@ -717,16 +734,45 @@ async function muatOffers() {
       dEl.innerHTML = '<div style="flex:1"><b>' + esc(o.title) + '</b> <span class="pill">' + esc(o.provider || '') + '</span><br><span class="muted">' + esc(o.desc || '') + '</span><br><span class="small">Hadiah ' + (o.rewardCoins || 0) + ' koin • Mitra: ' + rupiah(o.partnerRp || 0) + ' • Status: ' + esc(o.status || 'baru') + '</span></div>';
       const col = document.createElement('div'); col.style.display = 'flex'; col.style.flexDirection = 'column'; col.style.gap = '6px';
       const b1 = document.createElement('button'); b1.className = 'btn-emas btn-kecil'; b1.textContent = '▶ Mulai';
-      b1.addEventListener('click', async () => { try { await api('/api/offers/start', 'POST', { offerId: o.id }); toast('Misi dimulai (simulasi). Selesaikan instalasinya, lalu simulasikan verifikasi.'); await muatOffers(); } catch (e) { toast(e.message); } });
-      const b2 = document.createElement('button'); b2.className = 'btn-putih btn-kecil'; b2.textContent = 'Simulasikan verifikasi (demo)';
-      b2.addEventListener('click', async () => { try { await api('/api/offers/demo-verify', 'POST', { offerId: o.id }); toast('Verifikasi disimulasikan — misi terverifikasi (demo).'); await muatOffers(); } catch (e) { toast(e.message); } });
+      b1.addEventListener('click', async () => { try { await api('/api/offers/start', 'POST', { offerId: o.id }); toast('Misi demo dimulai (simulasi). Verifikasi demo sudah dimatikan — pakai Offerwall Tapjoy untuk misi beneran.'); await muatOffers(); } catch (e) { toast(e.message); } });
       const b3 = document.createElement('button'); b3.className = 'btn-hijau btn-kecil'; b3.textContent = 'Klaim Hadiah';
       b3.addEventListener('click', async () => { try { await api('/api/offers/claim', 'POST', { offerId: o.id }); toast('Hadiah misi diklaim!'); await muatProfil(); await muatOffers(); } catch (e) { toast(e.message); } });
-      col.appendChild(b1); col.appendChild(b2); col.appendChild(b3);
+      col.appendChild(b1); col.appendChild(b3);
       dEl.appendChild(col); el.appendChild(dEl);
     });
   } catch (e) { $('daftarOffer').innerHTML = '<p class="muted">' + esc(e.message) + '</p>'; }
 }
+
+/* ---------- Tapjoy Offerwall (web, deep link) ---------- */
+// Dokumen resmi: docs.unity.com/en-us/grow/offerwall/web/displaying-offerwall/deep-linking-implementation
+// Deep link: https://rewards.unity.com/owp/web/link/<SDK_KEY>/u/<USER_ID>
+// USER_ID = id numerik pemain (jadi `snuid` di callback Tapjoy) — unik,
+// stabil seumur hidup akun, tanpa PII (sesuai syarat dokumen Tapjoy).
+// Tapjoy TIDAK memberi notifikasi client-side untuk self-managed currency,
+// jadi saldo di-refresh saat pemain kembali ke tab game.
+let tapjoyDibuka = false;
+async function bukaTapjoyOfferwall() {
+  if (!token || !profile) { toast('Login dulu untuk buka offerwall.'); return; }
+  try {
+    const cfg = await api('/api/tapjoy/config');
+    if (!cfg.enabled || !cfg.sdkKey) { toast('Offerwall Tapjoy belum aktif — server belum dikonfigurasi.'); return; }
+    const url = 'https://rewards.unity.com/owp/web/link/' + encodeURIComponent(cfg.sdkKey) + '/u/' + encodeURIComponent(String(profile.id));
+    tapjoyDibuka = true;
+    window.open(url, '_blank');
+    toast('Offerwall dibuka di tab baru. Hadiah Koin bisa butuh beberapa menit — saldo diperbarui otomatis saat kamu kembali.');
+  } catch (e) { toast(e.message); }
+}
+async function perbaruiStatusTapjoy() {
+  const st = $('tapjoyStatus'); if (!st) return;
+  try {
+    const cfg = await api('/api/tapjoy/config');
+    st.textContent = cfg.enabled ? 'Aktif — misi Tapjoy membayar Koin beneran.' : 'Belum aktif — menunggu pengaturan server.';
+  } catch (e) { st.textContent = 'Status offerwall tidak bisa dimuat.'; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && tapjoyDibuka) { tapjoyDibuka = false; muatProfil(); }
+});
+window.addEventListener('focus', () => { if (tapjoyDibuka) { tapjoyDibuka = false; muatProfil(); } });
 
 /* ---------- Iklan ---------- */
 async function muatNetworks() {
@@ -753,6 +799,7 @@ function updateIklanBtn() {
   } else { b.disabled = false; $('iklanCooldown').textContent = ''; }
 }
 setInterval(updateIklanBtn, 1000);
+$('btnTapjoy').addEventListener('click', bukaTapjoyOfferwall);
 $('btnNontonIklan').addEventListener('click', async () => {
   lastAdAt = Date.now(); updateIklanBtn();
   const n = networks.length ? networks[networkIdx % networks.length].name : 'Simulasi';
@@ -765,7 +812,7 @@ $('btnNontonIklan').addEventListener('click', async () => {
 const canvas = $('gameCanvas');
 const ctx = canvas.getContext('2d');
 const LANES = [80, 210, 340];
-const game = { running: false, paused: false, lane: 1, level: 1, coins: 0, coinCount: 0, distance: 0, target: 500, speed: 4, objects: [], spawnT: 0, frame: 0, shield: false, magnet: false, mult: 1, hiasY: 0, mulaiAt: 0, lanePos: 1, roadScroll: 0, jumpY: 0, vy: 0, sliding: false, slideT: 0, noIdleUntil: 0 };
+const game = { running: false, paused: false, lane: 1, level: 1, coins: 0, coinCount: 0, distance: 0, target: 500, speed: 4, objects: [], polaAntrian: [], spawnT: 0, frame: 0, shield: false, magnet: false, mult: 1, hiasY: 0, mulaiAt: 0, lanePos: 1, roadScroll: 0, jumpY: 0, vy: 0, sliding: false, slideT: 0, noIdleUntil: 0 };
 
 /* ---------- Lompat & guling (Batch 5: mekanik baru, fungsi murni) ---------- */
 const JUMP_VY = 0.32, JUMP_G = 0.022, SLIDE_FRAMES = 42; // lompat ~0,5 dtk, guling ~0,7 dtk
@@ -776,11 +823,30 @@ function stepGerak(g) {
   }
   if (g.slideT > 0) { g.slideT--; g.sliding = g.slideT > 0; }
 }
+/* Apakah rintangan ini berada di jalur pemain? (dipakai loop + tabrakanKena) */
+function rintanganDiJalur(o, g) {
+  if (o.type === 'dinding') return !!(o.lanes && o.lanes.indexOf(g.lane) !== -1);
+  if (o.type === 'geser') {
+    const lp = (o.lanePos == null ? o.lane : o.lanePos);
+    const gp = (g.lanePos == null ? g.lane : g.lanePos);
+    return Math.abs(lp - gp) < 0.6;
+  }
+  return o.lane === g.lane;
+}
 /* Apakah rintangan ini menabrak pemain? (dipakai loop; dites juga) */
 function tabrakanKena(o, g) {
-  if (o.kind !== 'rintangan' || o.z > 0.10 || o.z <= -0.02 || o.lane !== g.lane) return false;
+  if (o.kind !== 'rintangan' || o.z > 0.10 || o.z <= -0.02) return false;
+  if (!rintanganDiJalur(o, g)) return false;
   if (o.type === 'pagar') return !g.sliding; // pagar: guling di bawahnya
+  if (o.type === 'dinding' || o.type === 'geser') return true; // tinggi: tidak bisa dilompat / diguling — harus pindah jalur
   return !(g.jumpY > 0.6); // batu & kotak: rendah, bisa dilompati
+}
+/* Gerbang geser: posisi jalur bergerak sinusoidal antara laneA dan laneB.
+ * frame = game.frame (bertambah tiap frame saat lari). */
+function gerakGeser(o, frame) {
+  const a = o.laneA, b = (o.laneB == null ? a : o.laneB);
+  const periode = Math.max(60, o.periode || 150);
+  o.lanePos = a + (b - a) * (0.5 - 0.5 * Math.cos(2 * Math.PI * (frame + (o.fase || 0)) / periode));
 }
 function mulaiLompat() {
   if (!game.running || game.paused || game.jumpY > 0 || game.vy !== 0) return;
@@ -799,7 +865,7 @@ let r3PreloadDimulai = false, mode3dAktif = false, mode3dToasted = false;
 function cobaPreload3D() {
   if (r3PreloadDimulai || !window.Run3D) return;
   r3PreloadDimulai = true;
-  window.Run3D.preload().then((ok) => { if (ok) applySkin3D(); });
+  window.Run3D.preload().then((ok) => { if (ok) { applySkin3D(); applyAksesoris3D(); } });
 }
 function aktifkanMode3D() {
   const tm = $('tekanMulai');
@@ -927,6 +993,21 @@ function drawObstacle(c, o, x, y, s) {
     c.fillStyle = '#a06a2c'; c.strokeStyle = '#6b4210'; c.lineWidth = lw;
     c.fillRect(x - 26 * s, y - 26 * s, 52 * s, 52 * s); c.strokeRect(x - 26 * s, y - 26 * s, 52 * s, 52 * s);
     c.beginPath(); c.moveTo(x - 26 * s, y - 26 * s); c.lineTo(x + 26 * s, y + 26 * s); c.moveTo(x + 26 * s, y - 26 * s); c.lineTo(x - 26 * s, y + 26 * s); c.stroke();
+  } else if (o.type === 'dinding') {
+    // tembok tinggi 2 jalur: badan merah + garis peringatan kuning + tanda seru
+    const w = 200 * s, h = 56 * s;
+    c.fillStyle = '#b03a2e'; c.strokeStyle = '#6e1f16'; c.lineWidth = lw;
+    c.fillRect(x - w / 2, y - h, w, h); c.strokeRect(x - w / 2, y - h, w, h);
+    c.fillStyle = '#f5b301';
+    for (let i = 0; i < 5; i++) c.fillRect(x - w / 2 + (i * w) / 5, y - h, 8 * s, h);
+    c.fillStyle = '#fff'; c.font = 'bold ' + Math.round(20 * s) + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('⚠', x, y - h / 2);
+  } else if (o.type === 'geser') {
+    // gerbang geser: palang oranye + panah kiri-kanan
+    c.fillStyle = '#e65100'; c.strokeStyle = '#8d2f00'; c.lineWidth = lw;
+    c.fillRect(x - 28 * s, y - 52 * s, 56 * s, 52 * s); c.strokeRect(x - 28 * s, y - 52 * s, 56 * s, 52 * s);
+    c.fillStyle = '#fff'; c.font = 'bold ' + Math.round(22 * s) + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('↔', x, y - 26 * s);
   } else {
     c.fillStyle = '#8d5a2b'; c.strokeStyle = '#5d3a1a'; c.lineWidth = lw;
     c.fillRect(x - 28 * s, y - 14 * s, 56 * s, 28 * s); c.strokeRect(x - 28 * s, y - 14 * s, 56 * s, 28 * s);
@@ -1021,21 +1102,25 @@ function skalaCanvas(c) {
 function renderScene(c, st) {
   const d = duniaUntuk(st.level);
   const { s, ox, oy } = skalaCanvas(c);
+  // Jalan bergelombang (bukan lurus monoton): pusat jalan bergeser mengikuti
+  // sinus dari jarak + guliran jalan; 0 di dekat pemain, maks di horizon.
+  const kurva = (z) => Math.sin(z * 4 + (st.roadScroll || 0) * 3) * 40 * z;
+  const k1 = kurva(1); // geser tepi atas jalan (horizon)
   c.fillStyle = d.langit; c.fillRect(0, 0, c.canvas.width, c.canvas.height); // latar penuh (bilah letterbox menyatu dengan langit)
   c.save();
   c.translate(ox, oy); c.scale(s, s);
-  gambarLatar(Math.min(5, Math.floor(((st.level || 1) - 1) / 10)), st.frame, c);
+  gambarLatar(duniaIdx(st.level), st.frame, c);
   c.fillStyle = d.tanah; c.fillRect(0, P3.hy, 420, 520 - P3.hy);
   c.fillStyle = 'rgba(0,0,0,.25)';
-  c.beginPath(); c.moveTo(0, P3.hy); c.lineTo(186, P3.hy); c.lineTo(10, 520); c.lineTo(0, 520); c.closePath(); c.fill();
-  c.beginPath(); c.moveTo(234, P3.hy); c.lineTo(420, P3.hy); c.lineTo(420, 520); c.lineTo(410, 520); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(0, P3.hy); c.lineTo(186 + k1, P3.hy); c.lineTo(10, 520); c.lineTo(0, 520); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(234 + k1, P3.hy); c.lineTo(420, P3.hy); c.lineTo(420, 520); c.lineTo(410, 520); c.closePath(); c.fill();
   c.fillStyle = 'rgba(255,255,255,.10)';
-  c.beginPath(); c.moveTo(186, P3.hy); c.lineTo(234, P3.hy); c.lineTo(410, 520); c.lineTo(10, 520); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(186 + k1, P3.hy); c.lineTo(234 + k1, P3.hy); c.lineTo(410, 520); c.lineTo(10, 520); c.closePath(); c.fill();
   c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 5; c.setLineDash([26, 34]);
   c.lineDashOffset = -(((st.roadScroll || 0) * 520) % 60);
   for (const b of [-0.5, 0.5]) {
     c.beginPath();
-    c.moveTo(210 + b * 150 * 0.12, P3.hy);
+    c.moveTo(210 + b * 150 * 0.12 + k1, P3.hy);
     c.lineTo(210 + b * 150, 520);
     c.stroke();
   }
@@ -1046,12 +1131,16 @@ function renderScene(c, st) {
     const u = 1 - z, k = Math.pow(u, 1.6), s = 0.12 + 0.88 * k;
     const y = P3.hy + (P3.bawah - P3.hy) * k;
     c.font = Math.max(8, Math.round(30 * s)) + 'px sans-serif';
-    c.fillText(d.hias, 210 - (200 * s + 28 * s), y);
-    c.fillText(d.hias, 210 + (200 * s + 28 * s), y);
+    c.fillText(d.hias, 210 - (200 * s + 28 * s) + kurva(z), y);
+    c.fillText(d.hias, 210 + (200 * s + 28 * s) + kurva(z), y);
   }
   const objs = (st.objects || []).slice().sort((a, b) => b.z - a.z);
   for (const o of objs) {
-    const p = proyeksi(o.lane, o.z);
+    let laneGambar = o.lane;
+    if (o.type === 'geser') laneGambar = (o.lanePos == null ? o.lane : o.lanePos);
+    else if (o.type === 'dinding' && o.lanes) laneGambar = (o.lanes[0] + o.lanes[1]) / 2;
+    const p = proyeksi(laneGambar, o.z);
+    p.x += kurva(o.z); // objek mengikuti belokan jalan
     if (o.kind === 'koin') drawCoin(c, p.x, p.y, Math.max(4, 15 * p.s));
     else drawObstacle(c, o, p.x, p.y, p.s);
   }
@@ -1089,9 +1178,9 @@ function resetGame() {
   game.target = (isBos(lv) ? 700 : 450) + lv * 30;
   game.speed = 4 + lv * 0.18;
   if (skillIklan.cepat) game.speed = Math.round(game.speed * 1.5);
-  game.objects = []; game.spawnT = 0; game.frame = 0; game.debu = []; game.lanePos = 1; game.roadScroll = 0;
+  game.objects = []; game.polaAntrian = []; game.spawnT = 0; game.frame = 0; game.debu = []; game.lanePos = 1; game.roadScroll = 0;
   game.jumpY = 0; game.vy = 0; game.sliding = false; game.slideT = 0;
-  if (window.Run3D && window.Run3D.ready) window.Run3D.setWorld(Math.min(5, Math.floor((lv - 1) / 10)), duniaUntuk(lv));
+  if (window.Run3D && window.Run3D.ready) window.Run3D.setWorld(duniaIdx(lv), duniaUntuk(lv));
   game.shield = pu === 'perisai' || ((profile && profile.equipped && profile.equipped.powerup) === 'perisai') || skillIklan.perisai;
   game.magnet = pu === 'magnet' || ((profile && profile.equipped && profile.equipped.powerup) === 'magnet') || skillIklan.magnet;
   game.mult = (pu === 'koinx2' || ((profile && profile.equipped && profile.equipped.powerup) === 'koinx2')) ? 2 : 1;
@@ -1100,8 +1189,87 @@ function resetGame() {
   updateDuniaInfo();
   try { renderScene(ctx, game); } catch (e) {} // gambar arena sekali supaya tidak biru kosong sebelum mulai
 }
+/* ---------- Pola rintangan (lebih sulit, tetap adil) ----------
+ * Selain rintangan tunggal acak, level >= 5 kadang memunculkan POLA:
+ * baris-baris rintangan berurutan dengan jeda FRAME (bukan z) supaya adil
+ * di semua kecepatan — jeda dijamin cukup untuk pindah jalur.
+ * Jenis baru:
+ * - 'dinding' (lv>=3): tembok tinggi menutup 2 jalur sekaligus — wajib ke
+ *   jalur kosong; tidak bisa dilompat/diguling.
+ * - 'geser' (lv>=8): gerbang tinggi yang bergeser pelan antar 2 jalur —
+ *   jalur ke-3 selalu aman; tidak bisa dilompat/diguling.
+ * Aturan adil (dicek tes test-rintangan-baru.mjs): tiap baris menyisakan
+ * >=1 jalur yang bisa dilalui; jalur aman antar baris berurutan berjarak
+ * <= 2; jeda antar baris >= 8 + 6*jarak jalur (cukup pindah jalur + reaksi).
+ * Kecepatan TIDAK diubah di sini: dibatasi validasi server
+ * (maxSpeed = (4 + lv*0.18) * 1.5) — sulitnya dari pola + kerapatan spawn. */
+function jedaSpawn(level) { return Math.max(22, 76 - level * 1.8); } // spawn makin rapat per level
+function pilihPola(lv) {
+  const acak = (n) => Math.floor(Math.random() * n);
+  const tipeAcak = () => ['batu', 'kotak', 'pagar'][acak(3)];
+  const daftar = ['zigzag', 'koridor'];
+  if (lv >= 3) daftar.push('tembok');
+  if (lv >= 8) daftar.push('geser-koin');
+  if (lv >= 12) daftar.push('sapu');
+  const nama = daftar[acak(daftar.length)];
+  if (nama === 'zigzag') {
+    // rintangan tunggal zigzag kiri-tengah-kanan — paksa pindah jalur terus
+    const jalur = [0, 1, 2].sort(() => Math.random() - 0.5);
+    const n = 3 + acak(2);
+    const baris = [];
+    for (let i = 0; i < n; i++) baris.push({ jeda: i === 0 ? 0 : 14, items: [{ type: tipeAcak(), lane: jalur[i % 3] }] });
+    return baris;
+  }
+  if (nama === 'koridor') {
+    // pagar -> batu -> kotak di 3 jalur berbeda: guling, lompat, lompat bergantian
+    const jalur = [0, 1, 2].sort(() => Math.random() - 0.5);
+    return [
+      { jeda: 0, items: [{ type: 'pagar', lane: jalur[0] }] },
+      { jeda: 14, items: [{ type: 'batu', lane: jalur[1] }] },
+      { jeda: 14, items: [{ type: 'kotak', lane: jalur[2] }] },
+    ];
+  }
+  if (nama === 'tembok') {
+    // tembok 2 jalur, lalu tembok 2 jalur di sisi lain — wajib pindah ujung ke ujung
+    const kiri = Math.random() < 0.5;
+    const d1 = kiri ? [0, 1] : [1, 2], d2 = kiri ? [1, 2] : [0, 1];
+    const bebas1 = kiri ? 2 : 0, bebas2 = kiri ? 0 : 2;
+    return [
+      { jeda: 0, items: [{ type: 'dinding', lane: d1[0], lanes: d1 }, { kind: 'koin', lane: bebas1 }, { kind: 'koin', lane: bebas1, z: 0.94 }] },
+      { jeda: 20, items: [{ type: 'dinding', lane: d2[0], lanes: d2 }, { kind: 'koin', lane: bebas2 }, { kind: 'koin', lane: bebas2, z: 0.94 }] },
+    ];
+  }
+  if (nama === 'geser-koin') {
+    const a = acak(2), bebas = a === 0 ? 2 : 0;
+    return [{ jeda: 0, items: [{ type: 'geser', lane: a, laneA: a, laneB: a + 1, fase: acak(150), periode: Math.max(90, 180 - lv * 2) }, { kind: 'koin', lane: bebas }] }];
+  }
+  // 'sapu' (lv>=12): gerbang geser, lalu tembok menutup sisi sapuan — akhiri di jalur ujung
+  const a = acak(2), bebas = a === 0 ? 2 : 0;
+  const d = a === 0 ? [1, 2] : [0, 1];
+  return [
+    { jeda: 0, items: [{ type: 'geser', lane: a, laneA: a, laneB: a + 1, fase: acak(150), periode: Math.max(90, 180 - lv * 2) }] },
+    { jeda: 22, items: [{ type: 'dinding', lane: d[0], lanes: d }, { kind: 'koin', lane: bebas }] },
+  ];
+}
+function spawnPola() {
+  const pola = pilihPola(game.level);
+  game.polaAntrian = pola.map((baris) => ({ t: baris.jeda, items: baris.items.map((it) => Object.assign({ kind: 'rintangan', z: 1 }, it)) }));
+}
+/* Keluarkan baris pola yang jedanya sudah habis (dipanggil tiap frame di loop). */
+function prosesPola() {
+  if (!game.polaAntrian.length) return;
+  const br = game.polaAntrian[0];
+  br.t -= 1;
+  if (br.t <= 0) {
+    game.polaAntrian.shift();
+    for (const it of br.items) game.objects.push(it);
+  }
+}
 function spawnObject() {
   const lv = game.level;
+  if (game.polaAntrian.length) return; // pola sedang berjalan — jangan tumpuk spawn acak
+  // pola berurutan (lv >= 5): makin sering di level tinggi
+  if (lv >= 5 && Math.random() < Math.min(0.45, 0.10 + lv * 0.006)) { spawnPola(); return; }
   const r = Math.random();
   const lane = Math.floor(Math.random() * 3);
   if (r < 0.42) {
@@ -1109,12 +1277,21 @@ function spawnObject() {
     if (Math.random() < 0.5) game.objects.push({ kind: 'koin', lane, z: 0.94 });
     if (Math.random() < 0.3) game.objects.push({ kind: 'koin', lane: (lane + 1) % 3, z: 1 });
   } else {
-    const types = ['batu', 'kotak', 'pagar'];
-    game.objects.push({ kind: 'rintangan', type: types[Math.floor(Math.random() * 3)], lane, z: 1 });
+    // rintangan tunggal: dinding (lv>=3) dan geser (lv>=8) ikut muncul
+    let type = ['batu', 'kotak', 'pagar'][Math.floor(Math.random() * 3)];
+    const roll = Math.random();
+    if (lv >= 8 && roll < 0.12) type = 'geser';
+    else if (lv >= 3 && roll < 0.24) type = 'dinding';
+    const ob = { kind: 'rintangan', type, lane, z: 1 };
+    if (type === 'dinding') ob.lanes = lane === 2 ? [1, 2] : [lane, lane + 1];
+    if (type === 'geser') { const a = lane === 2 ? 1 : lane; ob.laneA = a; ob.laneB = a + 1; ob.lane = a; ob.fase = Math.floor(Math.random() * 150); ob.periode = Math.max(90, 180 - lv * 2); ob.lanePos = a; }
+    game.objects.push(ob);
     // kadang 2 rintangan sekaligus di level tinggi (selalu sisakan 1 jalur aman)
+    // — rintangan ke-2 HANYA yang bisa dilompat/diguling, supaya tidak pernah
+    // menutup semua jalur bersama tembok/gerbang pertama.
     if (lv >= 5 && Math.random() < 0.35) {
       const lane2 = (lane + 1 + Math.floor(Math.random() * 2)) % 3;
-      game.objects.push({ kind: 'rintangan', type: types[Math.floor(Math.random() * 3)], lane: lane2, z: 1 });
+      game.objects.push({ kind: 'rintangan', type: ['batu', 'kotak', 'pagar'][Math.floor(Math.random() * 3)], lane: lane2, z: 1 });
     }
   }
 }
@@ -1131,16 +1308,21 @@ function loop() {
     game.roadScroll += game.speed * 0.002;
     // spawn: makin cepat & padat tiap level
     game.spawnT -= 1;
-    if (game.spawnT <= 0) { spawnObject(); game.spawnT = Math.max(28, 75 - game.level * 1.6); }
+    if (game.spawnT <= 0) {
+      if (game.polaAntrian.length) { game.spawnT = 10; } // pola jalan — tunda spawn acak
+      else { spawnObject(); game.spawnT = jedaSpawn(game.level); }
+    }
+    prosesPola();
     game.lanePos += (game.lane - game.lanePos) * 0.22;
     stepGerak(game); // lompat & guling
     game.objects.forEach((o) => {
+      if (o.type === 'geser') gerakGeser(o, game.frame); // gerbang bergeser tiap frame
       o.z -= game.speed * 0.002;
       if (game.magnet && o.kind === 'koin' && o.z > 0.08 && o.z < 0.6) o.z -= game.speed * 0.002 * 1.2; // magnet: koin melaju ke arah pemain
       if (o.kind === 'koin' && o.z <= 0.12 && o.z > -0.02 && o.lane === game.lane) {
         if (!o.taken) { o.taken = true; game.coinCount++; game.coins += 10 * game.mult; beep(880, 0.08, 'sine'); }
       }
-      if (o.kind === 'rintangan' && o.z <= 0.10 && o.z > -0.02 && o.lane === game.lane && !o.hit) {
+      if (o.kind === 'rintangan' && o.z <= 0.10 && o.z > -0.02 && rintanganDiJalur(o, game) && !o.hit) {
         o.hit = true;
         if (tabrakanKena(o, game)) {
           if (game.shield) { game.shield = false; beep(300, 0.2, 'square'); toast('Perisai menahan tabrakan!'); }
@@ -1467,7 +1649,12 @@ function loopLogin() {
   if (demo.spawnT <= 0) {
     const lane = Math.floor(Math.random() * 3);
     if (Math.random() < 0.5) demo.objects.push({ kind: 'koin', lane, z: 1 });
-    else demo.objects.push({ kind: 'rintangan', type: ['batu', 'kotak', 'pagar'][Math.floor(Math.random() * 3)], lane, z: 1 });
+    else {
+      const t = ['batu', 'kotak', 'pagar', 'dinding'][Math.floor(Math.random() * 4)];
+      const ob = { kind: 'rintangan', type: t, lane, z: 1 };
+      if (t === 'dinding') ob.lanes = lane === 2 ? [1, 2] : [lane, lane + 1];
+      demo.objects.push(ob);
+    }
     demo.spawnT = 45;
   }
   demo.objects.forEach((o) => { o.z -= demo.speed * 0.002; });
