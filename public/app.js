@@ -300,7 +300,7 @@ async function masukSosial(provider, tokenSosial) {
 }
 async function initSosial() {
   let cfg = {};
-  try { cfg = await api('/api/auth/social-config'); } catch { return; }
+  try { cfg = await api('/api/auth/social-config'); } catch { const m0 = $('socialMsg'); if (m0) m0.textContent = 'Tidak bisa terhubung ke server. Periksa datamu lalu coba lagi.'; return; }
   if (!cfg.google) return; // belum dikonfigurasi — tombol tetap sembunyi
   $('socialLogin').classList.remove('hidden');
   if (cfg.google && cfg.googleClientId) {
@@ -312,24 +312,23 @@ async function initSosial() {
         auto_select: true
       });
       google.accounts.id.renderButton($('btnGoogleWrap'), { theme: 'outline', size: 'large', text: 'signin_with' });
+      const manual = $('btnGoogleManual'); if (manual) manual.style.display = 'none';
       google.accounts.id.prompt(); // One Tap: pemain lama langsung masuk otomatis
     } catch (e) {
-      // Jangan sembunyikan diam-diam: tampilkan penyebab + tombol coba lagi
+      // Jangan sembunyikan diam-diam: tampilkan penyebab, tombol manual tetap bisa diketuk ulang
       $('btnGoogleWrap').style.display = '';
       const alasan = (e && e.message) ? e.message : String(e);
       const msg = $('socialMsg');
-      if (msg) msg.textContent = 'Tombol Google gagal dimuat: ' + alasan + '. Coba lagi di bawah, atau pakai WiFi.';
-      if (!$('btnGoogleUlangi')) {
-        const btn = document.createElement('button');
-        btn.id = 'btnGoogleUlangi';
-        btn.className = 'btn-emas';
-        btn.textContent = '🔄 Coba lagi login Google';
-        btn.onclick = () => { if (msg) msg.textContent = ''; btn.remove(); initSosial(); };
-        const wrap = $('socialLogin');
-        if (wrap) wrap.appendChild(btn);
-      }
+      if (msg) msg.textContent = 'Tombol Google gagal dimuat: ' + alasan + '. Ketuk tombol Login dengan Google di atas, atau pakai WiFi.';
+      const manual = $('btnGoogleManual'); if (manual) manual.style.display = '';
+      const lama = $('btnGoogleUlangi'); if (lama) lama.remove();
     }
   } else { $('btnGoogleWrap').style.display = 'none'; }
+}
+async function loginGoogleManual() {
+  const msg = $('socialMsg');
+  if (msg) msg.textContent = 'Memuat login Google…';
+  await initSosial();
 }
 initSosial();
 
