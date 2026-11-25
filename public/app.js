@@ -161,7 +161,7 @@ function waInviteUrl(name) {
   });
 })();
 
-/* ---------- Showcase 3D (login + Beranda) ---------- */
+/* ---------- Showcase 3D (Beranda) ---------- */
 function onRun3DReady(cb) {
   if (window.Run3D) { cb(); return; }
   window.addEventListener('run3d-ready', cb, { once: true });
@@ -175,12 +175,6 @@ function mulaiShowcase(canvasId, fallbackId, opts) {
   };
   R3.showcase(canvasId, opts).then((ok) => { if (!ok) gagal(); }).catch(gagal);
 }
-/* Login: deretan 5 karakter 3D berjejer (warna 5 roster pertama), bukan gambar. */
-function mulaiShowcaseLogin() {
-  mulaiShowcase('loginShowcase', 'loginShowcaseFallback', { row: true, colors: LEVEL_CHARACTERS.slice(0, 5).map((c) => c.warna), accs: LEVEL_CHARACTERS.slice(0, 5) });
-}
-onRun3DReady(() => mulaiShowcaseLogin());
-
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 async function api(path, method, body, timeoutMs) {
@@ -287,7 +281,6 @@ async function sesudahLogin(pesan) {
     return;
   }
   $('authScreen').classList.add('hidden');
-  const bg = $('bgCanvas'); if (bg) bg.style.display = 'none';
   $('app').classList.remove('hidden');
   $('authMsg').textContent = '';
   if (pesan) toast(pesan);
@@ -297,7 +290,6 @@ async function sesudahLogin(pesan) {
   perbaruiStatusTapjoy();
   await muatNetworks();
   cobaPreload3D(); // muat model 3D di waktu luang (setelah login)
-  if (window.Run3D && window.Run3D.showcaseStop) window.Run3D.showcaseStop('loginShowcase'); // bebaskan konteks WebGL login (HP cuma kuat 2 konteks)
   onRun3DReady(() => mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback', { acc: karakterAktif() }));
   let tourDone = false;
   try { tourDone = localStorage.getItem('nr_tour_done') === '1'; } catch (e) {}
@@ -1656,50 +1648,6 @@ $('btnNyawaIklan').addEventListener('click', () => {
 });
 setInterval(tickNyawa, 1000);
 
-/* ---------- Login: animasi live full-screen (attract mode 3D) ---------- */
-const bgCanvas = $('bgCanvas');
-const bgCtx = bgCanvas ? bgCanvas.getContext('2d') : null;
-/* Backing store canvas latar login mengikuti DPR (maks 1,25, dibatasi
- * 960x1440 supaya animasi latar tidak memberatkan HP). */
-function samakanUkuranBgCanvas() {
-  if (!bgCanvas) return;
-  const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-  const w = Math.max(1, Math.min(Math.round((bgCanvas.clientWidth || 420) * dpr), 960));
-  const h = Math.max(1, Math.min(Math.round((bgCanvas.clientHeight || 520) * dpr), 1440));
-  if (bgCanvas.width !== w || bgCanvas.height !== h) {
-    bgCanvas.width = w; bgCanvas.height = h;
-    try { bgCtx.imageSmoothingEnabled = true; bgCtx.imageSmoothingQuality = 'high'; } catch (e) {}
-  }
-}
-samakanUkuranBgCanvas();
-window.addEventListener('resize', samakanUkuranBgCanvas);
-const demo = { level: 1, frame: 0, lane: 1, lanePos: 1, objects: [], spawnT: 0, roadScroll: 0, debu: [], shield: false, speed: 4.5 };
-function loopLogin() {
-  if (!bgCtx || !bgCanvas || bgCanvas.style.display === 'none') return;
-  if ($('authScreen').classList.contains('hidden')) return;
-  demo.frame++;
-  if (demo.frame % 120 === 0) samakanUkuranBgCanvas(); // canvas sempat display:none saat load
-  demo.roadScroll += demo.speed * 0.002;
-  demo.lanePos += (demo.lane - demo.lanePos) * 0.1;
-  if (demo.frame % 120 === 0) demo.lane = Math.floor(Math.random() * 3);
-  demo.spawnT -= 1;
-  if (demo.spawnT <= 0) {
-    const lane = Math.floor(Math.random() * 3);
-    if (Math.random() < 0.5) demo.objects.push({ kind: 'koin', lane, z: 1 });
-    else {
-      const t = ['batu', 'kotak', 'pagar', 'dinding'][Math.floor(Math.random() * 4)];
-      const ob = { kind: 'rintangan', type: t, lane, z: 1 };
-      if (t === 'dinding') ob.lanes = lane === 2 ? [1, 2] : [lane, lane + 1];
-      demo.objects.push(ob);
-    }
-    demo.spawnT = 45;
-  }
-  demo.objects.forEach((o) => { o.z -= demo.speed * 0.002; });
-  demo.objects = demo.objects.filter((o) => o.z > -0.08);
-  renderScene(bgCtx, demo);
-  requestAnimationFrame(loopLogin);
-}
-if (bgCtx) requestAnimationFrame(loopLogin);
 
 /* Service worker */
 if ('serviceWorker' in navigator) {

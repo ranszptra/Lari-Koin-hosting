@@ -21,7 +21,6 @@ a{color:#8a5a00}
 .saldo b{font-size:20px}
 .saldo span{font-size:12px;color:#666}
 main{padding:12px 14px 40px;position:relative;z-index:1}
-#bgCanvas{position:fixed;inset:0;width:100vw;height:100vh;z-index:0}
 #authScreen{background:rgba(255,255,255,.93);position:relative;z-index:1}
 .lives-bar{display:flex;gap:8px;align-items:center;justify-content:space-between;background:#fff;border:2px solid var(--emas);border-radius:12px;padding:8px 12px;margin:10px 0;font-weight:700;font-size:14px}
 .lives-bar #livesCooldown{font-weight:400;font-size:12px;color:#8a5a00}
@@ -103,8 +102,6 @@ body.pengelola a{color:#ffd54a}
 /* ===== Tema Runner Coin ===== */
 .hero-nailong{position:relative;border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:0 4px 14px rgba(90,50,0,.25);background:linear-gradient(180deg,#2d1b4d,#1a1033);padding:12px}
 .hero-logo{display:block;width:min(280px,88%);height:auto;margin:2px auto 12px;border-radius:16px;box-shadow:0 4px 14px rgba(0,0,0,.35);animation:nailong-lompat 2.2s ease-in-out infinite}
-.hero-nailong canvas{display:block;width:100%;height:300px;border-radius:16px;background:radial-gradient(circle at 50% 28%,#4a2d7a,#1a1033 75%);touch-action:pan-y}
-#loginShowcaseFallback{display:block;width:100%;height:300px;object-fit:contain;background:#1a1033;border-radius:16px}
 .showcase-wrap{position:relative;border-radius:16px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.35);border:1px solid #e8c85a}
 .showcase-wrap canvas{display:block;width:100%;height:300px;background:radial-gradient(circle at 50% 28%,#4a2d7a,#1a1033 75%);touch-action:pan-y}
 .showcase-wrap img{display:block;width:100%;height:300px;object-fit:contain;background:#1a1033}
