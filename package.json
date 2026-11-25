@@ -1,0 +1,13 @@
+{
+  "name": "lari-koin-online-backend",
+  "version": "1.0.0",
+  "description": "Backend Lari Koin Online - Node.js + SQLite (node:sqlite bawaan Node 24; better-sqlite3 gagal build: tidak ada prebuilt binary untuk Node 24.22.1)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
