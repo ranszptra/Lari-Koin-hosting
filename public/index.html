@@ -10,6 +10,13 @@
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon-192.png">
 <link rel="stylesheet" href="/style.css">
+  <script type="importmap">
+    { "imports": {
+      "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+    } }
+  </script>
+  <script type="module" src="/run3d.js"></script>
 </head>
 <body>
 <canvas id="bgCanvas" width="420" height="520" aria-hidden="true"></canvas>
@@ -104,6 +111,8 @@
         <div class="lives-bar"><span id="livesBar">❤️ Nyawa: 15/15</span><span id="livesCooldown" class="hidden"></span><button class="btn-emas btn-kecil hidden" id="btnNyawaIklan">📺 +1 Nyawa</button></div>
         <div class="game-wrap">
           <canvas id="gameCanvas" width="420" height="520" aria-label="Arena game Nailong Runner"></canvas>
+          <canvas id="gameCanvas3d" width="420" height="520" aria-label="Arena 3D Nailong Runner"></canvas>
+          <div id="tekanMulai" class="tekan-mulai" hidden>Tekan ▶ Mulai Lari</div>
           <div class="hud"><span id="hudKoin">🪙 0</span><span id="hudJarak">0 m</span><span id="hudLevel">Lv 1</span></div>
           <div class="pause-overlay hidden" id="pauseOverlay">
             <p>⏸ Jeda</p>
@@ -122,7 +131,7 @@
           <button id="btnTengah" aria-label="Kembali ke tengah">● Tengah</button>
           <button id="btnKanan" aria-label="Pindah ke kanan">Kanan ➡</button>
         </div>
-        <p class="small">Keyboard: panah ← → untuk pindah jalur, Spasi untuk mulai/jeda. Layar sentuh: geser kiri/kanan di canvas, atau ketuk tombol di atas.</p>
+        <p class="small">Keyboard: panah ← → pindah jalur, ↑/Spasi lompat, ↓ guling. Layar sentuh: geser kiri/kanan di canvas, geser ke atas = lompat, ke bawah = guling, atau ketuk tombol di atas.</p>
         <button class="btn-putih btn-kecil" id="btnCaraMain" style="margin-top:4px">📖 Cara Main</button>
         <div id="gameResult"></div>
       </section>
