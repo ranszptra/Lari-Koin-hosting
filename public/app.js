@@ -197,7 +197,7 @@ $('btnTourNext').addEventListener('click', () => {
 $('btnTourSkip').addEventListener('click', tutupTour);
 $('btnCaraMain').addEventListener('click', () => tampilTour(0));
 
-/* ---------- Login sosial (Google / Facebook, sekali ketuk) ---------- */
+/* ---------- Login sosial (Google, sekali ketuk) ---------- */
 function muatScript(src) {
   return new Promise((resolve, reject) => {
     const s = document.createElement('script');
@@ -217,7 +217,7 @@ async function masukSosial(provider, tokenSosial) {
 (async function initSosial() {
   let cfg = {};
   try { cfg = await api('/api/auth/social-config'); } catch { return; }
-  if (!cfg.google && !cfg.facebook) return; // belum dikonfigurasi — tombol tetap sembunyi
+  if (!cfg.google) return; // belum dikonfigurasi — tombol tetap sembunyi
   $('socialLogin').classList.remove('hidden');
   if (cfg.google && cfg.googleClientId) {
     try {
@@ -231,18 +231,6 @@ async function masukSosial(provider, tokenSosial) {
       google.accounts.id.prompt(); // One Tap: pemain lama langsung masuk otomatis
     } catch (e) { $('btnGoogleWrap').style.display = 'none'; }
   } else { $('btnGoogleWrap').style.display = 'none'; }
-  if (cfg.facebook && cfg.facebookAppId) {
-    try {
-      await muatScript('https://connect.facebook.net/id_ID/sdk.js');
-      FB.init({ appId: cfg.facebookAppId, cookie: false, xfbml: false, version: 'v21.0' });
-      $('btnFacebook').addEventListener('click', () => {
-        FB.login((r) => {
-          if (r && r.authResponse && r.authResponse.accessToken) masukSosial('facebook', r.authResponse.accessToken);
-          else $('socialMsg').textContent = 'Login Facebook dibatalkan.';
-        }, { scope: 'public_profile' });
-      });
-    } catch (e) { $('btnFacebook').style.display = 'none'; }
-  } else { $('btnFacebook').style.display = 'none'; }
 })();
 
 /* ---------- Profil & render ---------- */
@@ -575,7 +563,7 @@ $('btnNontonIklan').addEventListener('click', async () => {
 const canvas = $('gameCanvas');
 const ctx = canvas.getContext('2d');
 const LANES = [80, 210, 340];
-const game = { running: false, paused: false, lane: 1, level: 1, coins: 0, coinCount: 0, distance: 0, target: 500, speed: 4, objects: [], spawnT: 0, frame: 0, shield: false, magnet: false, mult: 1, hiasY: 0 };
+const game = { running: false, paused: false, lane: 1, level: 1, coins: 0, coinCount: 0, distance: 0, target: 500, speed: 4, objects: [], spawnT: 0, frame: 0, shield: false, magnet: false, mult: 1, hiasY: 0, mulaiAt: 0 };
 
 function drawNailong(x, y, r, skinId, charId) {
   const char = charId || (profile && profile.equipped && profile.equipped.character) || 'jolly';
@@ -802,7 +790,7 @@ function gameOver() {
   el.innerHTML = '<h3>💥 Kena Halangan!</h3><p>Lari selesai di level ' + game.level + '. Koin terkumpul: <b>' + game.coins + '</b> (jarak ' + Math.floor(game.distance) + ' m).</p><p class="muted">Koin tetap dihitung — tekan Main Lagi untuk mencoba lagi.</p>';
   el.classList.add('show');
   $('btnStart').textContent = '▶ Main Lagi';
-  if (game.coins > 0) { api('/api/bank-run-coins', 'POST', { coins: game.coins }).then(() => muatProfil()).catch(() => {}); }
+  if (game.coins > 0) { const durBank = Date.now() - (game.mulaiAt || Date.now()); api('/api/bank-run-coins', 'POST', { coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: durBank, level: game.level }).then(() => muatProfil()).catch(() => {}); }
 }
 async function selesaiLevel() {
   game.running = false;
@@ -813,7 +801,7 @@ async function selesaiLevel() {
   tampilIklanSelingan(async () => {
     let pesan = '<h3>🎉 Level ' + game.level + ' Selesai!</h3><p>Koin terkumpul: <b>' + game.coins + '</b>' + (isBos(game.level) ? ' • 👹 LEVEL BOS — bonus 5x!' : '') + '</p>';
     try {
-      const d = await api('/api/finish-level', 'POST', { level: game.level, coins: game.coins });
+      const d = await api('/api/finish-level', 'POST', { level: game.level, coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: Date.now() - (game.mulaiAt || Date.now()) });
       pesan += '<p>Bonus level: <b>+' + (d.bonus != null ? d.bonus : 0) + '</b> • Total dari lari ini: <b>' + (d.coinsEarned != null ? d.coinsEarned : game.coins) + ' koin</b><br><span class="muted">Saldo sekarang: ' + (d.coins != null ? d.coins : '') + ' koin.</span></p>';
       if (d.skinsBaru && d.skinsBaru.length) pesan += '<p>🎨 Skin baru terbuka: <b>' + d.skinsBaru.map(esc).join(', ') + '</b> — cek di Toko!</p>';
       await muatProfil();
@@ -843,6 +831,7 @@ function mulaiGame() {
   resetGame();
   mulaiMusik();
   game.running = true; game.paused = false;
+  game.mulaiAt = Date.now(); // bukti lari untuk validasi server (anti-cheat)
   document.body.classList.add('mode-lari');
   const po2 = $('pauseOverlay'); if (po2) po2.classList.add('hidden');
   $('btnStart').textContent = '🏃 Lagi Lari…';
