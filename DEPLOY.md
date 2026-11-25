@@ -34,17 +34,23 @@
   penarikan, dan progres offerwall ikut hilang.
 - Untuk demo/pengembangan awal ini masih bisa dipakai, tapi **jangan
   jadikan ini penyimpanan produksi**.
-- **Untuk produksi, pindah ke Supabase Postgres:**
-  1. Buat project di Supabase → ambil connection string Postgres.
-  2. Buat ulang tabel di Supabase dari skema di `db.js` (tipe data:
-     `INTEGER → integer/bigint`, `TEXT → text`, `REAL → numeric`,
-     `AUTOINCREMENT → GENERATED ALWAYS AS IDENTITY`,
-     kolom JSON `TEXT` → `jsonb`).
-  3. Ganti layer `db.js` dengan client `pg` (`npm i pg`) — semua query
-     di `server.js` memakai SQL standar dengan placeholder `?` yang
-     tinggal diubah ke `$1, $2, ...`. Endpoint dan respons API
-     **tidak perlu berubah**.
-  4. Set env `DATABASE_URL` di Render dan hapus ketergantungan pada file `.db`.
+- **Untuk produksi, pindah ke Supabase Postgres — SUDAH DIIMPLEMENTASIKAN
+  (2026-11-25):**
+  1. Buat project di Supabase → ambil connection string Postgres (pakai
+     **Transaction pooler** bila ada, format
+     `postgres://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:6543/postgres`).
+  2. Jalankan `supabase-schema.sql` di Supabase Dashboard → SQL Editor
+     (atau biarkan server yang menjalankannya otomatis saat pertama start —
+     lihat langkah 4; file ini idempotent, aman dijalankan berulang).
+  3. Kode sudah dual-backend: `db.js` memakai `pg` bila env `DATABASE_URL`
+     diset, dan fallback ke SQLite lokal bila tidak diset. Semua query
+     `?` diterjemahkan ke `$1, $2, ...` otomatis di jalur Postgres.
+  4. Set env `DATABASE_URL` di Railway (Variables → New Variable).
+     Restart service; log akan menampilkan
+     `[db] Postgres (DATABASE_URL) aktif`. Data pemain yang sudah ada di
+     SQLite **tidak** ikut pindah otomatis — migrasi data lama (bila ada)
+     harus dilakukan terpisah sebelum switch.
+  5. Endpoint dan respons API **tidak berubah**.
 
 ## Menjalankan lokal
 

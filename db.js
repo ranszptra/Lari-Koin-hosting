@@ -1,23 +1,63 @@
-// db.js — Skema SQLite + seed + helper bersama untuk Lari Koin Online.
+// db.js — Skema + seed + helper bersama untuk Lari Koin Online.
 //
-// DATABASE: memakai `node:sqlite` bawaan Node 24 (DatabaseSync).
-// Alasan: better-sqlite3 GAGAL diinstal di environment ini — tidak ada
-// prebuilt binary untuk Node 24.22.1 dan `node-gyp rebuild` gagal.
-// API DatabaseSync (prepare/run/get/all) sengaja dipakai supaya skema dan
-// query di file ini mudah dipindah ke Postgres (Supabase) nanti: semua SQL
-// ditulis standar, tanpa fitur khusus better-sqlite3.
+// DUA BACKEND (dipilih otomatis):
+//   - Jika env DATABASE_URL diset (Supabase Postgres) → pakai `pg` (Pool).
+//     Data pemain tersimpan di Postgres sehingga selamat dari restart /
+//     redeploy Railway. Skema ada di `supabase-schema.sql` (dijalankan
+//     otomatis saat init).
+//   - Jika tidak diset → pakai `node:sqlite` bawaan Node 24 (DatabaseSync),
+//     file env DB_PATH atau ./lari-koin.db. Dipakai untuk dev lokal & tes.
 //
-// File DB: env DB_PATH atau ./lari-koin.db (di Render free, disk bersifat
-// ephemeral — lihat DEPLOY.md).
+// Kedua backend diekspos lewat SATU antarmuka `db` yang sama:
+//   db.prepare(sql).get(...params)  -> baris pertama / undefined
+//   db.prepare(sql).all(...params)  -> array baris
+//   db.prepare(sql).run(...params)  -> { changes, lastInsertRowid }
+// Semua metode ini ASYNC (mengembalikan Promise) di kedua backend, supaya
+// server.js cukup `await` tanpa peduli backend mana yang aktif.
+//
+// Perbedaan SQLite vs Postgres yang ditangani di adapter (mode pg):
+//   - Placeholder `?`          -> `$1, $2, ...` (berurutan)
+//   - `INSERT OR IGNORE`       -> `INSERT ... ON CONFLICT DO NOTHING`
+//   - `name=? COLLATE NOCASE`  -> `LOWER(name) = LOWER(?)`
+//   - `INSERT INTO players|withdrawals` -> ditambah `RETURNING id` agar
+//     `lastInsertRowid` tetap tersedia seperti di SQLite
+//   - Postgres melipat nama kolom tak-ber-quote ke huruf kecil
+//     (playerId -> playerid) -> kunci baris dipetakan balik ke camelCase
+//   - Kolom jsonb dibaca pg sebagai objek JS -> parseJson() menerimanya
+//   - pg mengembalikan bigint/numeric sebagai string -> di-parse ke Number
+//     (aman: nilai koin di game jauh di bawah batas aman Number)
+//   - Kolom `key`/`value` di admin_settings: keduanya kata non-reserved di
+//     Postgres, jadi boleh dipakai tanpa quote seperti di SQLite.
 
 const crypto = require('node:crypto');
+const fs = require('node:fs');
 const path = require('node:path');
-const { DatabaseSync } = require('node:sqlite');
 
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'lari-koin.db');
-const db = new DatabaseSync(DB_PATH);
-db.exec('PRAGMA journal_mode = WAL;');
-db.exec('PRAGMA foreign_keys = ON;');
+const USE_PG = !!process.env.DATABASE_URL;
+
+// --- pg: parse bigint (int8) & numeric sebagai Number ----------------------
+let pgPool = null;
+if (USE_PG) {
+  const pg = require('pg');
+  // int8 (oid 20) -> Number; numeric (oid 1700) -> parseFloat
+  pg.types.setTypeParser(20, (v) => parseInt(v, 10));
+  pg.types.setTypeParser(1700, (v) => parseFloat(v));
+  pgPool = new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+    // Supabase (pooler & direct) mewajibkan SSL.
+    ssl: { rejectUnauthorized: false },
+    max: 5,
+  });
+  pgPool.on('error', (e) => console.error('[pg] pool error:', e.message));
+}
+
+// --- SQLite (fallback lokal) ------------------------------------------------
+let sqliteDb = null;
+if (!USE_PG) {
+  const { DatabaseSync } = require('node:sqlite');
+  const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'lari-koin.db');
+  sqliteDb = new DatabaseSync(DB_PATH);
+}
 
 // ---------------------------------------------------------------------------
 // Konstanta ekonomi (DIKUNCI — jangan diubah tanpa persetujuan pemilik)
@@ -84,9 +124,9 @@ const ACHIEVEMENTS = [
 ];
 
 // ---------------------------------------------------------------------------
-// Skema
+// Skema SQLite (dipakai saat DATABASE_URL tidak diset)
 // ---------------------------------------------------------------------------
-db.exec(`
+const SQLITE_DDL = `
 CREATE TABLE IF NOT EXISTS players (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT UNIQUE NOT NULL,
@@ -180,7 +220,83 @@ CREATE TABLE IF NOT EXISTS gift_redemptions (
   code TEXT NOT NULL,
   PRIMARY KEY (playerId, code)
 );
-`);
+`;
+
+// ---------------------------------------------------------------------------
+// Adapter pg: terjemahan SQL SQLite -> Postgres
+// ---------------------------------------------------------------------------
+// Postgres melipat identifier tak-ber-quote ke huruf kecil, jadi kunci baris
+// hasil query dipetakan balik ke camelCase yang dipakai kode.
+const PG_KEY_MAP = {
+  playerid: 'playerId', pinhash: 'pinHash', pinsalt: 'pinSalt',
+  maxlevel: 'maxLevel', lastcheckin: 'lastCheckin', totalearned: 'totalEarned',
+  totalads: 'totalAds', totallevels: 'totalLevels', createdat: 'createdAt',
+  lastactive: 'lastActive', amountrp: 'amountRp', offerid: 'offerId',
+  partnerrp: 'partnerRp', rewardcoins: 'rewardCoins', missionid: 'missionId',
+  achievementid: 'achievementId', adstoday: 'adsToday', lastadat: 'lastAdAt',
+  wheelleft: 'wheelLeft', chestleft: 'chestLeft', referrerid: 'referrerId',
+  friendid: 'friendId', playername: 'playerName', friendname: 'friendName',
+};
+function mapRow(row) {
+  if (!row) return row;
+  const out = {};
+  for (const [k, v] of Object.entries(row)) out[PG_KEY_MAP[k] || k] = v;
+  return out;
+}
+
+// Ubah SQL bergaya SQLite menjadi SQL Postgres.
+// (Di codebase ini '?' hanya muncul sebagai placeholder — tidak ada '?'
+//  di dalam literal string SQL — jadi penggantian berurutan ini aman.)
+function toPgSql(sql) {
+  let s = sql;
+  let ignore = false;
+  s = s.replace(/INSERT OR IGNORE INTO/i, () => { ignore = true; return 'INSERT INTO'; });
+  s = s.replace(/([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*\?\s+COLLATE NOCASE/gi, 'LOWER($1) = LOWER(?)');
+  let i = 0;
+  s = s.replace(/\?/g, () => '$' + (++i));
+  if (ignore) s += ' ON CONFLICT DO NOTHING';
+  return s;
+}
+
+function pgPrepare(sql) {
+  return {
+    get: async (...params) => {
+      const { rows } = await pgPool.query(toPgSql(sql), params);
+      return mapRow(rows[0]);
+    },
+    all: async (...params) => {
+      const { rows } = await pgPool.query(toPgSql(sql), params);
+      return rows.map(mapRow);
+    },
+    run: async (...params) => {
+      let q = toPgSql(sql);
+      // Hanya INSERT ke players/withdrawals yang butuh id baru (dipakai
+      // server.js sebagai lastInsertRowid); INSERT lain tidak punya kolom id.
+      const needsId = /^\s*INSERT\s+INTO\s+(players|withdrawals)\b/i.test(sql);
+      if (needsId) q += ' RETURNING id';
+      const res = await pgPool.query(q, params);
+      return {
+        changes: res.rowCount,
+        lastInsertRowid: needsId && res.rows[0] ? res.rows[0].id : undefined,
+      };
+    },
+  };
+}
+
+function sqlitePrepare(sql) {
+  const stmt = sqliteDb.prepare(sql);
+  return {
+    get: (...params) => Promise.resolve(stmt.get(...params)),
+    all: (...params) => Promise.resolve(stmt.all(...params)),
+    run: (...params) => Promise.resolve(stmt.run(...params)),
+  };
+}
+
+// Antarmuka DB tunggal — dipakai server.js persis seperti sebelumnya,
+// hanya saja get/all/run kini async (await di call site).
+const db = {
+  prepare: (sql) => (USE_PG ? pgPrepare(sql) : sqlitePrepare(sql)),
+};
 
 // ---------------------------------------------------------------------------
 // PIN: hash scrypt (jangan pernah simpan plaintext)
@@ -249,32 +365,58 @@ const OFFER_SEED = [
   ['adjoe', 'Instal & Main Game Arcade', 'Instal game arcade dan mainkan 3 ronde.', 7000],
 ];
 
-function seed() {
-  const adminRow = db.prepare("SELECT value FROM admin_settings WHERE key='adminPinHash'").get();
+async function seed() {
+  const adminRow = await db.prepare("SELECT value FROM admin_settings WHERE key='adminPinHash'").get();
   if (!adminRow) {
     const { salt, hash } = hashPin('246810'); // PIN admin awal
-    db.prepare("INSERT INTO admin_settings(key,value) VALUES('adminPinHash',?)").run(hash);
-    db.prepare("INSERT INTO admin_settings(key,value) VALUES('adminPinSalt',?)").run(salt);
+    await db.prepare("INSERT INTO admin_settings(key,value) VALUES('adminPinHash',?)").run(hash);
+    await db.prepare("INSERT INTO admin_settings(key,value) VALUES('adminPinSalt',?)").run(salt);
     console.log('[seed] PIN admin awal 246810 disimpan ter-hash.');
   }
-  const count = db.prepare('SELECT COUNT(*) AS c FROM offers').get().c;
+  const count = (await db.prepare('SELECT COUNT(*) AS c FROM offers').get()).c;
   if (count === 0) {
-    const ins = db.prepare('INSERT INTO offers(id,provider,title,desc,partnerRp,rewardCoins,secret) VALUES(?,?,?,?,?,?,?)');
-    OFFER_SEED.forEach(([provider, title, desc, partnerRp], i) => {
+    for (let i = 0; i < OFFER_SEED.length; i++) {
+      const [provider, title, desc, partnerRp] = OFFER_SEED[i];
       const id = `offer_${String(i + 1).padStart(2, '0')}`;
       const rewardCoins = Math.round(partnerRp * 0.5 * COINS_PER_RUPIAH); // pemain terima tepat 50%
       const secret = crypto.randomBytes(16).toString('hex');
-      ins.run(id, provider, title, desc, partnerRp, rewardCoins, secret);
-    });
+      await db.prepare('INSERT INTO offers(id,provider,title,desc,partnerRp,rewardCoins,secret) VALUES(?,?,?,?,?,?,?)')
+        .run(id, provider, title, desc, partnerRp, rewardCoins, secret);
+    }
     console.log('[seed] 14 misi offerwall (7 penyedia x 2) dibuat.');
   }
 }
-seed();
 
 // ---------------------------------------------------------------------------
-// Helper pemain
+// Init: buat skema (kalau belum ada) + seed. WAJIB dipanggil sebelum server
+// listen — server.js memanggil initDb() saat start.
+// ---------------------------------------------------------------------------
+let initPromise = null;
+async function initDb() {
+  if (initPromise) return initPromise;
+  initPromise = (async () => {
+    if (USE_PG) {
+      const schema = fs.readFileSync(path.join(__dirname, 'supabase-schema.sql'), 'utf8');
+      await pgPool.query(schema);
+      console.log('[db] Postgres (DATABASE_URL) aktif — skema supabase-schema.sql diterapkan.');
+    } else {
+      sqliteDb.exec('PRAGMA journal_mode = WAL;');
+      sqliteDb.exec('PRAGMA foreign_keys = ON;');
+      sqliteDb.exec(SQLITE_DDL);
+      console.log('[db] SQLite lokal aktif (DATABASE_URL tidak diset).');
+    }
+    await seed();
+  })();
+  return initPromise;
+}
+
+// ---------------------------------------------------------------------------
+// Helper pemain (async — memakai adapter db di atas)
 // ---------------------------------------------------------------------------
 function parseJson(text, fallback) {
+  // Kolom jsonb Postgres dibaca pg sebagai objek JS — terima apa adanya.
+  if (text === null || text === undefined) return fallback;
+  if (typeof text === 'object') return text;
   try { const v = JSON.parse(text); return v ?? fallback; } catch { return fallback; }
 }
 function publicPlayer(row) {
@@ -291,12 +433,12 @@ function publicPlayer(row) {
     powerups: parseJson(row.powerups, {}),
   };
 }
-function getDailyState(playerId, date) {
-  let row = db.prepare('SELECT * FROM daily_state WHERE playerId=? AND date=?').get(playerId, date);
+async function getDailyState(playerId, date) {
+  let row = await db.prepare('SELECT * FROM daily_state WHERE playerId=? AND date=?').get(playerId, date);
   if (!row) {
-    db.prepare('INSERT INTO daily_state(playerId,date,adsToday,lastAdAt,wheelLeft,chestLeft) VALUES(?,?,?,?,?,?)')
+    await db.prepare('INSERT INTO daily_state(playerId,date,adsToday,lastAdAt,wheelLeft,chestLeft) VALUES(?,?,?,?,?,?)')
       .run(playerId, date, 0, null, 1, 1);
-    row = db.prepare('SELECT * FROM daily_state WHERE playerId=? AND date=?').get(playerId, date);
+    row = await db.prepare('SELECT * FROM daily_state WHERE playerId=? AND date=?').get(playerId, date);
   }
   return row;
 }
@@ -306,20 +448,22 @@ function todaysMissions(date) {
   const start = ((dayIndex % 6) + 6) % 6;
   return [0, 1, 2].map((i) => MISSION_POOL[(start + i) % MISSION_POOL.length]);
 }
-function ensureMissionRows(playerId, date) {
-  const ins = db.prepare('INSERT OR IGNORE INTO mission_progress(playerId,missionId,date,progress,claimed) VALUES(?,?,?,?,0)');
-  todaysMissions(date).forEach((m) => ins.run(playerId, m.id, date, 0));
+async function ensureMissionRows(playerId, date) {
+  for (const m of todaysMissions(date)) {
+    await db.prepare('INSERT OR IGNORE INTO mission_progress(playerId,missionId,date,progress,claimed) VALUES(?,?,?,?,0)')
+      .run(playerId, m.id, date, 0);
+  }
 }
-function addMissionProgress(playerId, missionId, amount, date) {
-  ensureMissionRows(playerId, date);
-  const row = db.prepare('SELECT * FROM mission_progress WHERE playerId=? AND missionId=? AND date=?').get(playerId, missionId, date);
+async function addMissionProgress(playerId, missionId, amount, date) {
+  await ensureMissionRows(playerId, date);
+  const row = await db.prepare('SELECT * FROM mission_progress WHERE playerId=? AND missionId=? AND date=?').get(playerId, missionId, date);
   if (!row) return; // misi tidak aktif hari ini
   const def = MISSION_POOL.find((m) => m.id === missionId);
   const next = Math.min(def.target, row.progress + amount);
-  db.prepare('UPDATE mission_progress SET progress=? WHERE playerId=? AND missionId=? AND date=?').run(next, playerId, missionId, date);
+  await db.prepare('UPDATE mission_progress SET progress=? WHERE playerId=? AND missionId=? AND date=?').run(next, playerId, missionId, date);
 }
-function achievementUnlocked(a, player) {
-  const invited = db.prepare('SELECT COUNT(*) AS c FROM referrals WHERE referrerId=?').get(player.id).c;
+async function achievementUnlocked(a, player) {
+  const invited = (await db.prepare('SELECT COUNT(*) AS c FROM referrals WHERE referrerId=?').get(player.id)).c;
   switch (a.id) {
     case 'a_level1': return player.totalLevels >= 1;
     case 'a_level10': return player.totalLevels >= 10;
@@ -338,7 +482,7 @@ function referralReady(friend) {
 }
 
 module.exports = {
-  db, hashPin, verifyPin, makeToken, verifyToken,
+  db, initDb, hashPin, verifyPin, makeToken, verifyToken,
   todayStr, yesterdayStr, nowIso,
   rpToCoins, coinsToRp,
   AD_REWARD_COINS, AD_COOLDOWN_MS, AD_MAX_PER_DAY,
