@@ -24,8 +24,8 @@ def twaManifest = [
     applicationId: 'id.ranszshop.larikoin',
     hostName: 'lari-koin-hosting-production.up.railway.app', // The domain being opened in the TWA.
     launchUrl: '/', // The start path for the TWA. Must be relative to the domain.
-    name: 'Lari Koin Online', // The application name.
-    launcherName: 'Lari Koin', // The name shown on the Android Launcher.
+    name: 'Nailong Runner', // The application name.
+    launcherName: 'Nailong Runner', // The name shown on the Android Launcher.
     themeColor: '#F5B301', // The color used for the status bar.
     themeColorDark: '#3B2410', // The color used for the dark status bar.
     navigationColor: '#3B2410', // The color used for the navigation bar.
@@ -57,8 +57,8 @@ android {
         applicationId "id.ranszshop.larikoin"
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 2
+        versionName "1.1.0"
 
         // The name for the application
         resValue "string", "appName", twaManifest.name
