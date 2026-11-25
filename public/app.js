@@ -78,6 +78,31 @@ function mulaiShowcase(canvasId, fallbackId) {
 }
 onRun3DReady(() => mulaiShowcase('loginShowcase', 'loginShowcaseFallback'));
 
+/* Hero login: logo + kartu karakter flagship (satu kesatuan).
+   Belum login -> char-01 "Rex". Login -> karakter aktif pemain.
+   Kartu goyang terus (CSS .hero-char-wrap) + miring saat digeser (tilt). */
+function renderLoginHero() {
+  const img = $('loginCharCard');
+  if (img) img.src = gambarKarakterAktif();
+  const nama = $('loginCharNama');
+  if (nama) { const k = karakterAktif(); nama.textContent = k ? k.nama : 'Rex'; }
+}
+(function pasangTiltKartuLogin() {
+  const img = $('loginCharCard');
+  if (!img) return;
+  let dragging = false, sx = 0, sy = 0;
+  img.addEventListener('pointerdown', (e) => { dragging = true; sx = e.clientX; sy = e.clientY; try { img.setPointerCapture(e.pointerId); } catch (err) {} });
+  img.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const dx = (e.clientX - sx) / 10, dy = (e.clientY - sy) / 10;
+    img.style.transform = 'rotateY(' + Math.max(-18, Math.min(18, dx)) + 'deg) rotateX(' + Math.max(-12, Math.min(12, -dy)) + 'deg)';
+  });
+  const lepas = () => { dragging = false; img.style.transform = ''; };
+  img.addEventListener('pointerup', lepas);
+  img.addEventListener('pointercancel', lepas);
+})();
+renderLoginHero();
+
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
 async function api(path, method, body) {
@@ -313,6 +338,11 @@ function renderProfil() {
   const linkEl = $('inviteLink'); if (linkEl) linkEl.value = inviteUrlFor(namaInvite);
   const waEl = $('btnWaInvite'); if (waEl) waEl.href = waInviteUrl(namaInvite);
   const skinEl = $('skinAktifNama'); if (skinEl) skinEl.textContent = 'Skin aktif: ' + namaKarakterSkinAktif();
+  // Kartu + judul karakter aktif (Beranda + hero login).
+  const kAktif = karakterAktif();
+  const imgB = $('berandaCharCard'); if (imgB) imgB.src = gambarKarakterAktif();
+  const hB = $('karakterJudul'); if (hB) hB.textContent = '🎭 Karakterku — ' + (kAktif ? kAktif.nama : 'Xbot');
+  renderLoginHero();
   applySkin3D();
   const persen = Math.min(100, Math.round(koinKeRp(coins) / 1000 * 100));
   $('progressTarik').style.width = persen + '%';
@@ -473,6 +503,35 @@ const KATALOG = {
   ]
 };
 /* Skin level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 skin). Set lengkap bisa ditukar Rp100.000. */
+/* Karakter level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 karakter).
+   Kartu gambar di /characters/. Warna [utama, garis, perut] dipakai tint 3D + 2D.
+   Cermin dari LEVEL_CHARACTERS di db.js — jaga agar id/level/nama/img sama. */
+const LEVEL_CHARACTERS = [
+  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: ['#1a1a1a', '#000000', '#424242'] },
+  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: ['#d32f2f', '#9a0007', '#ffcdd2'] },
+  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: ['#4fc3f7', '#0288d1', '#e1f5fe'] },
+  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: ['#90caf9', '#42a5f5', '#e3f2fd'] },
+  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: ['#66bb6a', '#388e3c', '#e8f5e9'] },
+  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: ['#ab47bc', '#6a1b9a', '#f3e5f5'] },
+  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: ['#fb8c00', '#e65100', '#fff3e0'] },
+  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: ['#f06292', '#c2185b', '#fce4ec'] },
+  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: ['#fdd835', '#f9a825', '#fffde7'] },
+  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: ['#26a69a', '#00695c', '#e0f2f1'] },
+  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: ['#546e7a', '#263238', '#eceff1'] },
+  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: ['#ffd700', '#b8860b', '#fffde7'] },
+];
+function karakterLevel(id) { return LEVEL_CHARACTERS.find((c) => c.id === id) || null; }
+/* Karakter roster aktif (null kalau pakai karakter toko lama). */
+function karakterAktif() {
+  const char = (profile && profile.equipped && profile.equipped.character) || 'char-01';
+  return karakterLevel(char);
+}
+/* Gambar kartu karakter aktif — char-01 "Rex" jadi flagship kalau belum login
+   atau kalau pemain pakai karakter toko lama (jolly/kiko/momo/rex). */
+function gambarKarakterAktif() {
+  const k = karakterAktif();
+  return k ? k.img : '/characters/char-01.jpg';
+}
 const LEVEL_SKINS = [
   { id: 'es', level: 5, nama: 'Es', ikon: '❄️', desc: 'Xbot biru es yang sejuk.' },
   { id: 'sakura', level: 10, nama: 'Sakura', ikon: '🌸', desc: 'Xbot pink bunga sakura.' },
@@ -517,6 +576,8 @@ const SKIN3D_WARNA = {
 };
 function warnaSkin3D() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
+  const k = karakterLevel(char);
+  if (k) return k.warna; // karakter level menang atas skin (identitas karakter)
   const skin = (profile && profile.equipped && profile.equipped.skin) || '';
   if (skin && SKIN3D_WARNA[skin]) return SKIN3D_WARNA[skin];
   return SKIN3D_WARNA[char] || SKIN3D_WARNA.jolly;
@@ -530,7 +591,8 @@ function applySkin3D() {
 function namaKarakterSkinAktif() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
   const skin = (profile && profile.equipped && profile.equipped.skin) || '';
-  const cn = (KATALOG.character.find((c) => c.id === char) || {}).nama || 'Xbot';
+  const k = karakterLevel(char);
+  const cn = k ? k.nama : ((KATALOG.character.find((c) => c.id === char) || {}).nama || 'Xbot');
   if (!skin) return cn;
   const sk = LEVEL_SKINS.find((x) => x.id === skin) || KATALOG.skin.find((x) => x.id === skin);
   return cn + ' • Skin ' + (sk ? sk.nama : skin);
@@ -548,6 +610,7 @@ function terpakai(kind, id) {
 }
 function renderToko() {
   renderTokoBagian('character', 'tokoKarakter');
+  renderKarakterLevel();
   renderTokoBagian('skin', 'tokoSkin');
   renderSkinLevel();
   renderTokoBagian('powerup', 'tokoPowerup');
@@ -607,6 +670,27 @@ function renderSkinLevel() {
   b.disabled = sudah || milik < 12;
   b.addEventListener('click', async () => { try { await api('/api/skins/fullset-claim', 'POST', {}); toast('Set lengkap ditukar! +Rp100.000 🎉'); await muatProfil(); } catch (e) { toast(e.message); } });
   panel.appendChild(b); el.appendChild(panel);
+}
+
+/* Grid pilih karakter level (12 karakter, gratis tiap naik 5 level) */
+function renderKarakterLevel() {
+  const el = $('tokoKarakterLevel');
+  if (!el) return;
+  el.innerHTML = '';
+  const milik = (profile && profile.levelChars) || [];
+  const aktif = (profile && profile.equipped && profile.equipped.character) || '';
+  LEVEL_CHARACTERS.forEach((c) => {
+    const punya = milik.includes(c.id);
+    const d = document.createElement('div');
+    d.className = 'karakter-card' + (punya ? '' : ' terkunci') + (aktif === c.id ? ' aktif' : '');
+    d.innerHTML = '<img src="' + c.img + '" alt="' + esc(c.nama) + '" loading="lazy"><b>' + esc(c.nama) + '</b><span class="small">' + (punya ? (aktif === c.id ? '✅ Dipakai' : 'Dimiliki') : '🔒 Lv ' + c.level) + '</span>';
+    if (punya && aktif !== c.id) {
+      d.addEventListener('click', async () => { try { await api('/api/character/select', 'POST', { id: c.id }); toast(c.nama + ' dipakai! 🎭'); await muatProfil(); } catch (e) { toast(e.message); } });
+    } else if (!punya) {
+      d.addEventListener('click', () => toast(c.nama + ' terbuka di Lv ' + c.level + ' — terus main!'));
+    }
+    el.appendChild(d);
+  });
 }
 
 /* ---------- Offerwall ---------- */
@@ -867,6 +951,8 @@ function warnaKarakter() {
     komet: ['#ff9800', '#e65100', '#fff3e0'], legenda: ['#ffd700', '#b8860b', '#fffde7']
   };
   if (WARNA_SKIN_LEVEL[skin]) { warna = WARNA_SKIN_LEVEL[skin][0]; garis = WARNA_SKIN_LEVEL[skin][1]; perut = WARNA_SKIN_LEVEL[skin][2]; }
+  const k = karakterLevel(char);
+  if (k) { warna = k.warna[0]; garis = k.warna[1]; perut = k.warna[2]; }
   return { warna, garis, perut, skin, char };
 }
 function drawNailongBelakang(c, x, y, r, lean, frame, shield) {
@@ -1072,6 +1158,7 @@ async function selesaiLevel() {
       const d = await api('/api/finish-level', 'POST', { level: game.level, coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: Date.now() - (game.mulaiAt || Date.now()) });
       pesan += '<p>Bonus level: <b>+' + (d.bonus != null ? d.bonus : 0) + '</b> • Total dari lari ini: <b>' + (d.coinsEarned != null ? d.coinsEarned : game.coins) + ' koin</b><br><span class="muted">Saldo sekarang: ' + (d.coins != null ? d.coins : '') + ' koin.</span></p>';
       if (d.skinsBaru && d.skinsBaru.length) pesan += '<p>🎨 Skin baru terbuka: <b>' + d.skinsBaru.map(esc).join(', ') + '</b> — cek di Toko!</p>';
+      if (d.charsBaru && d.charsBaru.length) pesan += '<p>🎭 Karakter baru terbuka: <b>' + d.charsBaru.map(esc).join(', ') + '</b> — cek di Toko!</p>';
       await muatProfil();
     } catch (e) { pesan += '<p class="muted">Gagal menyimpan ke server (' + esc(e.message) + ') — koin lokal tetap tercatat di panel hasil.</p>'; }
     pesan += '<button class="btn-emas" id="btnLagi" style="width:100%;margin-top:8px">▶ Main Lagi</button>';

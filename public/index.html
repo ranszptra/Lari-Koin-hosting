@@ -39,6 +39,9 @@
 <!-- LAYAR MASUK / DAFTAR -->
 <section id="authScreen" class="card" style="margin-top:14px">
   <div class="hero-nailong">
+    <img class="hero-logo" src="/runner-coin-logo.png" alt="Runner Coin">
+    <div class="hero-char-wrap"><img id="loginCharCard" class="hero-char" src="/characters/char-01.jpg" alt="Rex — karakter Runner Coin"><span class="hero-spark">✨</span></div>
+    <span id="loginCharNama" class="hero-char-nama">Rex</span>
     <canvas id="loginShowcase" width="420" height="280" aria-label="Karakter Xbot 3D"></canvas>
     <img id="loginShowcaseFallback" class="hidden" src="/runner-coin-logo.png" alt="Runner Coin">
     <div class="hero-koin"><span>🪙</span><span>🪙</span><span>🪙</span><span>🪙</span></div>
@@ -79,8 +82,9 @@
     <div class="tab-panel aktif" id="tab-beranda">
       <!-- KARAKTER 3D -->
       <section class="card" id="karakterSection">
-        <h2>🤖 Karakterku — Xbot</h2>
+        <h2 id="karakterJudul">🎭 Karakterku — Rex</h2>
         <div class="showcase-wrap">
+          <img id="berandaCharCard" class="beranda-char-card" src="/characters/char-01.jpg" alt="Karakter aktif">
           <canvas id="berandaShowcase" width="420" height="300" aria-label="Karakter Xbot 3D — geser untuk memutar"></canvas>
           <img id="berandaShowcaseFallback" class="hidden" src="/runner-coin-logo.png" alt="Runner Coin">
         </div>
@@ -163,6 +167,9 @@
         <h2>🛍 Toko</h2>
         <h3>Karakter</h3>
         <div id="tokoKarakter"></div>
+        <h3>🎭 Karakter Level — Gratis tiap naik 5 level</h3>
+        <p class="muted">Satu karakter baru terbuka tiap naik 5 level. Ketuk karakter yang sudah terbuka untuk memakainya.</p>
+        <div id="tokoKarakterLevel" class="karakter-grid"></div>
         <h3>Skin Karakter</h3>
         <div id="tokoSkin"></div>
         <h3>Power-up</h3>
