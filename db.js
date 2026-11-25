@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS offers (
   id TEXT PRIMARY KEY,
   provider TEXT NOT NULL,
   title TEXT NOT NULL,
-  desc TEXT NOT NULL,
+  "desc" TEXT NOT NULL,
   partnerRp INTEGER NOT NULL,
   rewardCoins INTEGER NOT NULL,
   secret TEXT NOT NULL
@@ -380,7 +380,7 @@ async function seed() {
       const id = `offer_${String(i + 1).padStart(2, '0')}`;
       const rewardCoins = Math.round(partnerRp * 0.5 * COINS_PER_RUPIAH); // pemain terima tepat 50%
       const secret = crypto.randomBytes(16).toString('hex');
-      await db.prepare('INSERT INTO offers(id,provider,title,desc,partnerRp,rewardCoins,secret) VALUES(?,?,?,?,?,?,?)')
+      await db.prepare('INSERT INTO offers(id,provider,title,"desc",partnerRp,rewardCoins,secret) VALUES(?,?,?,?,?,?,?)')
         .run(id, provider, title, desc, partnerRp, rewardCoins, secret);
     }
     console.log('[seed] 14 misi offerwall (7 penyedia x 2) dibuat.');

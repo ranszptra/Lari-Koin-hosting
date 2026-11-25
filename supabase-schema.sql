@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS offers (
   id text PRIMARY KEY,
   provider text NOT NULL,
   title text NOT NULL,
-  desc text NOT NULL,
+  "desc" text NOT NULL,
   partnerRp bigint NOT NULL,
   rewardCoins bigint NOT NULL,
   secret text NOT NULL
@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS gift_redemptions (
 --   rewardCoins = ROUND(partnerRp * 0.5 * 1000 / 15)  [1.000 koin = Rp15]
 -- secret dibuat acak per instalasi (gen_random_bytes).
 -- ---------------------------------------------------------------------------
-INSERT INTO offers (id, provider, title, desc, partnerRp, rewardCoins, secret) VALUES
+INSERT INTO offers (id, provider, title, "desc", partnerRp, rewardCoins, secret) VALUES
   ('offer_01', 'AdGem', 'Instal Aplikasi DanaKita', 'Instal dan daftar akun di aplikasi DanaKita.', 15000, 500000, encode(gen_random_bytes(16), 'hex')),
   ('offer_02', 'AdGem', 'Main Game Puzzle ke Level 10', 'Main game puzzle sampai mencapai level 10.', 25000, 833333, encode(gen_random_bytes(16), 'hex')),
   ('offer_03', 'Tapjoy', 'Instal Aplikasi Belanja Hemat', 'Instal aplikasi Belanja Hemat dan buka aplikasinya.', 12000, 400000, encode(gen_random_bytes(16), 'hex')),

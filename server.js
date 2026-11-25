@@ -403,7 +403,7 @@ app.post('/api/equip', ah(requirePlayer), ah(async (req, res) => {
 // --- Offerwall ---------------------------------------------------------------
 app.get('/api/offers', ah(async (req, res) => {
   const playerId = await optionalPlayerId(req);
-  const offers = await db.prepare('SELECT id,provider,title,desc,partnerRp,rewardCoins FROM offers ORDER BY id').all();
+  const offers = await db.prepare('SELECT id,provider,title,"desc",partnerRp,rewardCoins FROM offers ORDER BY id').all();
   const rows = [];
   for (const o of offers) {
     let status = 'tersedia';
