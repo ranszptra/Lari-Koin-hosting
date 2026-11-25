@@ -49,7 +49,7 @@ mandiri yang bisa di-host di Render gratis dan nanti dibungkus jadi APK (TWA).
   hari ini, koin beredar (+nilai Rp), antrean penarikan per status dengan
   nama/nominal/metode/nomor tujuan + tombol proses/tandai dibayar, daftar
   semua pemain (bisa dicari), statistik mediasi & offerwall, ganti PIN,
-  kartu "Pasang di HP". **PIN awal: `246810` — ganti segera setelah deploy.**
+  kartu "Pasang di HP". **Ganti PIN admin segera setelah deploy (di /admin.html) — jangan pakai PIN bawaan.**
 - **PWA:** `manifest.json` + ikon Jolly (SVG + PNG 192/512) + service worker,
   siap dipasang ke layar utama HP dan dibungkus jadi APK (TWA) setelah
   hosting publik.
@@ -109,8 +109,8 @@ Ringkasan — langkah lengkap ada di [DEPLOY.md](DEPLOY.md):
 2. Di Render: New → Web Service → pilih repo → Runtime Node.
    `render.yaml` sudah berisi semuanya (build `npm install`, start
    `node server.js`, plan free, `OWNER_SECRET` di-generate otomatis).
-3. Buka URL Render → daftar pemain → buka `/admin.html` → login PIN
-   `246810` → **langsung ganti PIN**.
+3. Buka URL Render → daftar pemain → buka `/admin.html` → login dengan PIN
+   awal → **langsung ganti PIN**.
 
 **Peringatan Render Free:** disk-nya *ephemeral* — file `lari-koin.db`
 bisa hilang saat service restart/redeploy (akun & koin pemain ikut hilang).
