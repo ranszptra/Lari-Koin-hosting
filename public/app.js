@@ -84,8 +84,11 @@ onRun3DReady(() => mulaiShowcase('loginShowcase', 'loginShowcaseFallback'));
 function renderLoginHero() {
   const img = $('loginCharCard');
   if (img) img.src = gambarKarakterAktif();
+  const k = karakterAktif();
+  const wrap = $('heroCharWrap');
+  if (wrap) wrap.style.background = gradasiCSS(k);
   const nama = $('loginCharNama');
-  if (nama) { const k = karakterAktif(); nama.textContent = k ? k.nama : 'Rex'; }
+  if (nama) nama.textContent = k ? (k.nama + ' • Lv ' + k.level) : 'Rex';
 }
 (function pasangTiltKartuLogin() {
   const img = $('loginCharCard');
@@ -341,6 +344,8 @@ function renderProfil() {
   // Kartu + judul karakter aktif (Beranda + hero login).
   const kAktif = karakterAktif();
   const imgB = $('berandaCharCard'); if (imgB) imgB.src = gambarKarakterAktif();
+  const wB = $('berandaCharWrap'); if (wB) wB.style.background = gradasiCSS(kAktif);
+  const nB = $('berandaCharNama'); if (nB) nB.textContent = kAktif ? (kAktif.nama + ' • Lv ' + kAktif.level) : 'Rex';
   const hB = $('karakterJudul'); if (hB) hB.textContent = '🎭 Karakterku — ' + (kAktif ? kAktif.nama : 'Xbot');
   renderLoginHero();
   applySkin3D();
@@ -507,20 +512,31 @@ const KATALOG = {
    Kartu gambar di /characters/. Warna [utama, garis, perut] dipakai tint 3D + 2D.
    Cermin dari LEVEL_CHARACTERS di db.js — jaga agar id/level/nama/img sama. */
 const LEVEL_CHARACTERS = [
-  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: ['#1a1a1a', '#000000', '#424242'] },
-  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: ['#d32f2f', '#9a0007', '#ffcdd2'] },
-  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: ['#4fc3f7', '#0288d1', '#e1f5fe'] },
-  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: ['#90caf9', '#42a5f5', '#e3f2fd'] },
-  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: ['#66bb6a', '#388e3c', '#e8f5e9'] },
-  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: ['#ab47bc', '#6a1b9a', '#f3e5f5'] },
-  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: ['#fb8c00', '#e65100', '#fff3e0'] },
-  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: ['#f06292', '#c2185b', '#fce4ec'] },
-  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: ['#fdd835', '#f9a825', '#fffde7'] },
-  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: ['#26a69a', '#00695c', '#e0f2f1'] },
-  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: ['#546e7a', '#263238', '#eceff1'] },
-  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: ['#ffd700', '#b8860b', '#fffde7'] },
+  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: ['#1a1a1a', '#000000', '#424242'] , gradasi: ['#2b2b2b', '#c62828', '#ff5252'] },
+  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: ['#d32f2f', '#9a0007', '#ffcdd2'] , gradasi: ['#ff1744', '#c62828', '#7f0000'] },
+  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: ['#4fc3f7', '#0288d1', '#e1f5fe'] , gradasi: ['#b3e5fc', '#4fc3f7', '#01579b'] },
+  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: ['#90caf9', '#42a5f5', '#e3f2fd'] , gradasi: ['#e3f2fd', '#90caf9', '#1565c0'] },
+  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: ['#66bb6a', '#388e3c', '#e8f5e9'] , gradasi: ['#a5d6a7', '#43a047', '#1b5e20'] },
+  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: ['#ab47bc', '#6a1b9a', '#f3e5f5'] , gradasi: ['#ce93d8', '#8e24aa', '#4a148c'] },
+  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: ['#fb8c00', '#e65100', '#fff3e0'] , gradasi: ['#ffcc80', '#fb8c00', '#bf360c'] },
+  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: ['#f06292', '#c2185b', '#fce4ec'] , gradasi: ['#f8bbd0', '#ec407a', '#880e4f'] },
+  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: ['#fdd835', '#f9a825', '#fffde7'] , gradasi: ['#fff176', '#fdd835', '#f57f17'] },
+  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: ['#26a69a', '#00695c', '#e0f2f1'] , gradasi: ['#80cbc4', '#26a69a', '#004d40'] },
+  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: ['#546e7a', '#263238', '#eceff1'] , gradasi: ['#90a4ae', '#546e7a', '#11171c'] },
+  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: ['#ffd700', '#b8860b', '#fffde7'] , gradasi: ['#ffe082', '#ffd700', '#8d6e00'] },
 ];
 function karakterLevel(id) { return LEVEL_CHARACTERS.find((c) => c.id === id) || null; }
+/* Gradasi latar kartu per karakter (Batch 7.1) — dipakai kartu grid, hero login,
+   dan kartu Beranda supaya latarnya menarik, bukan putih polos.
+   Gambar karakter tetap utuh di dalam bingkai (tanpa mix-blend): 10 gambar
+   berlatar putih, Sky berlatar hitam, Frost berlatar biru — blend akan merusak
+   2 gambar itu (diuji visual dengan PIL: multiply gagal di bg hitam/biru,
+   screen memutihkan karakter; frame + gradasi bagus untuk semuanya). */
+const GRADASI_DEFAULT = ['#4a2d7a', '#2d1b4d', '#8a6d00'];
+function gradasiCSS(k) {
+  const g = (k && k.gradasi) || GRADASI_DEFAULT;
+  return 'radial-gradient(circle at 50% 22%, rgba(255,255,255,.55), rgba(255,255,255,0) 55%), linear-gradient(135deg, ' + g[0] + ' 0%, ' + g[1] + ' 55%, ' + g[2] + ' 100%)';
+}
 /* Karakter roster aktif (null kalau pakai karakter toko lama). */
 function karakterAktif() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'char-01';
@@ -683,7 +699,9 @@ function renderKarakterLevel() {
     const punya = milik.includes(c.id);
     const d = document.createElement('div');
     d.className = 'karakter-card' + (punya ? '' : ' terkunci') + (aktif === c.id ? ' aktif' : '');
-    d.innerHTML = '<img src="' + c.img + '" alt="' + esc(c.nama) + '" loading="lazy"><b>' + esc(c.nama) + '</b><span class="small">' + (punya ? (aktif === c.id ? '✅ Dipakai' : 'Dimiliki') : '🔒 Lv ' + c.level) + '</span>';
+    d.style.background = gradasiCSS(c);
+    const status = punya ? ((aktif === c.id ? '✅ Dipakai' : 'Dimiliki') + ' • Lv ' + c.level) : ('🔒 Lv ' + c.level);
+    d.innerHTML = '<img src="' + c.img + '" alt="' + esc(c.nama) + '" loading="lazy"><b>' + esc(c.nama) + '</b><span class="status">' + status + '</span>';
     if (punya && aktif !== c.id) {
       d.addEventListener('click', async () => { try { await api('/api/character/select', 'POST', { id: c.id }); toast(c.nama + ' dipakai! 🎭'); await muatProfil(); } catch (e) { toast(e.message); } });
     } else if (!punya) {
