@@ -1,4 +1,5 @@
-// Tes statis: mode layar penuh + 3D ringan (fase 1/2) + Three.js lokal + SW v13.
+// Tes statis: mode layar penuh + 3D ringan (fase 1/2) + Three.js lokal + SW v14.
+// v14: karakter manusia Traveller (Run bawaan), fase 2 di-retarget.
 // Jalankan: node tests/test-fullscreen-3d.mjs  (exit 0 = semua lolos)
 import { readFileSync, existsSync } from 'fs';
 
@@ -14,21 +15,23 @@ const app = readFileSync(ROOT + '/app.js', 'utf8');
 const html = readFileSync(ROOT + '/index.html', 'utf8');
 const sw = readFileSync(ROOT + '/sw.js', 'utf8');
 
-// (a) Fase 1 hanya memuat 3 model: xbot.fbx + xbot@running.fbx + coin.fbx
+// (a) Fase 1 hanya memuat karakter manusia + koin: traveller.fbx + coin.fbx
+// (Run bawaan karakter, tanpa xbot@running.fbx terpisah)
 const f1mulai = run3d.indexOf('async function loadModelsPhase1()');
 const f1akhir = run3d.indexOf('\n}\n', f1mulai) + 3;
 const f1 = run3d.slice(f1mulai, f1akhir);
-cek('(a1) fase 1 memuat xbot.fbx', f1.includes("MODEL_BASE + 'xbot.fbx'"));
-cek('(a2) fase 1 memuat xbot@running.fbx', f1.includes("xbot@running.fbx"));
-cek('(a3) fase 1 memuat coin.fbx', f1.includes("MODEL_BASE + 'coin.fbx'"));
+cek('(a1) fase 1 memuat traveller.fbx', f1.includes("MODEL_BASE + CHAR_FILE") && run3d.includes("CHAR_FILE = 'traveller.fbx'"));
+cek('(a2) fase 1 memuat coin.fbx', f1.includes("MODEL_BASE + 'coin.fbx'"));
+cek('(a3) fase 1 TIDAK memuat xbot@running.fbx', !f1.includes('xbot@running.fbx'));
 cek('(a4) fase 1 TIDAK memuat xbot@jumping.fbx', !f1.includes('xbot@jumping.fbx'));
 cek('(a5) fase 1 TIDAK memuat xbot@sliding.fbx', !f1.includes('xbot@sliding.fbx'));
 cek('(a6) fase 1 TIDAK memuat xbot@stumbling.fbx', !f1.includes('xbot@stumbling.fbx'));
 cek('(a7) fase 1 TIDAK memuat xbot@dancing.fbx', !f1.includes('xbot@dancing.fbx'));
+cek('(a8) fase 1 memakai klip Run bawaan karakter', f1.includes("R.clips.run = makeAction(R.clips.run, true, 1)") || f1.includes("R.clips.run") && f1.includes("R.actions.run = makeAction"));
 const f2 = run3d.slice(run3d.indexOf('const ANIMASI_FASE2'), run3d.indexOf('async function loadModelsPhase2()'));
-cek('(a8) fase 2 berisi jump+slide+stumble+dance',
+cek('(a9) fase 2 berisi jump+slide+stumble+dance',
   ['xbot@jumping.fbx', 'xbot@sliding.fbx', 'xbot@stumbling.fbx', 'xbot@dancing.fbx'].every((m) => f2.includes(m)));
-cek('(a9) fungsi loadModels lama sudah tidak ada', !/async function loadModels\(\)/.test(run3d));
+cek('(a10) fungsi loadModels lama sudah tidak ada', !/async function loadModels\(\)/.test(run3d));
 
 // (b) Timeout fase 1 tetap 15 detik + fallback 2D tetap ada
 cek('(b1) preload memakai timeout 15000 ms', /setTimeout\(\(\) => rej\(new Error\('Timeout memuat model 3D \(15 detik\)'\)\), 15000\)/.test(run3d));
@@ -59,8 +62,8 @@ cek('(d9) CSS hasil lari jadi overlay di layar penuh', css.includes('body.mode-f
 cek('(d10) CSS modal tetap di atas layar penuh', css.includes('body.mode-fullscreen .modal{z-index:80}'));
 
 // (e) sw.js CACHE v13
-cek('(e1) sw.js CACHE = lari-koin-v13', sw.includes("const CACHE = 'lari-koin-v13';"));
-cek('(e2) sw.js TIDAK lagi v12', !sw.includes('lari-koin-v12'));
+cek('(e1) sw.js CACHE = lari-koin-v14', sw.includes("const CACHE = 'lari-koin-v14';"));
+cek('(e2) sw.js TIDAK lagi v13', !sw.includes('lari-koin-v13'));
 
 console.log(`\nHasil: ${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);
