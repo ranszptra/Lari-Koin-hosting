@@ -52,6 +52,7 @@ async function muatDashboard() {
     renderTarik(d.withdrawals || {});
     semuaPemain = d.players || [];
     renderPemain('');
+    renderIpSama(d.sameIp || []);
     const med = d.mediation || [];
     $('statMediasi').innerHTML = med.length ? '<table><tr><th>Network</th><th>Tayangan</th><th>Estimasi Rp</th></tr>' + med.map((m) => '<tr><td>' + esc(m.network) + '</td><td>' + (m.impressions || 0).toLocaleString('id-ID') + '</td><td>' + rupiah(m.estRevenueRp || 0) + '</td></tr>').join('') + '</table>' : '<p class="muted">Belum ada data mediasi.</p>';
     const off = d.offerwall || [];
@@ -89,7 +90,16 @@ function renderPemain(q) {
   const el = $('daftarPemain');
   const list = semuaPemain.filter((p) => !q || (p.name || '').toLowerCase().includes(q.toLowerCase()));
   if (!list.length) { el.innerHTML = '<p class="muted">Tidak ada pemain yang cocok.</p>'; return; }
-  el.innerHTML = '<table><tr><th>Nama</th><th>Koin</th><th>Level</th><th>Terakhir Aktif</th></tr>' + list.map((p) => '<tr><td>' + esc(p.name) + '</td><td>' + (p.coins || 0).toLocaleString('id-ID') + '</td><td>' + (p.level || 0) + '</td><td>' + esc(p.lastActive || '—') + '</td></tr>').join('') + '</table>';
+  el.innerHTML = '<table><tr><th>Nama</th><th>Koin</th><th>Level</th><th>IP</th><th>Status</th><th>Terakhir Aktif</th></tr>' + list.map((p) => '<tr><td>' + esc(p.name) + '</td><td>' + (p.coins || 0).toLocaleString('id-ID') + '</td><td>' + (p.level || 0) + '</td><td>' + esc(p.lastIp || p.ip || '—') + '</td><td>' + (p.banned ? '⛔ Diblokir <button class="btn-putih btn-kecil btn-unban" data-id="' + p.id + '">Buka Blokir</button>' : '✅ Aktif') + '</td><td>' + esc(p.lastActive || '—') + '</td></tr>').join('') + '</table>';
+  el.querySelectorAll('.btn-unban').forEach((b) => b.addEventListener('click', async () => {
+    try { await api('/api/admin/unban', 'POST', { id: Number(b.dataset.id) }, true); toast('Blokir dibuka.'); await muatDashboard(); }
+    catch (e) { toast(e.message); }
+  }));
+}
+function renderIpSama(groups) {
+  const el = $('daftarIpSama');
+  if (!groups || !groups.length) { el.innerHTML = '<p class="muted">Tidak ada IP yang dipakai lebih dari 1 akun.</p>'; return; }
+  el.innerHTML = groups.map((g) => '<div class="ip-group"><b>' + esc(g.ip) + '</b> — ' + g.count + ' akun:<br>' + g.players.map((p) => esc(p.name) + ' (id ' + p.id + ', ' + (p.coins || 0).toLocaleString('id-ID') + ' koin)').join(', ') + '</div>').join('');
 }
 $('cariPemain').addEventListener('input', (e) => renderPemain(e.target.value));
 $('btnGantiPin').addEventListener('click', async () => {

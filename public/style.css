@@ -103,3 +103,15 @@ body.pengelola a{color:#ffd54a}
 .loading-bar{width:200px;height:12px;background:rgba(255,255,255,.6);border-radius:8px;overflow:hidden}
 .loading-bar i{display:block;height:100%;width:40%;background:#3b2410;border-radius:8px;animation:memuat 1.2s ease-in-out infinite}
 @keyframes memuat{0%{transform:translateX(-110%)}100%{transform:translateX(520%)}}
+/* Tur fitur */
+.tour-box img{width:120px;height:120px;object-fit:cover;border-radius:24px;display:block;margin:0 auto 8px;animation:nailong-lompat 1.4s ease-in-out infinite}
+.tour-box h3{margin:6px 0}
+.tour-dots{display:flex;gap:6px;justify-content:center;margin:12px 0}
+.tour-dots .dot{width:8px;height:8px;border-radius:50%;background:#e0c48a}
+.tour-dots .dot.on{background:var(--emas);width:22px;border-radius:6px}
+/* Koin jatuh di layar loading */
+.loading-koin span{position:absolute;top:-34px;font-size:26px;animation:koin-jatuh 2.6s ease-in infinite;pointer-events:none;z-index:1}
+.loading-koin span:nth-child(1){left:12%;animation-delay:0s}
+.loading-koin span:nth-child(2){left:38%;animation-delay:.7s}
+.loading-koin span:nth-child(3){left:62%;animation-delay:1.3s}
+.loading-koin span:nth-child(4){left:84%;animation-delay:1.9s}

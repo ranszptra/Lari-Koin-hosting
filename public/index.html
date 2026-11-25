@@ -14,6 +14,7 @@
 <body>
 <!-- LAYAR MEMUAT -->
 <div id="loadingScreen">
+  <div class="loading-koin"><span>🪙</span><span>🪙</span><span>🪙</span><span>🪙</span></div>
   <img class="logo-loading" src="/icon-512.png" alt="Logo Nailong Runner">
   <h1>Nailong Runner</h1>
   <p>Memuat… 🐲</p>
@@ -46,11 +47,19 @@
     <button class="btn-emas" id="btnLogin">Masuk</button>
     <button class="btn-gelap" id="btnRegister">Daftar</button>
   </div>
+  <div id="socialLogin" class="hidden">
+    <p class="small" style="text-align:center;margin:10px 0 6px">— atau masuk sekali ketuk —</p>
+    <div class="row">
+      <div id="btnGoogleWrap" style="flex:1"></div>
+      <button class="btn-putih" id="btnFacebook" style="flex:1">f Masuk dengan Facebook</button>
+    </div>
+    <p class="small" id="socialMsg" style="text-align:center"></p>
+  </div>
   <div class="row" style="margin-top:8px">
     <button class="btn-hijau" id="btnDownloadApp">📲 Download Aplikasi</button>
   </div>
   <p class="small" id="authMsg"></p>
-  <p class="small">Catatan: sesi login hanya tersimpan selama halaman ini terbuka. Kalau halaman di-refresh, silakan masuk lagi dengan nama + PIN.</p>
+  <p class="small">Catatan: login Google/Facebook sekali ketuk dan akunmu tersimpan di server — walau aplikasi dihapus, ketuk Google lagi dan akun + koinmu kembali. Login nama + PIN tetap bisa dipakai.</p>
   <p class="small" style="text-align:center;margin-top:10px"><a href="/privacy.html" style="color:inherit">Kebijakan Privasi</a> &bull; <a href="/terms.html" style="color:inherit">Syarat &amp; Ketentuan</a></p>
 </section>
 
@@ -85,7 +94,8 @@
       <div class="game-controls">
         <button class="btn-emas" id="btnStart">▶ Mulai Lari</button>
         <button class="btn-putih" id="btnPause">⏸ Jeda</button>
-        <button class="btn-putih" id="btnMute">🔊 Suara: Nyala</button>
+        <button class="btn-putih" id="btnMusik">🎵 Musik: Nyala</button>
+        <button class="btn-putih" id="btnSuara">🔊 Suara: Nyala</button>
       </div>
       <div class="lane-btns">
         <button id="btnKiri" aria-label="Pindah ke kiri">⬅ Kiri</button>
@@ -93,6 +103,7 @@
         <button id="btnKanan" aria-label="Pindah ke kanan">Kanan ➡</button>
       </div>
       <p class="small">Keyboard: panah ← → untuk pindah jalur, Spasi untuk mulai/jeda. Layar sentuh: geser kiri/kanan di canvas, atau ketuk tombol di atas.</p>
+      <button class="btn-putih btn-kecil" id="btnCaraMain" style="margin-top:4px">📖 Cara Main</button>
       <div id="gameResult"></div>
     </section>
 
@@ -227,6 +238,21 @@
     <p>Jaringan: <b id="iklanNamaJaringan">—</b></p>
     <p class="muted">Ini iklan simulasi. Hitung mundur <b id="iklanHitung">5</b> detik…</p>
     <button class="btn-emas" id="btnTutupIklan" disabled>Tutup (5)</button>
+  </div>
+</div>
+
+<!-- TUR FITUR (pertama daftar) -->
+<div class="modal" id="tourModal" role="dialog" aria-modal="true">
+  <div class="modal-box tour-box">
+    <img id="tourImg" src="/nailong-wave.jpg" alt="Nailong">
+    <p class="small" id="tourStep" style="text-align:center">Langkah 1 dari 6</p>
+    <h3 id="tourTitle">Selamat datang di Nailong Runner! 🐉</h3>
+    <p id="tourText">Nailong si naga kuning gembul siap lari bersamamu. Lari, kumpulkan koin, tukar koin jadi uang sungguhan.</p>
+    <div class="tour-dots" id="tourDots"></div>
+    <div class="row">
+      <button class="btn-putih" id="btnTourSkip">Lewati</button>
+      <button class="btn-emas" id="btnTourNext">Lanjut</button>
+    </div>
   </div>
 </div>
 

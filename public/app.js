@@ -6,8 +6,9 @@ let profile = null;
 let networks = [];
 let networkIdx = 0;
 let lastAdAt = 0;
-let muted = false;
 let audioCtx = null;
+let suaraNyala = true, musikNyala = true;
+try { suaraNyala = localStorage.getItem('nr_suara') !== '0'; musikNyala = localStorage.getItem('nr_musik') !== '0'; } catch (e) {}
 
 const $ = (id) => document.getElementById(id);
 const rupiah = (n) => 'Rp' + Math.floor(n || 0).toLocaleString('id-ID');
@@ -28,7 +29,7 @@ async function api(path, method, body) {
 
 /* ---------- Suara (WebAudio, sederhana) ---------- */
 function beep(freq, dur, type) {
-  if (muted) return;
+  if (!suaraNyala) return;
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     const o = audioCtx.createOscillator(), g = audioCtx.createGain();
@@ -38,6 +39,39 @@ function beep(freq, dur, type) {
     o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + (dur || 0.12));
   } catch (e) { /* suara opsional */ }
 }
+
+/* ---------- Musik latar (WebAudio, tanpa file) ---------- */
+let musikTimer = null, musikGain = null, musikLangkah = 0, musikWaktu = 0;
+const MELODI = [523, 659, 784, 659, 880, 784, 659, 523, 587, 659, 784, 880, 784, 659, 587, 523];
+const BAS = [131, 131, 175, 175, 196, 196, 175, 131];
+function nada(freq, mulai, dur, type, vol) {
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(0.0001, mulai);
+  g.gain.exponentialRampToValueAtTime(vol, mulai + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, mulai + dur);
+  o.connect(g); g.connect(musikGain); o.start(mulai); o.stop(mulai + dur + 0.05);
+}
+function jadwalMusik() {
+  if (!musikNyala || !audioCtx) return;
+  const langkahDur = 0.22;
+  while (musikWaktu < audioCtx.currentTime + 0.6) {
+    const i = musikLangkah % 16;
+    nada(MELODI[i], musikWaktu, 0.2, 'triangle', 0.06);
+    if (i % 2 === 0) nada(BAS[(musikLangkah >> 1) % 8], musikWaktu, 0.4, 'sine', 0.05);
+    musikWaktu += langkahDur; musikLangkah++;
+  }
+}
+function mulaiMusik() {
+  if (!musikNyala) return;
+  try {
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (!musikGain) { musikGain = audioCtx.createGain(); musikGain.gain.value = 1; musikGain.connect(audioCtx.destination); }
+    if (!musikTimer) { musikWaktu = audioCtx.currentTime + 0.1; musikTimer = setInterval(jadwalMusik, 200); }
+  } catch (e) { /* musik opsional */ }
+}
+function stopMusik() { if (musikTimer) { clearInterval(musikTimer); musikTimer = null; } }
 
 /* ---------- Dunia (6 dunia, tiap 10 level) ---------- */
 const DUNIA = [
@@ -50,6 +84,35 @@ const DUNIA = [
 ];
 function duniaUntuk(level) { return DUNIA[Math.min(5, Math.floor(((level || 1) - 1) / 10))]; }
 function isBos(level) { return level % 10 === 0; }
+
+/* ---------- Latar dunia bergerak (langit, matahari/bulan, partikel) ---------- */
+let partikel = [], partikelDunia = -1;
+function initPartikel(duniaIdx) {
+  partikelDunia = duniaIdx;
+  partikel = [];
+  for (let i = 0; i < 26; i++) partikel.push({ x: Math.random() * 420, y: Math.random() * 520, s: 1 + Math.random() * 3, v: 0.4 + Math.random() * 1.2, f: Math.random() * Math.PI * 2 });
+}
+function gambarLatar(duniaIdx, frame) {
+  const d = DUNIA[duniaIdx];
+  if (partikelDunia !== duniaIdx) initPartikel(duniaIdx);
+  const g = ctx.createLinearGradient(0, 0, 0, 110);
+  g.addColorStop(0, d.langit); g.addColorStop(1, d.tanah);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 420, 110);
+  ctx.fillStyle = duniaIdx === 4 ? '#f5f3ce' : '#fff3b0';
+  ctx.beginPath(); ctx.arc(368, 52, duniaIdx === 4 ? 20 : 26, 0, Math.PI * 2); ctx.fill();
+  if (duniaIdx === 4) { ctx.fillStyle = '#c9c9a8'; ctx.beginPath(); ctx.arc(360, 46, 5, 0, Math.PI * 2); ctx.arc(376, 58, 4, 0, Math.PI * 2); ctx.fill(); }
+  partikel.forEach((p) => {
+    p.f += 0.02;
+    if (duniaIdx === 5) { p.y -= p.v; if (p.y < -6) { p.y = 526; p.x = Math.random() * 420; } }
+    else { p.y += p.v; p.x += Math.sin(p.f) * 0.4; if (p.y > 526) { p.y = -6; p.x = Math.random() * 420; } }
+    if (duniaIdx === 0) { ctx.fillStyle = 'rgba(255,255,255,.85)'; ctx.beginPath(); ctx.ellipse(p.x, p.y, p.s * 5, p.s * 2.2, 0, 0, Math.PI * 2); ctx.fill(); }
+    else if (duniaIdx === 1) { ctx.fillStyle = 'rgba(120,220,120,.9)'; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.f); ctx.fillRect(-p.s * 2, -p.s, p.s * 4, p.s * 2); ctx.restore(); }
+    else if (duniaIdx === 2) { ctx.fillStyle = 'rgba(230,200,140,.8)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2); ctx.fill(); }
+    else if (duniaIdx === 3) { ctx.fillStyle = 'rgba(255,255,255,.95)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2); ctx.fill(); }
+    else if (duniaIdx === 4) { ctx.fillStyle = 'rgba(255,255,255,' + (0.4 + 0.6 * Math.abs(Math.sin(p.f))).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(p.x, p.y, p.s * 0.8, 0, Math.PI * 2); ctx.fill(); }
+    else { ctx.fillStyle = 'rgba(255,' + (100 + Math.floor(80 * Math.abs(Math.sin(p.f)))) + ',40,.95)'; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, Math.PI * 2); ctx.fill(); }
+  });
+}
 
 /* ---------- Auth ---------- */
 async function doAuth(mode) {
@@ -64,19 +127,110 @@ async function doAuth(mode) {
     if (mode === 'register' && referrer) body.referrer = referrer;
     const data = await api(mode === 'register' ? '/api/register' : '/api/login', 'POST', body);
     token = data.token; player = data.player;
-    $('authScreen').classList.add('hidden');
-    $('app').classList.remove('hidden');
-    $('authMsg').textContent = '';
-    toast(mode === 'register' ? 'Akun dibuat, selamat datang ' + name + '!' : 'Selamat datang kembali, ' + name + '!');
-    await muatProfil();
-    await muatLeaderboard();
-    await muatOffers();
-    await muatNetworks();
+    await sesudahLogin(mode === 'register' ? 'Akun dibuat, selamat datang ' + name + '!' : 'Selamat datang kembali, ' + name + '!');
   } catch (e) { $('authMsg').textContent = e.message; }
+}
+async function sesudahLogin(pesan) {
+  if (player && player.banned) {
+    $('authMsg').textContent = 'Akun ini otomatis diblokir: IP kamu sudah dipakai akun lain. Hubungi admin untuk buka blokir.';
+    return;
+  }
+  $('authScreen').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('authMsg').textContent = '';
+  if (pesan) toast(pesan);
+  await muatProfil();
+  await muatLeaderboard();
+  await muatOffers();
+  await muatNetworks();
+  let tourDone = false;
+  try { tourDone = localStorage.getItem('nr_tour_done') === '1'; } catch (e) {}
+  if (!tourDone) tampilTour(0);
 }
 $('btnLogin').addEventListener('click', () => doAuth('login'));
 $('btnRegister').addEventListener('click', () => doAuth('register'));
 $('authPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') doAuth('login'); });
+
+/* ---------- Tur fitur (pertama daftar) ---------- */
+const TOUR_STEPS = [
+  { img: '/nailong-wave.jpg', judul: 'Selamat datang di Nailong Runner! 🐉', teks: 'Nailong si naga kuning gembul siap lari bersamamu. Lari, kumpulkan koin, tukar koin jadi uang sungguhan.' },
+  { judul: '🎮 Cara Main', teks: 'Geser kiri / kanan atau ketuk tombol untuk pindah jalur. Hindari batu, kotak & pagar. Ambil koin — tiap koin +10 koin. Selesaikan level dengan lari sampai jarak target.' },
+  { judul: '🏆 60 Level, 6 Dunia', teks: 'Level makin sulit sampai level 60. Tiap 10 level ada level BOS dengan hadiah 5x lipat. Dunia baru terbuka tiap 10 level: Kota Senja, Hutan Rimba, Gurun Pasir, Salju Abadi, Luar Angkasa, Lava Berapi.' },
+  { judul: '🎯 Misi & Check-in', teks: 'Kerjakan misi harian dan check-in 7 hari berturut-turut untuk koin gratis. Jangan sampai putus — kalau bolos, streak kembali ke hari 1!' },
+  { judul: '👥 Undang Teman', teks: 'Bagikan link undanganmu. Tiap teman yang daftar, nonton iklan, dan menyelesaikan level, kamu dapat Rp5.000.' },
+  { judul: '💰 Tukar Koin Jadi Uang', teks: '1.000 koin = Rp15. Tarik mulai Rp1.000 ke DANA, GoPay, OVO, atau ShopeePay. Semakin sering main, semakin cepat cair!' }
+];
+let tourIdx = 0;
+function tampilTour(i) {
+  tourIdx = i;
+  const s = TOUR_STEPS[i];
+  $('tourStep').textContent = 'Langkah ' + (i + 1) + ' dari ' + TOUR_STEPS.length;
+  $('tourTitle').textContent = s.judul;
+  $('tourText').textContent = s.teks;
+  if (s.img) { $('tourImg').src = s.img; $('tourImg').classList.remove('hidden'); }
+  else $('tourImg').classList.add('hidden');
+  $('tourDots').innerHTML = TOUR_STEPS.map((_, j) => '<span class="dot' + (j === i ? ' on' : '') + '"></span>').join('');
+  $('btnTourNext').textContent = i === TOUR_STEPS.length - 1 ? 'Mulai Main ▶' : 'Lanjut';
+  $('tourModal').classList.add('show');
+}
+function tutupTour() {
+  $('tourModal').classList.remove('show');
+  try { localStorage.setItem('nr_tour_done', '1'); } catch (e) {}
+}
+$('btnTourNext').addEventListener('click', () => {
+  if (tourIdx >= TOUR_STEPS.length - 1) tutupTour();
+  else tampilTour(tourIdx + 1);
+});
+$('btnTourSkip').addEventListener('click', tutupTour);
+$('btnCaraMain').addEventListener('click', () => tampilTour(0));
+
+/* ---------- Login sosial (Google / Facebook, sekali ketuk) ---------- */
+function muatScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = true; s.defer = true;
+    s.onload = resolve; s.onerror = () => reject(new Error('Gagal memuat ' + src));
+    document.head.appendChild(s);
+  });
+}
+async function masukSosial(provider, tokenSosial) {
+  $('socialMsg').textContent = 'Memeriksa akun ' + provider + '…';
+  try {
+    const data = await api('/api/auth/social', 'POST', { provider, token: tokenSosial });
+    token = data.token; player = data.player;
+    await sesudahLogin('Selamat datang, ' + (player.name || '') + '!');
+  } catch (e) { $('socialMsg').textContent = e.message; }
+}
+(async function initSosial() {
+  let cfg = {};
+  try { cfg = await api('/api/auth/social-config'); } catch { return; }
+  if (!cfg.google && !cfg.facebook) return; // belum dikonfigurasi — tombol tetap sembunyi
+  $('socialLogin').classList.remove('hidden');
+  if (cfg.google && cfg.googleClientId) {
+    try {
+      await muatScript('https://accounts.google.com/gsi/client');
+      google.accounts.id.initialize({
+        client_id: cfg.googleClientId,
+        callback: (resp) => { if (resp && resp.credential) masukSosial('google', resp.credential); },
+        auto_select: true
+      });
+      google.accounts.id.renderButton($('btnGoogleWrap'), { theme: 'outline', size: 'large', text: 'signin_with' });
+      google.accounts.id.prompt(); // One Tap: pemain lama langsung masuk otomatis
+    } catch (e) { $('btnGoogleWrap').style.display = 'none'; }
+  } else { $('btnGoogleWrap').style.display = 'none'; }
+  if (cfg.facebook && cfg.facebookAppId) {
+    try {
+      await muatScript('https://connect.facebook.net/id_ID/sdk.js');
+      FB.init({ appId: cfg.facebookAppId, cookie: false, xfbml: false, version: 'v21.0' });
+      $('btnFacebook').addEventListener('click', () => {
+        FB.login((r) => {
+          if (r && r.authResponse && r.authResponse.accessToken) masukSosial('facebook', r.authResponse.accessToken);
+          else $('socialMsg').textContent = 'Login Facebook dibatalkan.';
+        }, { scope: 'public_profile' });
+      });
+    } catch (e) { $('btnFacebook').style.display = 'none'; }
+  } else { $('btnFacebook').style.display = 'none'; }
+})();
 
 /* ---------- Profil & render ---------- */
 async function muatProfil() {
@@ -519,6 +673,7 @@ function loop() {
     // gambar
     ctx.fillStyle = d.langit; ctx.fillRect(0, 0, 420, 520);
     ctx.fillStyle = d.tanah; ctx.fillRect(0, 0, 420, 520);
+    gambarLatar(Math.min(5, Math.floor(((game.level || 1) - 1) / 10)), game.frame);
     ctx.fillStyle = 'rgba(255,255,255,.08)';
     for (let y = -80 + game.hiasY; y < 520; y += 80) { ctx.fillRect(8, y, 34, 50); ctx.fillRect(378, y, 34, 50); }
     ctx.fillStyle = 'rgba(255,255,255,.25)';
@@ -582,6 +737,7 @@ function tampilIklanSelingan(cb) {
 function mulaiGame() {
   if (!token) { toast('Masuk dulu dengan nama + PIN.'); return; }
   resetGame();
+  mulaiMusik();
   game.running = true; game.paused = false;
   $('btnStart').textContent = '🏃 Lagi Lari…';
   $('btnPause').textContent = '⏸ Jeda';
@@ -601,7 +757,22 @@ $('btnPause').addEventListener('click', () => {
   $('btnPause').textContent = game.paused ? '▶ Lanjut' : '⏸ Jeda';
   if (!game.paused) requestAnimationFrame(loop);
 });
-$('btnMute').addEventListener('click', () => { muted = !muted; $('btnMute').textContent = muted ? '🔇 Suara: Mati' : '🔊 Suara: Nyala'; });
+function tulisTombolSuara() {
+  $('btnMusik').textContent = musikNyala ? '🎵 Musik: Nyala' : '🔇 Musik: Mati';
+  $('btnSuara').textContent = suaraNyala ? '🔊 Suara: Nyala' : '🔇 Suara: Mati';
+}
+$('btnMusik').addEventListener('click', () => {
+  musikNyala = !musikNyala;
+  try { localStorage.setItem('nr_musik', musikNyala ? '1' : '0'); } catch (e) {}
+  if (musikNyala) mulaiMusik(); else stopMusik();
+  tulisTombolSuara();
+});
+$('btnSuara').addEventListener('click', () => {
+  suaraNyala = !suaraNyala;
+  try { localStorage.setItem('nr_suara', suaraNyala ? '1' : '0'); } catch (e) {}
+  tulisTombolSuara();
+});
+tulisTombolSuara();
 $('btnKiri').addEventListener('click', () => pindah('kiri'));
 $('btnKanan').addEventListener('click', () => pindah('kanan'));
 $('btnTengah').addEventListener('click', () => pindah('tengah'));
@@ -631,6 +802,7 @@ function gambarAwal() {
   const d = DUNIA[0];
   ctx.fillStyle = d.langit; ctx.fillRect(0, 0, 420, 520);
   ctx.fillStyle = d.tanah; ctx.fillRect(0, 0, 420, 520);
+  gambarLatar(0, game.frame);
   ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(135, 0, 6, 520); ctx.fillRect(279, 0, 6, 520);
   game.frame = idleT++;
   const lompat = Math.abs(Math.sin(game.frame / 8)) * 6;
