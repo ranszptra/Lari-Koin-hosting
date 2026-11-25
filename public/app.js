@@ -15,6 +15,21 @@ const rupiah = (n) => 'Rp' + Math.floor(n || 0).toLocaleString('id-ID');
 const koinKeRp = (coins) => Math.round((coins || 0) * 15 / 1000);
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3500); }
 
+/* ---------- Dunia (6 dunia, tiap 10 level) ---------- */
+const DUNIA = [
+  { nama: 'Kota Senja', langit: '#ff9a5c', tanah: '#7a5a3a', aksen: '#ffd54a', hias: '🏙' },
+  { nama: 'Hutan Rimba', langit: '#7ec850', tanah: '#3e6b2f', aksen: '#c8f7a0', hias: '🌳' },
+  { nama: 'Gurun Pasir', langit: '#ffe08a', tanah: '#d9a441', aksen: '#fff3c4', hias: '🌵' },
+  { nama: 'Salju Abadi', langit: '#bfe8ff', tanah: '#e8f4ff', aksen: '#ffffff', hias: '❄' },
+  { nama: 'Luar Angkasa', langit: '#1a1033', tanah: '#2d1b4d', aksen: '#b388ff', hias: '⭐' },
+  { nama: 'Lava Berapi', langit: '#5c1a00', tanah: '#8a2a00', aksen: '#ff7043', hias: '🌋' }
+];
+function duniaUntuk(level) { return DUNIA[Math.min(5, Math.floor(((level || 1) - 1) / 10))]; }
+function isBos(level) { return level % 10 === 0; }
+
+/* Render aman: satu bagian gagal tidak boleh mengosongkan semua fitur. */
+function renderAman(fn) { try { fn(); } catch (e) { console.warn('[render] gagal:', e && e.message); } }
+
 /* ---------- Link undangan (?ref=<nama>) ----------
  * Referral berbasis NAMA: server memvalidasi nama pengundang di
  * /api/auth/social (harus ada, bukan diri sendiri). Tidak butuh ubah server. */
@@ -108,15 +123,23 @@ renderLoginHero();
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
-async function api(path, method, body) {
-  const res = await fetch(path, {
-    method: method || 'GET',
-    headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
-    body: body ? JSON.stringify(body) : undefined
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.ok === false) throw new Error(data.error || ('Gagal memanggil ' + path));
-  return data;
+async function api(path, method, body, timeoutMs) {
+  const ctrl = timeoutMs ? new AbortController() : null;
+  const t = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(path, {
+      method: method || 'GET',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { Authorization: 'Bearer ' + token } : {}),
+      body: body ? JSON.stringify(body) : undefined,
+      signal: ctrl ? ctrl.signal : undefined
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) throw new Error(data.error || ('Gagal memanggil ' + path));
+    return data;
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('Koneksi lambat — server tidak menjawab. Coba lagi.');
+    throw e;
+  } finally { if (t) clearTimeout(t); }
 }
 
 /* ---------- Suara (WebAudio, sederhana) ---------- */
@@ -165,17 +188,7 @@ function mulaiMusik() {
 }
 function stopMusik() { if (musikTimer) { clearInterval(musikTimer); musikTimer = null; } }
 
-/* ---------- Dunia (6 dunia, tiap 10 level) ---------- */
-const DUNIA = [
-  { nama: 'Kota Senja', langit: '#ff9a5c', tanah: '#7a5a3a', aksen: '#ffd54a', hias: '🏙' },
-  { nama: 'Hutan Rimba', langit: '#7ec850', tanah: '#3e6b2f', aksen: '#c8f7a0', hias: '🌳' },
-  { nama: 'Gurun Pasir', langit: '#ffe08a', tanah: '#d9a441', aksen: '#fff3c4', hias: '🌵' },
-  { nama: 'Salju Abadi', langit: '#bfe8ff', tanah: '#e8f4ff', aksen: '#ffffff', hias: '❄' },
-  { nama: 'Luar Angkasa', langit: '#1a1033', tanah: '#2d1b4d', aksen: '#b388ff', hias: '⭐' },
-  { nama: 'Lava Berapi', langit: '#5c1a00', tanah: '#8a2a00', aksen: '#ff7043', hias: '🌋' }
-];
-function duniaUntuk(level) { return DUNIA[Math.min(5, Math.floor(((level || 1) - 1) / 10))]; }
-function isBos(level) { return level % 10 === 0; }
+
 
 /* ---------- Latar dunia bergerak (langit, matahari/bulan, partikel) ---------- */
 let partikel = [], partikelDunia = -1;
@@ -373,7 +386,8 @@ function renderProfil() {
   $('chestLeft').textContent = profile.chestLeft != null ? profile.chestLeft : '—';
   $('adsToday').textContent = profile.adsToday || 0;
   renderLevelSelect(maxLv);
-  renderMisi(); renderPrestasi(); renderCheckin(); renderTeman(); renderToko(); renderTarik();
+  renderAman(renderMisi); renderAman(renderPrestasi); renderAman(renderCheckin); renderAman(renderTeman); renderAman(renderToko); renderAman(renderTarik);
+  if (!game.running) resetGame(); // gambar arena sekali + siapkan level (tidak jalan saat lari)
   updateIklanBtn(); renderNyawa();
 }
 function renderLevelSelect(maxLv) {
@@ -1109,6 +1123,7 @@ function resetGame() {
   $('gameResult').classList.remove('show'); $('gameResult').innerHTML = '';
   $('hudKoin').textContent = '🪙 0'; $('hudJarak').textContent = '0 m'; $('hudLevel').textContent = 'Lv ' + lv;
   updateDuniaInfo();
+  try { renderScene(ctx, game); } catch (e) {} // gambar arena sekali supaya tidak biru kosong sebelum mulai
 }
 function spawnObject() {
   const lv = game.level;
@@ -1218,12 +1233,15 @@ function tampilIklanSelingan(cb) {
 }
 async function mulaiGame() {
   if (!token) { toast('Masuk dulu dengan Google.'); return; }
+  const btnMulai = $('btnStart'); const teksMulai = btnMulai.textContent;
+  btnMulai.textContent = '⏳ Memeriksa nyawa…';
   try {
-    const d = await api('/api/run-start', 'POST', {});
+    const d = await api('/api/run-start', 'POST', {}, 10000);
     if (player) { player.lives = d.lives; player.livesCooldownUntil = d.cooldownUntil || null; }
     renderNyawa();
   } catch (e) {
     toast(e.message);
+    btnMulai.textContent = teksMulai;
     await muatProfil();
     return;
   }

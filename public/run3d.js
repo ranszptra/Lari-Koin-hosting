@@ -486,13 +486,21 @@ function playStumble() {
 /* ---------- Preload (dipanggil setelah login; idempotent) ---------- */
 async function preload() {
   if (R.ready) return true;
+  if (R.failed) return false;
   if (R._preloadPromise) return R._preloadPromise;
   R.loading = true;
+  const gen = (R._gen = (R._gen || 0) + 1);
   R._preloadPromise = (async () => {
     try {
       if (!webglOK()) throw new Error('WebGL tidak tersedia di perangkat ini');
       initRenderer();
-      await loadModels();
+      // Model 3D total ~5,5 MB: di koneksi lambat jangan tunggu selamanya —
+      // 15 detik cukup, kalau lewat langsung pakai mode 2D yang ringan.
+      await Promise.race([
+        loadModels(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout memuat model 3D (15 detik)')), 15000)),
+      ]);
+      if (gen !== R._gen) return false; // sudah gagal/timeout duluan
       R.ready = true;
     } catch (e) {
       R.failed = true;
