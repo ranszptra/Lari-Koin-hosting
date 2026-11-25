@@ -87,6 +87,13 @@ CREATE TABLE IF NOT EXISTS offer_progress (
   UNIQUE (playerId, offerId)
 );
 
+CREATE TABLE IF NOT EXISTS tapjoy_rewards (
+  id text PRIMARY KEY,
+  playerId bigint NOT NULL REFERENCES players(id),
+  coins bigint NOT NULL,
+  createdAt text NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS ad_impressions (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   network text NOT NULL,

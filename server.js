@@ -36,6 +36,24 @@ function clientIp(req) {
 }
 const PORT = process.env.PORT || 3000;
 
+// --- Tapjoy Offerwall (Web, self-managed currency) ------------------------
+// Jalur web resmi Tapjoy (tanpa native SDK): deep link
+//   https://rewards.unity.com/owp/web/link/<SDK_KEY>/u/<USER_ID>
+// Dokumen: docs.unity.com/en-us/grow/offerwall/web/displaying-offerwall/deep-linking-implementation
+// Callback default Tapjoy = HTTP GET + verifier MD5:
+//   verifier = MD5(id + ':' + snuid + ':' + currency + ':' + secret_key)
+// Dokumen: docs.unity.com/en-us/grow/offerwall/monetization/virtual-currency/self-managed-currency
+// (Varian POST + HMAC-SHA256 hanya tersedia lewat Tapjoy Support — belum
+//  diaktifkan; endpoint di bawah memakai varian default yang didokumentasikan.)
+// Env yang dibutuhkan (di Railway, JANGAN di repo):
+//   TAPJOY_SDK_KEY    — Application SDK Key Tapjoy (tampil di deep link)
+//   TAPJOY_SECRET_KEY — Virtual currency secret key (verifikasi callback)
+const TAPJOY_SDK_KEY = process.env.TAPJOY_SDK_KEY || '';
+const TAPJOY_SECRET_KEY = process.env.TAPJOY_SECRET_KEY || '';
+// Batas sanity per callback: $200 pada kurs $1 = 500.000 Koin (offer Tapjoy
+// membayar $0,20–$100 per event; di atas $200 dianggap tidak wajar → tolak).
+const TAPJOY_MAX_COINS_PER_CALLBACK = 100000000;
+
 app.use(express.json());
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -580,6 +598,57 @@ app.post('/api/skins/fullset-claim', ah(requirePlayer), ah(async (req, res) => {
   res.json({ ok: true, coins: (await freshPlayer(p.id)).coins, rupiah: 100000 });
 }));
 
+// --- Tapjoy Offerwall (web) -------------------------------------------------
+// Config untuk client: apakah offerwall aktif + SDK key untuk deep link.
+// SDK key memang diekspos ke client (sama seperti di aplikasi native —
+// kuncinya tertanam di URL deep link, bukan rahasia server).
+app.get('/api/tapjoy/config', (req, res) => {
+  res.json({ ok: true, enabled: Boolean(TAPJOY_SDK_KEY), sdkKey: TAPJOY_SDK_KEY || null });
+});
+// Callback reward Tapjoy (server-to-server). Tapjoy mengirim HTTP GET:
+//   /api/tapjoy/callback?snuid=<id_pemain>&currency=<koin>&mac_address=<mac>&id=<reward_id>&verifier=<md5>
+// snuid = id numerik pemain game (sama dengan USER_ID di deep link).
+// Respons HANYA 200 (koin dikredit) atau 403 (tolak, tanpa retry).
+// Respons lain / lambat >5 detik = Tapjoy retry tiap 5 menit s/d 4 hari,
+// jadi jangan pernah kredit koin kalau responsnya bukan 200.
+app.get('/api/tapjoy/callback', ah(async (req, res) => {
+  // Fail-closed: tanpa secret key, tidak ada callback yang bisa diverifikasi.
+  if (!TAPJOY_SECRET_KEY) return err(res, 403, 'Tapjoy belum dikonfigurasi di server');
+  // Pakai string mentah dari query untuk verifikasi (bukan hasil parse) —
+  // Tapjoy menandatangani string persis yang dikirimnya.
+  const snuidRaw = String(req.query.snuid || '');
+  const currencyRaw = String(req.query.currency || '');
+  const idRaw = String(req.query.id || '');
+  const verifierRaw = String(req.query.verifier || '');
+  // snuid harus id pemain numerik, tanpa leading zero ('001234' != '1234'
+  // menurut dokumen Tapjoy — tolak bentuk itu sekalian).
+  if (!/^\d+$/.test(snuidRaw) || String(Number(snuidRaw)) !== snuidRaw) return err(res, 403, 'snuid tidak valid');
+  const playerId = Number(snuidRaw);
+  if (!Number.isSafeInteger(playerId) || playerId <= 0) return err(res, 403, 'snuid tidak valid');
+  if (!/^\d+$/.test(currencyRaw)) return err(res, 403, 'currency tidak valid');
+  const coins = Number(currencyRaw);
+  if (!Number.isSafeInteger(coins) || coins <= 0 || coins > TAPJOY_MAX_COINS_PER_CALLBACK) return err(res, 403, 'currency di luar batas wajar');
+  if (!idRaw || idRaw.length > 190) return err(res, 403, 'id tidak valid');
+  if (!verifierRaw) return err(res, 403, 'verifier tidak ada');
+  const expected = crypto.createHash('md5').update(`${idRaw}:${snuidRaw}:${currencyRaw}:${TAPJOY_SECRET_KEY}`, 'utf8').digest('hex');
+  let cocok = false;
+  try {
+    cocok = verifierRaw.length === expected.length &&
+      crypto.timingSafeEqual(Buffer.from(verifierRaw.toLowerCase(), 'utf8'), Buffer.from(expected, 'utf8'));
+  } catch { cocok = false; }
+  if (!cocok) return err(res, 403, 'verifier tidak cocok — ditolak');
+  const player = await db.prepare('SELECT id, banned FROM players WHERE id=?').get(playerId);
+  if (!player) return err(res, 403, 'Pemain tidak ditemukan');
+  if (player.banned) return err(res, 403, 'Akun pemain diblokir');
+  // Dedup atomik via PRIMARY KEY: INSERT OR IGNORE — changes=0 berarti id
+  // reward ini sudah diproses (replay/fraud) → tolak tanpa kredit ganda.
+  const ins = await db.prepare('INSERT OR IGNORE INTO tapjoy_rewards(id,playerId,coins,createdAt) VALUES(?,?,?,?)')
+    .run(idRaw, playerId, coins, nowIso());
+  if (!ins.changes) return err(res, 403, 'Reward id sudah diproses');
+  await touchCoins(playerId, coins);
+  res.json({ ok: true, credited: coins, playerId });
+}));
+
 // --- Offerwall ---------------------------------------------------------------
 app.get('/api/offers', ah(async (req, res) => {
   const playerId = await optionalPlayerId(req);
@@ -631,16 +700,11 @@ app.post('/api/offer-postback', ah(async (req, res) => {
   if (!r.ok) return err(res, r.status, r.error);
   res.json({ ok: true, verified: true });
 }));
-app.post('/api/offers/demo-verify', ah(requirePlayer), ah(async (req, res) => {
-  // DEMO ONLY — simulasi: memanggil postback secara internal dengan token
-  // yang benar, seolah provider mengonfirmasi penyelesaian misi.
-  // Kampanye BENARAN butuh API key + postback asli dari pemilik ke tiap
-  // provider (AdGem/Tapjoy/dll) — demo ini bukan pengganti integrasi itu.
-  const offerId = String(req.body?.offerId || '');
-  const secret = (await db.prepare('SELECT secret FROM offers WHERE id=?').get(offerId))?.secret || '';
-  const r = await verifyOfferPostback(offerId, req.player.id, secret);
-  if (!r.ok) return err(res, r.status, r.error);
-  res.json({ ok: true, demo: true, note: 'Simulasi demo — misi ditandai terverifikasi seolah provider mengirim postback.' });
+app.post('/api/offers/demo-verify', ah(async (req, res) => {
+  // DIMATIKAN 2026-11-26 (integrasi Tapjoy beneran): verifikasi misi hanya
+  // lewat postback provider terverifikasi. Route dipertahankan supaya
+  // client lama mendapat pesan jelas (410), bukan 404.
+  return err(res, 410, 'Demo-verify sudah dimatikan — misi hanya bisa terverifikasi lewat postback provider (Tapjoy).');
 }));
 app.post('/api/offers/claim', ah(requirePlayer), ah(async (req, res) => {
   const offerId = String(req.body?.offerId || '');
@@ -649,7 +713,7 @@ app.post('/api/offers/claim', ah(requirePlayer), ah(async (req, res) => {
   const prog = await db.prepare('SELECT * FROM offer_progress WHERE playerId=? AND offerId=?').get(req.player.id, offerId);
   if (!prog) return fail(res, 'Misi belum dimulai');
   if (prog.status === 'selesai') return fail(res, 'Hadiah misi sudah diklaim');
-  if (prog.status !== 'terverifikasi') return fail(res, 'Misi belum terverifikasi — selesaikan misi dan tunggu postback provider (atau demo-verify untuk simulasi)');
+  if (prog.status !== 'terverifikasi') return fail(res, 'Misi belum terverifikasi — selesaikan misi dan tunggu postback provider.');
   await db.prepare("UPDATE offer_progress SET status='selesai' WHERE id=?").run(prog.id);
   await touchCoins(req.player.id, offer.rewardCoins);
   res.json({ ok: true, coins: offer.rewardCoins, totalCoins: (await freshPlayer(req.player.id)).coins });
@@ -707,6 +771,7 @@ app.get('/api/admin/dashboard', requireAdmin, ah(async (req, res) => {
        SUM(CASE WHEN op.status='selesai' THEN 1 ELSE 0 END) AS paid
      FROM offers o LEFT JOIN offer_progress op ON op.offerId=o.id GROUP BY o.provider`
   ).all();
+  const tapjoy = await db.prepare('SELECT COUNT(*) AS rewards, COALESCE(SUM(coins),0) AS coins FROM tapjoy_rewards').get();
   res.json({
     ok: true,
     totals: { players: playersCount, newToday, coinsCirculating: coinsSum, coinsCirculatingRp: coinsToRp(coinsSum) },
@@ -715,6 +780,7 @@ app.get('/api/admin/dashboard', requireAdmin, ah(async (req, res) => {
     sameIp,
     mediation,
     offerwall,
+    tapjoy,
   });
 }));
 app.post('/api/admin/withdrawal', requireAdmin, ah(async (req, res) => {
