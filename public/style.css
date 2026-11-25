@@ -13,6 +13,8 @@ a{color:#8a5a00}
 .topbar .logo-img{width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid var(--emas);box-shadow:0 2px 8px rgba(0,0,0,.5)}
 .topbar h1{font-size:19px;margin:0;line-height:1.1}
 .topbar p{margin:2px 0 0;font-size:12px;opacity:.9;color:#e8d9a0}
+.topbar-suara{margin-left:auto;display:flex;gap:6px}
+.topbar-ico{background:rgba(255,255,255,.12);border:1px solid rgba(255,213,74,.55);color:#fff;font-size:18px;line-height:1;padding:7px 10px;border-radius:10px;width:auto}
 .saldo-bar{display:flex;gap:8px;padding:12px 14px 0}
 .saldo{flex:1;background:linear-gradient(180deg,#fffdf5,#fff3d6);border:2px solid #e8c85a;border-radius:14px;padding:10px 12px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 .saldo small{display:block;color:#8a6d2b;font-size:11px;font-weight:700;letter-spacing:.5px}
@@ -54,10 +56,6 @@ body.mode-lari .tekan-mulai{display:none}
 .game-wrap{position:relative;max-width:420px;margin:0 auto}
 .hud{position:absolute;top:8px;left:8px;right:8px;display:flex;justify-content:space-between;gap:6px;pointer-events:none}
 .hud span{background:rgba(0,0,0,.55);color:#fff;border-radius:10px;padding:5px 9px;font-size:13px;font-weight:700}
-.game-controls{display:flex;gap:8px;margin-top:10px}
-.game-controls button{flex:1}
-.lane-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
-.lane-btns button{background:#fff;border:2px solid var(--emas);font-size:20px;padding:12px 0}
 #gameResult{margin-top:10px;background:#fff8e1;border-radius:12px;padding:12px;display:none}
 #gameResult.show{display:block}
 #gameResult h3{margin:0 0 6px}
@@ -98,7 +96,7 @@ body.pengelola a{color:#ffd54a}
 /* ===== Tema Runner Coin ===== */
 .hero-nailong{position:relative;border-radius:16px;overflow:hidden;margin-bottom:10px;box-shadow:0 4px 14px rgba(90,50,0,.25)}
 .hero-nailong img{display:block;width:100%;height:230px;object-fit:cover;object-position:center 18%;animation:nailong-lompat 2.2s ease-in-out infinite}
-.hero-nailong canvas{display:block;width:100%;height:280px;border-radius:16px;background:radial-gradient(circle at 50% 28%,#4a2d7a,#1a1033 75%);touch-action:pan-y}
+.hero-nailong canvas{display:block;width:100%;height:300px;border-radius:16px;background:radial-gradient(circle at 50% 28%,#4a2d7a,#1a1033 75%);touch-action:pan-y}
 #loginShowcaseFallback{object-fit:contain!important;background:#1a1033}
 .showcase-wrap{position:relative;border-radius:16px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.35);border:1px solid #e8c85a}
 .showcase-wrap canvas{display:block;width:100%;height:300px;background:radial-gradient(circle at 50% 28%,#4a2d7a,#1a1033 75%);touch-action:pan-y}
@@ -153,10 +151,14 @@ main{padding-bottom:84px}
 /* Tampilan run: bersih tanpa tombol, kontrol geser/ketuk */
 body.mode-lari .tab-nav{display:none}
 body.mode-lari main{padding-bottom:12px}
-body.mode-lari #gameSection .game-controls,body.mode-lari #gameSection .lane-btns,body.mode-lari #gameSection #btnCaraMain,body.mode-lari #gameSection .row,body.mode-lari #gameSection #duniaInfo,body.mode-lari #gameSection .muted,body.mode-lari #gameSection h2,body.mode-lari #gameSection .skill-row{display:none}
+body.mode-lari #gameSection #btnCaraMain,body.mode-lari #gameSection .row,body.mode-lari #gameSection #duniaInfo,body.mode-lari #gameSection .muted,body.mode-lari #gameSection h2,body.mode-lari #gameSection .skill-row{display:none}
 body.mode-lari .game-wrap{max-width:480px}
 body.mode-lari #gameCanvas{max-width:480px}
 body.mode-3d #gameCanvas3d{max-width:480px}
+.skill-hud{display:none}
+body.mode-fullscreen .skill-hud{display:flex;position:absolute;left:50%;transform:translateX(-50%);bottom:58px;gap:8px;z-index:6}
+.skill-hud-btn{background:rgba(255,255,255,.92);border:2px solid var(--emas);color:var(--ungu);font-size:12px;font-weight:800;padding:8px 10px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap;width:auto}
+.skill-hud-btn:disabled{opacity:.75}
 .pause-overlay{position:absolute;inset:0;background:rgba(59,36,16,.72);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:5}
 .pause-overlay p{color:#fff;font-size:22px;font-weight:800;margin:0}
 .pause-overlay button{width:70%}
@@ -168,19 +170,8 @@ body.mode-3d #gameCanvas3d{max-width:480px}
 .fullset-panel button{width:100%}
 .fullset-panel button:disabled{opacity:.65}
 
-/* Batch 7 — hero login: logo + kartu karakter flagship (satu kesatuan) */
-.hero-nailong img.hero-logo{position:absolute;top:6px;left:50%;transform:translateX(-50%);width:76px;height:76px;object-fit:contain;z-index:3;pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));animation:none}
-.hero-char-wrap{position:absolute;left:50%;bottom:32px;transform:translateX(-50%);z-index:2;animation:hero-bob 2.4s ease-in-out infinite;background:#2d1b4d;border:3px solid #fff;border-radius:14px;overflow:hidden;padding:6px;box-shadow:0 6px 14px rgba(0,0,0,.45)}
-.hero-nailong img.hero-char{display:block;width:auto;height:165px;object-fit:cover;object-position:center 18%;border-radius:8px;background:#fff;cursor:grab;touch-action:none;animation:none}
-.hero-nailong img.hero-char:active{cursor:grabbing}
-.hero-spark{position:absolute;top:-4px;right:-8px;font-size:20px;animation:sparkle 1.6s ease-in-out infinite;pointer-events:none}
-.hero-char-nama{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:3;background:linear-gradient(180deg,#ffd54a,#f5b301);color:#3b2410;font-weight:800;font-size:13px;padding:4px 14px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.35);pointer-events:none;white-space:nowrap}
-@keyframes hero-bob{0%,100%{transform:translateX(-50%) translateY(0) rotate(-1.2deg)}50%{transform:translateX(-50%) translateY(-9px) rotate(1.2deg)}}
-@keyframes sparkle{0%,100%{opacity:.25;transform:scale(.7) rotate(0deg)}50%{opacity:1;transform:scale(1.15) rotate(25deg)}}
-/* Batch 7 — kartu karakter aktif di Beranda (di atas showcase 3D) */
-.beranda-char-wrap{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:2;background:#2d1b4d;border:3px solid #fff;border-radius:14px;overflow:hidden;padding:6px;box-shadow:0 6px 14px rgba(0,0,0,.45);pointer-events:none;animation:hero-bob 2.4s ease-in-out infinite}
-.showcase-wrap .beranda-char-wrap img{display:block;width:auto;height:150px;object-fit:cover;object-position:center 18%;border-radius:8px;background:#fff}
-.beranda-char-nama{background:rgba(0,0,0,.30);color:#fff;font-weight:800;font-size:13px;text-align:center;padding:4px 6px;margin:6px -6px -6px;border-radius:0 0 8px 8px}
+/* Beranda: strip nama karakter aktif di atas canvas 3D */
+.beranda-char-nama{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:2;background:linear-gradient(180deg,#ffd54a,#f5b301);color:#3b2410;font-weight:800;font-size:13px;padding:5px 14px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap}
 /* Batch 7 — grid pilih karakter level */
 .karakter-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0}
 .karakter-card{border:2px solid #e8c85a;border-radius:12px;padding:6px;text-align:center;cursor:pointer;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.25)}
@@ -201,8 +192,6 @@ body.mode-fullscreen #gameSection .row,
 body.mode-fullscreen #gameSection #duniaInfo,
 body.mode-fullscreen #gameSection .skill-row,
 body.mode-fullscreen #gameSection .lives-bar,
-body.mode-fullscreen #gameSection .game-controls,
-body.mode-fullscreen #gameSection .lane-btns,
 body.mode-fullscreen #gameSection #btnCaraMain,
 body.mode-fullscreen #gameSection>p.small{display:none}
 body.mode-fullscreen .game-wrap{flex:1;min-height:0;max-width:none;margin:0;display:flex;align-items:center;justify-content:center}

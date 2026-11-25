@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Runner Coin — Lari, Kumpulkan Koin, Tukar Jadi Uang</title>
-<meta name="description" content="Runner Coin: robot lari 3 jalur — kumpulkan koin, selesaikan level, tukar koin jadi uang.">
+<meta name="description" content="Runner Coin: karakter lari 3 jalur — kumpulkan koin, selesaikan level, tukar koin jadi uang.">
 <meta name="theme-color" content="#2d1b4d">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
@@ -25,13 +25,17 @@
   <div class="loading-koin"><span>🪙</span><span>🪙</span><span>🪙</span><span>🪙</span></div>
   <img class="logo-loading" src="/icon-512.png" alt="Logo Runner Coin">
   <h1>Runner Coin</h1>
-  <p>Memuat… 🤖</p>
+  <p>Memuat… 🏃</p>
   <div class="loading-bar"><i></i></div>
 </div>
 <script>window.addEventListener('load',function(){setTimeout(function(){var l=document.getElementById('loadingScreen');if(l){l.classList.add('done');setTimeout(function(){l.remove()},600);}},900);});</script>
 <header class="topbar">
   <img class="logo-img" src="/icon-192.png" alt="Runner Coin">
   <div><h1>Runner Coin</h1><p>Lari • Kumpulkan Koin • Tukar Jadi Uang</p></div>
+  <div class="topbar-suara">
+    <button id="btnMusik" class="topbar-ico" type="button" title="Musik">🎵</button>
+    <button id="btnSuara" class="topbar-ico" type="button" title="Suara">🔊</button>
+  </div>
 </header>
 
 <div id="toast" role="status"></div>
@@ -40,13 +44,11 @@
 <section id="authScreen" class="card" style="margin-top:14px">
   <div class="hero-nailong">
     <img class="hero-logo" src="/runner-coin-logo.png" alt="Runner Coin">
-    <div class="hero-char-wrap" id="heroCharWrap"><img id="loginCharCard" class="hero-char" src="/characters/char-01.jpg" alt="Rex — karakter Runner Coin"><span class="hero-spark">✨</span></div>
-    <span id="loginCharNama" class="hero-char-nama">Rex</span>
-    <canvas id="loginShowcase" width="420" height="280" aria-label="Karakter Xbot 3D"></canvas>
+    <canvas id="loginShowcase" width="420" height="300" aria-label="Deretan karakter 3D Runner Coin — geser untuk memutar"></canvas>
     <img id="loginShowcaseFallback" class="hidden" src="/runner-coin-logo.png" alt="Runner Coin">
     <div class="hero-koin"><span>🪙</span><span>🪙</span><span>🪙</span><span>🪙</span></div>
   </div>
-  <h2>Runner Coin! 🤖</h2>
+  <h2>Runner Coin! 🏃</h2>
   <div class="notice">🎁 <b>Download &amp; main — tukar koin jadi uang sampai Rp50.000!</b><br>1.000 koin = Rp15 &bull; Penarikan mulai Rp1.000 &bull; Undang teman dapat Rp5.000 per teman.</div>
   <p>Masuk sekali ketuk dengan akun Google kamu — akun langsung dibuat kalau belum ada.</p>
   <button id="btnGoogleManual" class="btn-putih" style="width:100%;padding:12px;font-size:16px;margin-top:8px" onclick="loginGoogleManual()">🔑 Login dengan Google</button>
@@ -85,9 +87,9 @@
       <section class="card" id="karakterSection">
         <h2 id="karakterJudul">🎭 Karakterku — Rex</h2>
         <div class="showcase-wrap">
-          <div class="beranda-char-wrap" id="berandaCharWrap"><img id="berandaCharCard" src="/characters/char-01.jpg" alt="Karakter aktif"><div id="berandaCharNama" class="beranda-char-nama">Rex • Lv 5</div></div>
-          <canvas id="berandaShowcase" width="420" height="300" aria-label="Karakter Xbot 3D — geser untuk memutar"></canvas>
+          <canvas id="berandaShowcase" width="420" height="300" aria-label="Karakter 3D aktif — geser untuk memutar"></canvas>
           <img id="berandaShowcaseFallback" class="hidden" src="/runner-coin-logo.png" alt="Runner Coin">
+          <div id="berandaCharNama" class="beranda-char-nama">Rex • Lv 5</div>
         </div>
         <p class="muted">👆 Geser kiri/kanan untuk memutar karakter • <span id="skinAktifNama">—</span></p>
       </section>
@@ -97,10 +99,6 @@
         <h2>🎮 Main — Runner Coin <span id="labelBos"></span></h2>
         <p class="muted">Geser <b>kiri / kanan</b> untuk pindah jalur. Hindari batu, kotak &amp; pagar. Kumpulkan koin — tiap koin <b>+10 koin</b>. Selesai level = lari sampai jarak target.</p>
         <div class="row">
-          <div>
-            <label for="levelSelect">Level yang dimainkan</label>
-            <select id="levelSelect"></select>
-          </div>
           <div>
             <label for="powerupSelect">Power-up untuk lari ini</label>
             <select id="powerupSelect"><option value="">Tanpa power-up</option></select>
@@ -112,17 +110,17 @@
           <div class="skill-card">
             <span class="skill-ico">⚡</span><b>Lari Cepat</b>
             <small>Lari 1,5x lebih cepat</small>
-            <button class="btn-emas btn-kecil" data-skill="cepat">▶ Nonton Iklan</button>
+            <button class="btn-emas btn-kecil" data-skill="cepat" data-label="▶ Nonton Iklan" data-label-aktif="✅ Aktif">▶ Nonton Iklan</button>
           </div>
           <div class="skill-card">
             <span class="skill-ico">🧲</span><b>Magnet Koin</b>
             <small>Koin ketarik semua</small>
-            <button class="btn-emas btn-kecil" data-skill="magnet">▶ Nonton Iklan</button>
+            <button class="btn-emas btn-kecil" data-skill="magnet" data-label="▶ Nonton Iklan" data-label-aktif="✅ Aktif">▶ Nonton Iklan</button>
           </div>
           <div class="skill-card">
             <span class="skill-ico">🛡</span><b>Perisai</b>
             <small>Tahan 1 tabrakan</small>
-            <button class="btn-emas btn-kecil" data-skill="perisai">▶ Nonton Iklan</button>
+            <button class="btn-emas btn-kecil" data-skill="perisai" data-label="▶ Nonton Iklan" data-label-aktif="✅ Aktif">▶ Nonton Iklan</button>
           </div>
         </div>
         <div class="lives-bar"><span id="livesBar">❤️ Nyawa: 15/15</span><span id="livesCooldown" class="hidden"></span><button class="btn-emas btn-kecil hidden" id="btnNyawaIklan">📺 +1 Nyawa</button></div>
@@ -134,6 +132,7 @@
           <div class="fs-bar" id="fsBar">
             <button class="btn-putih btn-kecil" id="btnFsJeda" type="button">⏸ Jeda</button>
             <span class="fs-title">🎮 Runner Coin</span>
+            <button class="btn-putih btn-kecil" id="btnFsMusik" type="button" title="Musik">🎵</button>
             <button class="btn-putih btn-kecil" id="btnFsKeluar" type="button">✕ Keluar</button>
           </div>
           <div class="pause-overlay hidden" id="pauseOverlay">
@@ -141,19 +140,13 @@
             <button class="btn-emas" id="btnLanjut">▶ Lanjut</button>
             <button class="btn-putih" id="btnAkhiri">🏁 Akhiri Lari</button>
           </div>
+          <div class="skill-hud" id="skillHud">
+            <button class="skill-hud-btn" data-skill="cepat" data-label="⚡ Lari Cepat" data-label-aktif="✅ Lari Cepat">⚡ Lari Cepat</button>
+            <button class="skill-hud-btn" data-skill="magnet" data-label="🧲 Magnet" data-label-aktif="✅ Magnet">🧲 Magnet</button>
+            <button class="skill-hud-btn" data-skill="perisai" data-label="🛡 Perisai" data-label-aktif="✅ Perisai">🛡 Perisai</button>
+          </div>
         </div>
-        <div class="game-controls">
-          <button class="btn-emas" id="btnStart">▶ Mulai Lari</button>
-          <button class="btn-putih" id="btnPause">⏸ Jeda</button>
-          <button class="btn-putih" id="btnMusik">🎵 Musik: Nyala</button>
-          <button class="btn-putih" id="btnSuara">🔊 Suara: Nyala</button>
-        </div>
-        <div class="lane-btns">
-          <button id="btnKiri" aria-label="Pindah ke kiri">⬅ Kiri</button>
-          <button id="btnTengah" aria-label="Kembali ke tengah">● Tengah</button>
-          <button id="btnKanan" aria-label="Pindah ke kanan">Kanan ➡</button>
-        </div>
-        <p class="small">Keyboard: panah ← → pindah jalur, ↑/Spasi lompat, ↓ guling. Layar sentuh: geser kiri/kanan di canvas, geser ke atas = lompat, ke bawah = guling, atau ketuk tombol di atas.</p>
+        <p class="small">👆 Geser kiri/kanan = pindah jalur • geser ke atas = lompat • geser ke bawah = guling • ketuk = jeda.</p>
         <button class="btn-putih btn-kecil" id="btnCaraMain" style="margin-top:4px">📖 Cara Main</button>
         <div id="gameResult"></div>
       </section>

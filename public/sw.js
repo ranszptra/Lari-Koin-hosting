@@ -1,5 +1,5 @@
 /* Service worker sederhana: cache app shell agar bisa dibuka offline. */
-const CACHE = 'lari-koin-v13';
+const CACHE = 'lari-koin-v14';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/run3d.js', '/manifest.json', '/icon.svg', '/icon-192.png', '/icon-512.png', '/runner-coin-logo.png'];
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));

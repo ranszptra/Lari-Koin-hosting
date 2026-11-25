@@ -160,44 +160,20 @@ function onRun3DReady(cb) {
   if (window.Run3D) { cb(); return; }
   window.addEventListener('run3d-ready', cb, { once: true });
 }
-function mulaiShowcase(canvasId, fallbackId) {
+function mulaiShowcase(canvasId, fallbackId, opts) {
   const R3 = window.Run3D;
   if (!R3 || typeof R3.showcase !== 'function') return;
-  R3.showcase(canvasId).then((ok) => {
-    if (ok) return; // gagal (WebGL/model) -> tampilkan gambar logo sebagai fallback
+  const gagal = () => {
     const fb = $(fallbackId); if (fb) fb.classList.remove('hidden');
     const cv = $(canvasId); if (cv) cv.classList.add('hidden');
-  });
+  };
+  R3.showcase(canvasId, opts).then((ok) => { if (!ok) gagal(); }).catch(gagal);
 }
-onRun3DReady(() => mulaiShowcase('loginShowcase', 'loginShowcaseFallback'));
-
-/* Hero login: logo + kartu karakter flagship (satu kesatuan).
-   Belum login -> char-01 "Rex". Login -> karakter aktif pemain.
-   Kartu goyang terus (CSS .hero-char-wrap) + miring saat digeser (tilt). */
-function renderLoginHero() {
-  const img = $('loginCharCard');
-  if (img) img.src = gambarKarakterAktif();
-  const k = karakterAktif();
-  const wrap = $('heroCharWrap');
-  if (wrap) wrap.style.background = gradasiCSS(k);
-  const nama = $('loginCharNama');
-  if (nama) nama.textContent = k ? (k.nama + ' • Lv ' + k.level) : 'Rex';
+/* Login: deretan 5 karakter 3D berjejer (warna 5 roster pertama), bukan gambar. */
+function mulaiShowcaseLogin() {
+  mulaiShowcase('loginShowcase', 'loginShowcaseFallback', { row: true, colors: LEVEL_CHARACTERS.slice(0, 5).map((c) => c.warna) });
 }
-(function pasangTiltKartuLogin() {
-  const img = $('loginCharCard');
-  if (!img) return;
-  let dragging = false, sx = 0, sy = 0;
-  img.addEventListener('pointerdown', (e) => { dragging = true; sx = e.clientX; sy = e.clientY; try { img.setPointerCapture(e.pointerId); } catch (err) {} });
-  img.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    const dx = (e.clientX - sx) / 10, dy = (e.clientY - sy) / 10;
-    img.style.transform = 'rotateY(' + Math.max(-18, Math.min(18, dx)) + 'deg) rotateX(' + Math.max(-12, Math.min(12, -dy)) + 'deg)';
-  });
-  const lepas = () => { dragging = false; img.style.transform = ''; };
-  img.addEventListener('pointerup', lepas);
-  img.addEventListener('pointercancel', lepas);
-})();
-renderLoginHero();
+onRun3DReady(() => mulaiShowcaseLogin());
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -314,6 +290,7 @@ async function sesudahLogin(pesan) {
   await muatOffers();
   await muatNetworks();
   cobaPreload3D(); // muat model 3D di waktu luang (setelah login)
+  if (window.Run3D && window.Run3D.showcaseStop) window.Run3D.showcaseStop('loginShowcase'); // bebaskan konteks WebGL login (HP cuma kuat 2 konteks)
   onRun3DReady(() => mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback'));
   let tourDone = false;
   try { tourDone = localStorage.getItem('nr_tour_done') === '1'; } catch (e) {}
@@ -326,9 +303,10 @@ function pindahTab(nama) {
   document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('aktif', p.id === 'tab-' + nama));
   document.querySelectorAll('.tab-nav button').forEach((b) => b.classList.toggle('aktif', b.dataset.tab === nama));
   if (nama !== 'beranda' && typeof game !== 'undefined' && game.running && !game.paused) {
-    game.paused = true;
-    const bp = $('btnPause'); if (bp) bp.textContent = '▶ Lanjut';
+    jedaGame(); // pindah tab = jeda
   }
+  if (nama === 'beranda') { if (token) mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback'); }
+  else if (window.Run3D && window.Run3D.showcaseStop) window.Run3D.showcaseStop('berandaShowcase');
   if (nama !== 'beranda' && window.Run3D) window.Run3D.setIdle(false); // matikan loop idle 3D di tab lain
   window.scrollTo(0, 0);
 }
@@ -336,7 +314,7 @@ document.querySelectorAll('.tab-nav button').forEach((b) => b.addEventListener('
 
 /* ---------- Tur fitur (pertama daftar) ---------- */
 const TOUR_STEPS = [
-  { img: '/runner-coin-logo.png', judul: 'Selamat datang di Runner Coin! 🤖', teks: 'Xbot si robot lincah siap lari bersamamu. Lari, kumpulkan koin, tukar koin jadi uang sungguhan.' },
+  { img: '/runner-coin-logo.png', judul: 'Selamat datang di Runner Coin! 🏃', teks: 'Karaktermu siap lari bersamamu. Lari, kumpulkan koin, tukar koin jadi uang sungguhan.' },
   { judul: '🎮 Cara Main', teks: 'Geser kiri / kanan atau ketuk tombol untuk pindah jalur. Hindari batu, kotak & pagar. Ambil koin — tiap koin +10 koin. Selesaikan level dengan lari sampai jarak target.' },
   { judul: '🏆 60 Level, 6 Dunia', teks: 'Level makin sulit sampai level 60. Tiap 10 level ada level BOS dengan hadiah 5x lipat. Dunia baru terbuka tiap 10 level: Kota Senja, Hutan Rimba, Gurun Pasir, Salju Abadi, Luar Angkasa, Lava Berapi.' },
   { judul: '🎯 Misi & Check-in', teks: 'Kerjakan misi harian dan check-in 7 hari berturut-turut untuk koin gratis. Jangan sampai putus — kalau bolos, streak kembali ke hari 1!' },
@@ -451,11 +429,8 @@ function renderProfil() {
   const skinEl = $('skinAktifNama'); if (skinEl) skinEl.textContent = 'Skin aktif: ' + namaKarakterSkinAktif();
   // Kartu + judul karakter aktif (Beranda + hero login).
   const kAktif = karakterAktif();
-  const imgB = $('berandaCharCard'); if (imgB) imgB.src = gambarKarakterAktif();
-  const wB = $('berandaCharWrap'); if (wB) wB.style.background = gradasiCSS(kAktif);
   const nB = $('berandaCharNama'); if (nB) nB.textContent = kAktif ? (kAktif.nama + ' • Lv ' + kAktif.level) : 'Rex';
   const hB = $('karakterJudul'); if (hB) hB.textContent = '🎭 Karakterku — ' + (kAktif ? kAktif.nama : 'Xbot');
-  renderLoginHero();
   applySkin3D();
   const persen = Math.min(100, Math.round(koinKeRp(coins) / 1000 * 100));
   $('progressTarik').style.width = persen + '%';
@@ -463,33 +438,18 @@ function renderProfil() {
   $('wheelLeft').textContent = profile.wheelLeft != null ? profile.wheelLeft : '—';
   $('chestLeft').textContent = profile.chestLeft != null ? profile.chestLeft : '—';
   $('adsToday').textContent = profile.adsToday || 0;
-  renderLevelSelect(maxLv);
   renderAman(renderMisi); renderAman(renderPrestasi); renderAman(renderCheckin); renderAman(renderTeman); renderAman(renderToko); renderAman(renderTarik);
-  if (!game.running) resetGame(); // gambar arena sekali + siapkan level (tidak jalan saat lari)
+  if (!game.running) { game.level = maxLv; resetGame(); } // level = progres pemain (tidak ada pilih level manual)
   updateIklanBtn(); renderNyawa();
 }
-function renderLevelSelect(maxLv) {
-  const sel = $('levelSelect');
-  const cur = parseInt(sel.value || maxLv, 10);
-  sel.innerHTML = '';
-  for (let i = 1; i <= maxLv; i++) {
-    const o = document.createElement('option');
-    o.value = i; o.textContent = 'Level ' + i + (isBos(i) ? ' — BOS 👹' : '') + ' • ' + duniaUntuk(i).nama;
-    sel.appendChild(o);
-  }
-  sel.value = String(Math.min(cur, maxLv));
-  updateDuniaInfo();
-}
 function updateDuniaInfo() {
-  const lv = parseInt($('levelSelect').value || 1, 10);
+  const lv = game.level || 1;
   const d = duniaUntuk(lv);
   const idx = Math.min(5, Math.floor((lv - 1) / 10)) + 1;
   $('duniaInfo').textContent = '🌍 Dunia ' + idx + ': ' + d.nama + ' (Level ' + (idx * 10 - 9) + '–' + idx * 10 + ')' + (isBos(lv) ? ' • 👹 LEVEL BOS — hadiah 5x!' : '');
   $('labelBos').innerHTML = isBos(lv) ? '<span class="badge-bos">👹 BOS</span>' : '';
   $('hudLevel').textContent = 'Lv ' + lv;
 }
-$('levelSelect').addEventListener('change', updateDuniaInfo);
-
 function renderMisi() {
   const el = $('daftarMisi');
   const list = profile.missions || [];
@@ -635,8 +595,7 @@ function warnaSkin3D() {
 /* Terapkan warna skin aktif ke badan Xbot 3D (run view + showcase). */
 function applySkin3D() {
   if (!window.Run3D || typeof window.Run3D.applySkin !== 'function') return false;
-  const w = warnaSkin3D();
-  return window.Run3D.applySkin(w[0]);
+  return window.Run3D.applySkin(warnaSkin3D()); // array [utama, garis, perut] -> tint per bagian baju
 }
 function namaKarakterSkinAktif() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
@@ -848,7 +807,7 @@ function aktifkanMode3D() {
   if (mode3dAktif) return;
   mode3dAktif = true;
   document.body.classList.add('mode-3d');
-  if (!mode3dToasted) { mode3dToasted = true; toast('Mode 3D aktif! 🤖'); }
+  if (!mode3dToasted) { mode3dToasted = true; toast('Mode 3D aktif! 🏃'); }
 }
 /* Render lari: 3D kalau siap, kalau tidak 2D lama. Return true kalau 3D. */
 function renderLari3D() {
@@ -1111,20 +1070,20 @@ function renderScene(c, st) {
 const skillIklan = { cepat: false, magnet: false, perisai: false };
 function resetSkillIklan() {
   skillIklan.cepat = skillIklan.magnet = skillIklan.perisai = false;
-  document.querySelectorAll('#skillRow [data-skill]').forEach((b) => { b.disabled = false; b.textContent = '▶ Nonton Iklan'; });
+  document.querySelectorAll('[data-skill]').forEach((b) => { b.disabled = false; b.textContent = b.dataset.label || '▶ Nonton Iklan'; });
 }
-document.querySelectorAll('#skillRow [data-skill]').forEach((b) => b.addEventListener('click', () => {
+document.querySelectorAll('[data-skill]').forEach((b) => b.addEventListener('click', () => {
   const nama = b.dataset.skill;
   if (skillIklan[nama]) return;
-  b.disabled = true; b.textContent = '⏳ Memutar iklan…';
+  document.querySelectorAll('[data-skill="' + nama + '"]').forEach((x) => { x.disabled = true; x.textContent = '⏳ Memutar iklan…'; });
   tampilIklanSelingan(() => {
     skillIklan[nama] = true;
-    b.textContent = '✅ Aktif';
+    document.querySelectorAll('[data-skill="' + nama + '"]').forEach((x) => { x.textContent = x.dataset.labelAktif || '✅ Aktif'; });
     toast('Skill aktif untuk lari ini!');
   });
 }));
 function resetGame() {
-  const lv = parseInt($('levelSelect').value || 1, 10);
+  const lv = game.level || 1;
   const pu = $('powerupSelect').value;
   game.level = lv; game.lane = 1; game.coins = 0; game.coinCount = 0; game.distance = 0;
   game.target = (isBos(lv) ? 700 : 450) + lv * 30;
@@ -1161,7 +1120,12 @@ function spawnObject() {
 }
 function loop() {
   if (!game.running) return;
-  if (!game.paused) {
+  if (game.paused) return; // diam saat jeda — lanjutGame()/toggleJeda() yang menjadwalkan lagi
+  const sekarang = performance.now();
+  const terakhir = loop._terakhir || sekarang;
+  if (sekarang - terakhir > 250) { loop._terakhir = sekarang; requestAnimationFrame(loop); return; } // frame panjang (mis. habis iklan) tidak boleh melompatkan state
+  loop._terakhir = sekarang;
+  {
     game.frame++;
     game.distance += game.speed * 0.06;
     game.roadScroll += game.speed * 0.002;
@@ -1198,8 +1162,12 @@ function loop() {
   }
   requestAnimationFrame(loop);
 }
+let autoLanjutTimer = null;
 function gameOver() {
   game.running = false;
+  window.__rcGameRunning = false; // fase 2 boleh lanjut dimuat lagi
+  jedaKarenaIklan = false;
+  if (autoLanjutTimer) { clearInterval(autoLanjutTimer); autoLanjutTimer = null; }
   game.noIdleUntil = Date.now() + 1500; // beri waktu animasi tersandung 3D
   if (window.Run3D && window.Run3D.ready) window.Run3D.playStumble();
   document.body.classList.remove('mode-lari');
@@ -1208,32 +1176,90 @@ function gameOver() {
   const el = $('gameResult');
   el.innerHTML = '<h3>💥 Kena Halangan!</h3><p>Lari selesai di level ' + game.level + '. Koin terkumpul: <b>' + game.coins + '</b> (jarak ' + Math.floor(game.distance) + ' m).</p><p class="muted">Koin tetap dihitung — tekan Main Lagi untuk mencoba lagi.</p>';
   el.classList.add('show');
-  $('btnStart').textContent = '▶ Main Lagi';
+  const pillOver = $('tekanMulai'); if (pillOver) { pillOver.textContent = '▶ Main Lagi — ketuk untuk coba lagi'; pillOver.hidden = false; }
   if (game.coins > 0) { const durBank = Date.now() - (game.mulaiAt || Date.now()); api('/api/bank-run-coins', 'POST', { coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: durBank, level: game.level }).then(() => muatProfil()).catch(() => {}); } else { muatProfil(); }
 }
 async function selesaiLevel() {
+  const lvSelesai = game.level;
   game.running = false;
+  window.__rcGameRunning = false;
   game.noIdleUntil = Date.now() + 1200;
   document.body.classList.remove('mode-lari');
   const po1 = $('pauseOverlay'); if (po1) po1.classList.add('hidden');
   resetSkillIklan();
   beep(660, 0.15); setTimeout(() => beep(880, 0.2), 150);
   tampilIklanSelingan(async () => {
-    let pesan = '<h3>🎉 Level ' + game.level + ' Selesai!</h3><p>Koin terkumpul: <b>' + game.coins + '</b>' + (isBos(game.level) ? ' • 👹 LEVEL BOS — bonus 5x!' : '') + '</p>';
+    let pesan = '<h3>🎉 Level ' + lvSelesai + ' Selesai!</h3><p>Koin terkumpul: <b>' + game.coins + '</b>' + (isBos(lvSelesai) ? ' • 👹 LEVEL BOS — bonus 5x!' : '') + '</p>';
+    let tersimpan = false;
     try {
-      const d = await api('/api/finish-level', 'POST', { level: game.level, coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: Date.now() - (game.mulaiAt || Date.now()) });
+      const d = await api('/api/finish-level', 'POST', { level: lvSelesai, coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: Date.now() - (game.mulaiAt || Date.now()) });
+      tersimpan = true;
       pesan += '<p>Bonus level: <b>+' + (d.bonus != null ? d.bonus : 0) + '</b> • Total dari lari ini: <b>' + (d.coinsEarned != null ? d.coinsEarned : game.coins) + ' koin</b><br><span class="muted">Saldo sekarang: ' + (d.coins != null ? d.coins : '') + ' koin.</span></p>';
       if (d.skinsBaru && d.skinsBaru.length) pesan += '<p>🎨 Skin baru terbuka: <b>' + d.skinsBaru.map(esc).join(', ') + '</b> — cek di Toko!</p>';
       if (d.charsBaru && d.charsBaru.length) pesan += '<p>🎭 Karakter baru terbuka: <b>' + d.charsBaru.map(esc).join(', ') + '</b> — cek di Toko!</p>';
       await muatProfil();
     } catch (e) { pesan += '<p class="muted">Gagal menyimpan ke server (' + esc(e.message) + ') — koin lokal tetap tercatat di panel hasil.</p>'; }
-    pesan += '<button class="btn-emas" id="btnLagi" style="width:100%;margin-top:8px">▶ Main Lagi</button>';
     const el = $('gameResult'); el.innerHTML = pesan; el.classList.add('show');
-    $('btnStart').textContent = '▶ Main Lagi';
-    const bl = $('btnLagi'); if (bl) bl.addEventListener('click', mulaiGame);
+    const pill = $('tekanMulai'); if (pill) { pill.textContent = '▶ Main Lagi'; pill.hidden = false; }
+    if (lvSelesai >= 60) {
+      el.innerHTML += '<p>🏆 Kamu sudah menamatkan semua 60 level! Main lagi level 60 kapan saja.</p>';
+      return;
+    }
+    if (!tersimpan) {
+      // simpan gagal — jangan loncat level; pemain ulang level yang sama
+      const b = document.createElement('button'); b.className = 'btn-emas'; b.style.cssText = 'width:100%;margin-top:8px';
+      b.textContent = '▶ Main Lagi (Level ' + lvSelesai + ')';
+      b.addEventListener('click', mulaiGame);
+      el.appendChild(b);
+      return;
+    }
+    // Otomatis lanjut ke level berikutnya — tanpa pilih level manual.
+    const nextLv = Math.min(60, (profile && profile.maxLevel) || (lvSelesai + 1));
+    let hitung = 3;
+    const pLanjut = document.createElement('p');
+    pLanjut.innerHTML = '⏭ Lanjut ke Level ' + nextLv + ' dalam <b id="hitungLanjut">' + hitung + '</b> detik…';
+    el.appendChild(pLanjut);
+    const bLanjut = document.createElement('button');
+    bLanjut.className = 'btn-emas'; bLanjut.style.cssText = 'width:100%;margin-top:8px';
+    bLanjut.textContent = '▶ Lanjut Sekarang';
+    el.appendChild(bLanjut);
+    const lanjutkan = () => {
+      if (autoLanjutTimer) { clearInterval(autoLanjutTimer); autoLanjutTimer = null; }
+      if (!document.body.classList.contains('mode-fullscreen')) return; // pemain sudah keluar
+      game.level = nextLv;
+      el.classList.remove('show'); el.innerHTML = '';
+      mulaiGame(); // tetap lewat /api/run-start (gerbang nyawa)
+    };
+    bLanjut.addEventListener('click', lanjutkan);
+    autoLanjutTimer = setInterval(() => {
+      hitung--;
+      const hEl = $('hitungLanjut'); if (hEl) hEl.textContent = hitung;
+      if (hitung <= 0) lanjutkan();
+    }, 1000);
   });
 }
+let jedaKarenaIklan = false;
+/* Jeda game: loop berhenti maju (2D & 3D membeku di frame terakhir). */
+function jedaGame() {
+  if (!game.running || game.paused) return;
+  game.paused = true;
+  const po = $('pauseOverlay'); if (po) po.classList.toggle('hidden', !(game.paused && document.body.classList.contains('mode-lari')));
+}
+function lanjutGame() {
+  jedaKarenaIklan = false;
+  if (!game.running || !game.paused) return;
+  game.paused = false;
+  const po = $('pauseOverlay'); if (po) po.classList.add('hidden');
+  requestAnimationFrame(loop);
+}
+function toggleJeda() {
+  if (!game.running) return;
+  if (game.paused) lanjutGame();
+  else jedaGame();
+}
 function tampilIklanSelingan(cb) {
+  const sedangLari = game.running && !game.paused;
+  if (sedangLari) { jedaKarenaIklan = true; jedaGame(); } // iklan muncul -> game HARUS jeda
   const n = networks.length ? networks[networkIdx % networks.length].name : 'Simulasi';
   networkIdx++;
   $('iklanNamaJaringan').textContent = n + ' (simulasi)';
@@ -1245,19 +1271,19 @@ function tampilIklanSelingan(cb) {
     sisa--; $('iklanHitung').textContent = Math.max(0, sisa); btn.textContent = sisa > 0 ? 'Tutup (' + sisa + ')' : 'Tutup ✕';
     if (sisa <= 0) { clearInterval(timer); btn.disabled = false; }
   }, 1000);
-  btn.onclick = () => { modal.classList.remove('show'); cb(); };
+  btn.onclick = () => { modal.classList.remove('show'); if (jedaKarenaIklan) lanjutGame(); cb(); };
 }
 async function mulaiGame() {
   if (!token) { toast('Masuk dulu dengan Google.'); return; }
-  const btnMulai = $('btnStart'); const teksMulai = btnMulai.textContent;
-  btnMulai.textContent = '⏳ Memeriksa nyawa…';
+  const pill = $('tekanMulai'); const teksPill = pill ? pill.textContent : '';
+  if (pill) pill.textContent = '⏳ Memeriksa nyawa…';
   try {
     const d = await api('/api/run-start', 'POST', {}, 10000);
     if (player) { player.lives = d.lives; player.livesCooldownUntil = d.cooldownUntil || null; }
     renderNyawa();
   } catch (e) {
     toast(e.message);
-    btnMulai.textContent = teksMulai;
+    if (pill) pill.textContent = teksPill;
     await muatProfil();
     return;
   }
@@ -1266,13 +1292,12 @@ async function mulaiGame() {
   resetGame();
   mulaiMusik();
   game.running = true; game.paused = false;
+  window.__rcGameRunning = true; // fase 2 ditunda selama lari (anti-freeze)
   const tm = $('tekanMulai'); if (tm) tm.hidden = true;
   if (window.Run3D && window.Run3D.ready) { window.Run3D.setIdle(false); window.Run3D.playRun(); }
   game.mulaiAt = Date.now(); // bukti lari untuk validasi server (anti-cheat)
   document.body.classList.add('mode-lari');
   const po2 = $('pauseOverlay'); if (po2) po2.classList.add('hidden');
-  $('btnStart').textContent = '🏃 Lagi Lari…';
-  $('btnPause').textContent = '⏸ Jeda';
   requestAnimationFrame(loop);
 }
 /* ---------- Mode layar penuh (masuk game) ----------
@@ -1298,14 +1323,16 @@ function bukaModeLayarPenuh() {
 }
 function keluarModeLayarPenuh() {
   if (!document.body.classList.contains('mode-fullscreen')) return;
+  if (autoLanjutTimer) { clearInterval(autoLanjutTimer); autoLanjutTimer = null; }
   if (game.running) gameOver(); // akhiri lari seperti tombol "Akhiri Lari"
   document.body.classList.remove('mode-fullscreen');
   canvas.width = FS_W; canvas.height = FS_H; // kembali ke ukuran normal
   try { renderScene(ctx, game); } catch (e) {} // gambar ulang arena di Beranda
 }
 window.addEventListener('resize', () => { if (document.body.classList.contains('mode-fullscreen')) samakanUkuranCanvasLayarPenuh(); });
-$('btnFsJeda').addEventListener('click', () => { if (game.running) $('btnPause').click(); });
+$('btnFsJeda').addEventListener('click', toggleJeda);
 $('btnFsKeluar').addEventListener('click', keluarModeLayarPenuh);
+const _bfm = $('btnFsMusik'); if (_bfm) _bfm.addEventListener('click', toggleMusik);
 function pindah(arah) {
   if (!game.running) return;
   if (arah === 'kiri') game.lane = Math.max(0, game.lane - 1);
@@ -1313,35 +1340,27 @@ function pindah(arah) {
   if (arah === 'tengah') game.lane = 1;
   beep(440, 0.05, 'sine');
 }
-$('btnStart').addEventListener('click', mulaiGame);
-$('btnPause').addEventListener('click', () => {
-  if (!game.running) return;
-  game.paused = !game.paused;
-  $('btnPause').textContent = game.paused ? '▶ Lanjut' : '⏸ Jeda';
-  const po = $('pauseOverlay'); if (po) po.classList.toggle('hidden', !(game.paused && document.body.classList.contains('mode-lari')));
-  if (!game.paused) requestAnimationFrame(loop);
-});
-$('btnLanjut').addEventListener('click', () => $('btnPause').click());
+$('btnLanjut').addEventListener('click', toggleJeda);
 $('btnAkhiri').addEventListener('click', () => { if (game.running) gameOver(); });
 function tulisTombolSuara() {
-  $('btnMusik').textContent = musikNyala ? '🎵 Musik: Nyala' : '🔇 Musik: Mati';
-  $('btnSuara').textContent = suaraNyala ? '🔊 Suara: Nyala' : '🔇 Suara: Mati';
+  const bm = $('btnMusik'); if (bm) { bm.textContent = musikNyala ? '🎵' : '🔇'; bm.title = musikNyala ? 'Musik: Nyala' : 'Musik: Mati'; }
+  const bs = $('btnSuara'); if (bs) { bs.textContent = suaraNyala ? '🔊' : '🔇'; bs.title = suaraNyala ? 'Suara: Nyala' : 'Suara: Mati'; }
+  const bf = $('btnFsMusik'); if (bf) bf.textContent = musikNyala ? '🎵' : '🔇';
 }
-$('btnMusik').addEventListener('click', () => {
+function toggleMusik() {
   musikNyala = !musikNyala;
   try { localStorage.setItem('nr_musik', musikNyala ? '1' : '0'); } catch (e) {}
   if (musikNyala) mulaiMusik(); else stopMusik();
   tulisTombolSuara();
-});
-$('btnSuara').addEventListener('click', () => {
+}
+function toggleSuara() {
   suaraNyala = !suaraNyala;
   try { localStorage.setItem('nr_suara', suaraNyala ? '1' : '0'); } catch (e) {}
   tulisTombolSuara();
-});
+}
+$('btnMusik').addEventListener('click', toggleMusik);
+$('btnSuara').addEventListener('click', toggleSuara);
 tulisTombolSuara();
-$('btnKiri').addEventListener('click', () => pindah('kiri'));
-$('btnKanan').addEventListener('click', () => pindah('kanan'));
-$('btnTengah').addEventListener('click', () => pindah('tengah'));
 document.addEventListener('keydown', (e) => {
   if ($('app').classList.contains('hidden')) return;
   if (e.key === 'Escape' && document.body.classList.contains('mode-fullscreen')) { e.preventDefault(); keluarModeLayarPenuh(); return; }
@@ -1353,7 +1372,7 @@ document.addEventListener('keydown', (e) => {
     if (document.activeElement === canvas || document.activeElement === document.body) {
       e.preventDefault();
       if (!game.running) mulaiGame();
-      else if (e.key === 'Enter') $('btnPause').click();
+      else if (e.key === 'Enter') toggleJeda();
       else mulaiLompat(); // Spasi saat lari = lompat
     }
   }
@@ -1374,11 +1393,11 @@ wrap.addEventListener('touchend', (e) => {
   if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx)) { if (dy < 0) mulaiLompat(); else mulaiGuling(); return; }
   if (dx < -24) pindah('kiri'); else if (dx > 24) pindah('kanan');
   else if (!game.running) mulaiGame();
-  else { abaikanKlik = true; setTimeout(() => abaikanKlik = false, 400); $('btnPause').click(); }
+  else { abaikanKlik = true; setTimeout(() => abaikanKlik = false, 400); toggleJeda(); }
 }, { passive: true });
 wrap.addEventListener('click', (e) => {
   if (e.target.closest('button')) return;
-  if (abaikanKlik) return; if (!game.running && token) mulaiGame(); else if (game.running) $('btnPause').click();
+  if (abaikanKlik) return; if (!game.running && token) mulaiGame(); else if (game.running) toggleJeda();
 });
 
 /* Gambar awal di canvas — Xbot bergerak pelan walau belum main */
@@ -1388,7 +1407,7 @@ function gambarAwal() {
   if (game.running) return;
   if (Date.now() < (game.noIdleUntil || 0)) return; // beri waktu animasi akhir (tersandung 3D)
   const R3 = window.Run3D;
-  if (token) cobaPreload3D(); // modul 3D mungkin baru termuat setelah login
+  if (token) { cobaPreload3D(); if (window.Run3D && window.Run3D.lanjutkanPhase2) window.Run3D.lanjutkanPhase2(); } // fase 2 hanya saat idle
   if (R3 && R3.ready && document.querySelector('#tab-beranda').classList.contains('aktif')) {
     aktifkanMode3D(); R3.setIdle(true); return; // idle 3D: karakter lari di tempat
   }

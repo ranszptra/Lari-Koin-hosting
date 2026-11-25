@@ -1,11 +1,14 @@
 /* Runner Coin — tampilan lari 3D (Three.js r170, WebGL).
  *
- * Karakter Xbot + animasi Mixamo (run / jump / slide / stumble) dan model koin
- * berasal dari repo Cave Runner (tope-olajide/cave-runner, lisensi MIT):
+ * Karakter MANUSIA (Polyfork "Traveller", rangka humanoid Mixamo, gratis) +
+ * animasi Mixamo (run bawaan karakter; jump / slide / stumble / dance dari
+ * berkas xbot@*.fbx yang di-retarget dengan ganti nama track) dan model koin
+ * dari repo Cave Runner (tope-olajide/cave-runner, lisensi MIT):
  * https://github.com/tope-olajide/cave-runner
  * Diadaptasi, BUKAN di-port mentah: tidak ada kode PlanetScale / leaderboard
  * Cave Runner di sini — semua itu sudah ditangani server game ini.
- * Karakter 3D di sini Xbot (Mixamo).
+ * Skin roster (12 karakter) ditempel per bagian baju (shirt/coat/denim/boot)
+ * lewat applySkin().
  *
  * Modul ini HANYA menggambar. Semua logika game (koin, level, nyawa, skill,
  * validasi server) tetap di app.js; modul ini membaca state game tiap frame
@@ -22,7 +25,8 @@ export const WORLD_Z_FAR = -40; // game z=1 (spawn di horizon) -> dunia z=-40
 export function laneToX(lanePos) { return (lanePos - 1) * 2.2; }
 export function worldZ(gameZ) { return -40 * gameZ; }
 
-const CHAR_SCALE = 0.01; // Xbot ~180 cm -> ~1,8 unit dunia
+const CHAR_FILE = 'traveller.fbx'; // manusia (Polyfork "Traveller", rangka Mixamo, gratis)
+const CHAR_SCALE = 0.01; // Traveller ~175 cm -> ~1,75 unit dunia
 const COIN_SCALE = 0.004; // koin FBX 157 cm -> diameter ~0,63 unit
 const MODEL_BASE = '/models/';
 const CAM_POS = { x: 0, y: 3.4, z: 7.0 };
@@ -37,7 +41,7 @@ const R = {
   renderer: null, scene: null, camera: null, clock: null,
   char: null, mixer: null, actions: {}, current: null, currentName: null,
   coinTemplate: null, obsTemplates: {},
-  clips: {}, charSurfaceMat: null, skinHex: null, _preloadPromise: null,
+  clips: {}, charMats: {}, skinWarna: null, skinHex: null, _preloadPromise: null, _phase2Ditunda: false,
   coinSlots: [], coinMap: new Map(), coinFree: [],
   obsSlots: [], obsMap: new Map(), obsFree: [],
   decor: [], decorMats: {},
@@ -188,7 +192,7 @@ function initRenderer() {
   const canvas = document.getElementById('gameCanvas3d');
   if (!canvas) throw new Error('canvas #gameCanvas3d tidak ditemukan');
   R.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  R.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  R.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5)); // batas 1,5: hemat GPU HP (anti-freeze)
   R.clock = new THREE.Clock();
   R.scene = new THREE.Scene();
   R.scene.background = new THREE.Color(0xff9a5c);
@@ -268,7 +272,18 @@ function setWorld(idx, d) {
 function stripRootMotion(clip) {
   // Hapus track posisi pinggul (root motion) — gerakan Y/X dikendalikan fisika game.
   // Sama seperti Cave Runner (tracks.shift pada klip slide).
-  clip.tracks = clip.tracks.filter((t) => t.name !== 'mixamorigHips.position');
+  clip.tracks = clip.tracks.filter((t) => t.name !== 'mixamorigHips.position' && t.name !== 'Hips.position');
+  return clip;
+}
+/* Klip animasi Xbot memakai nama tulang 'mixamorigHips' dst; karakter manusia
+ * (Traveller) memakai nama tulang tanpa awalan ('Hips', 'Spine', ...).
+ * Rangkanya sama (humanoid Mixamo 31 tulang), jadi cukup ganti nama track —
+ * retarget tanpa alat lain. Tulang jari tidak ada di Traveller; track jari
+ * diabaikan mixer (tidak throw), tangan tetap bergerak dari pergelangan. */
+function remapClipMixamo(clip) {
+  for (const t of clip.tracks) {
+    if (t.name.startsWith('mixamorig')) t.name = t.name.slice('mixamorig'.length);
+  }
   return clip;
 }
 function makeAction(clip, loop, timeScale) {
@@ -291,6 +306,7 @@ async function muatAnimasi(loader, name, file, loop, ts) {
   if (!g.animations || !g.animations[0]) return false;
   const clip = g.animations[0];
   clip.name = name;
+  remapClipMixamo(clip); // Xbot -> tulang Traveller
   if (name === 'jump' || name === 'slide') stripRootMotion(clip);
   R.actions[name] = makeAction(clip, loop, ts);
   R.clips[name] = clip;
@@ -310,14 +326,17 @@ function muatDenganTimeout(loader, file, ms) {
  * sebelum timeout 15 detik dan game jatuh ke 2D. */
 async function loadModelsPhase1() {
   const loader = new FBXLoader();
-  // Karakter (wajib — kalau gagal, mode 3D dimatikan total)
-  const charGroup = await loader.loadAsync(MODEL_BASE + 'xbot.fbx');
+  // Karakter manusia (wajib — kalau gagal, mode 3D dimatikan total)
+  const charGroup = await loader.loadAsync(MODEL_BASE + CHAR_FILE);
   charGroup.scale.setScalar(CHAR_SCALE);
   charGroup.rotation.y = Math.PI; // membelakangi kamera (lari menjauh)
   charGroup.traverse((o) => {
     if (o.isMesh || o.isSkinnedMesh) {
       o.castShadow = false; o.receiveShadow = false;
-      if (o.name === 'Beta_Surface') R.charSurfaceMat = o.material; // badan utama -> diwarnai skin
+      // koper di tangan kiri disembunyikan — pelari tidak bawa koper
+      if (o.name === 'attach-lefthand-mesh_case') o.visible = false;
+      // kumpulkan material per nama untuk tint skin (baju nempel)
+      if (o.material && o.material.name && !R.charMats[o.material.name]) R.charMats[o.material.name] = o.material;
     }
   });
   R.char = charGroup;
@@ -327,9 +346,15 @@ async function loadModelsPhase1() {
     // klip sekali jalan selesai -> kembali ke animasi lari (kecuali saat crash)
     if (R.mode !== 'crash') play('run');
   });
-  // Animasi lari (wajib untuk mulai main 3D) — kalau gagal, karakter diam saja.
-  try { await muatAnimasi(loader, 'run', 'xbot@running.fbx', true, 1); }
-  catch (e) { console.warn('[run3d] animasi run gagal dimuat:', e.message); }
+  // Klip bawaan karakter (Idle / Walk / Run) — Run jadi animasi lari utama.
+  for (const clip of (charGroup.animations || [])) {
+    const nm = String(clip.name || '').toLowerCase();
+    if (nm === 'run' || nm === 'idle' || nm === 'walk') {
+      clip.name = nm;
+      R.clips[nm] = clip;
+    }
+  }
+  if (R.clips.run) R.actions.run = makeAction(R.clips.run, true, 1);
   // Koin — kalau gagal, pakai torus emas.
   try {
     const coin = await loader.loadAsync(MODEL_BASE + 'coin.fbx');
@@ -364,25 +389,41 @@ const ANIMASI_FASE2 = [
   ['stumble', 'xbot@stumbling.fbx', false, 1.5],
   ['dance', 'xbot@dancing.fbx', true, 1],
 ];
+/* Fase 2 HANYA dimuat saat idle (menu/lobi, bukan saat lari) — parsing FBX di
+ * thread utama saat lari adalah penyebab grafik nge-freeze di HP. Kalau lari
+ * dimulai di tengah jalan, sisa berkas ditunda dan dilanjutkan saat idle lagi
+ * lewat lanjutkanPhase2() (dipanggil app.js saat arena idle). */
+function bolehMuatFase2() {
+  return !document.hidden && !window.__rcGameRunning;
+}
+function lanjutkanPhase2() {
+  if (R.phase2Done || R.failed || !R.ready) return;
+  if (!bolehMuatFase2()) return;
+  loadModelsPhase2().catch(() => {});
+}
 async function loadModelsPhase2() {
-  if (R._phase2Promise) return R._phase2Promise;
+  if (R._phase2Promise && !R._phase2Ditunda) return R._phase2Promise;
+  R._phase2Ditunda = false;
   R._phase2Promise = (async () => {
     if (R.failed) return false;
     const loader = new FBXLoader();
     for (const [name, file, loop, ts] of ANIMASI_FASE2) {
       if (R.failed) break; // fase 1 gagal belakangan — hentikan
+      if (R.actions[name]) continue; // sudah dimuat di percobaan sebelumnya
+      if (!bolehMuatFase2()) { R._phase2Ditunda = true; break; } // lagi lari / tab sembunyi — tunda sisanya
       try {
         const g = await muatDenganTimeout(loader, file, 20000);
         if (!g.animations || !g.animations[0]) continue;
         const clip = g.animations[0];
         clip.name = name;
+        remapClipMixamo(clip);
         if (name === 'jump' || name === 'slide') stripRootMotion(clip);
         R.actions[name] = makeAction(clip, loop, ts);
         R.clips[name] = clip;
       } catch (e) { console.warn('[run3d] animasi ' + name + ' gagal dimuat:', e.message); }
     }
-    R.phase2Done = true;
-    return true;
+    if (!R._phase2Ditunda) { R.phase2Done = true; gantiShowcaseKeDansa(); }
+    return !R._phase2Ditunda;
   })();
   return R._phase2Promise;
 }
@@ -558,69 +599,134 @@ async function preload() {
 }
 
 
-/* ---------- Skin: tint warna badan Xbot mengikuti skin aktif ---------- */
-function applySkin(warnaHex) {
-  if (!R.charSurfaceMat || !warnaHex) return false;
-  try {
-    R.charSurfaceMat.color.set(hexNum(warnaHex));
-    R.skinHex = warnaHex;
-    return true;
-  } catch (e) { return false; }
+/* ---------- Skin: warna baju karakter mengikuti skin aktif ----------
+ * Traveller punya mesh terpisah per bagian (shirt, coat, denim, boot, ...),
+ * jadi warna roster [utama, garis, perut] ditempel per bagian: baju/mantel =
+ * utama, celana denim = garis, sepatu boot = perut. Rambut/kulit/aksesoris
+ * tetap. Terima array 3 warna atau satu hex (kompatibel pemanggil lama). */
+const WARNA_BAGIAN = [
+  [/shirt|coat/, 0], // baju & mantel -> warna utama
+  [/denim/, 1],      // celana -> warna garis
+  [/boot/, 2],       // sepatu -> warna perut
+];
+function warnaUntukMaterial(namaMat, warna) {
+  for (const [re, idx] of WARNA_BAGIAN) if (re.test(namaMat)) return warna[idx];
+  return null;
+}
+function applySkin(warna) {
+  const w = Array.isArray(warna) ? warna : [warna, warna, warna];
+  if (!w[0]) return false;
+  R.skinWarna = w;
+  R.skinHex = w[0];
+  let kena = false;
+  for (const [nama, mat] of Object.entries(R.charMats)) {
+    const target = warnaUntukMaterial(nama, w);
+    if (!target || !mat || !mat.color) continue;
+    try { mat.color.set(hexNum(target)); kena = true; } catch (e) {}
+  }
+  return kena;
 }
 
 /* ---------- Showcase karakter (login + Beranda) ----------
- * Satu panggung 3D per canvas: klon Xbot (SkeletonUtils.clone — model FBX
- * TIDAK diunduh ulang), animasi dance (jatuh ke run kalau dance gagal),
- * geser untuk memutar + putar otomatis pelan biar terasa hidup.
- * Render dilewati saat canvas tersembunyi (tab lain / sudah login).
+ * Satu panggung 3D per canvas: klon karakter manusia (SkeletonUtils.clone —
+ * model FBX TIDAK diunduh ulang).
+ * - mode baris (login): 5 klon berjejer, tiap klon diwarnai warna roster
+ *   berbeda (baju nempel), animasi idle/dansa, grup berputar pelan + geser.
+ * - mode tunggal (Beranda): 1 klon yang memakai material yang SAMA dengan
+ *   pelari (jadi tint skin aktif ikut otomatis saat ganti karakter di Toko).
+ * Render dilewati saat canvas tersembunyi; saat tersembunyi, RAF diganti
+ * polling 500 ms supaya tidak membebani CPU/HP (salah satu penyebab freeze).
  */
 const SHOWCASES = new Map();
-async function showcase(canvasId) {
+function buatAksiShowcase(S, clip) {
+  for (const c of S.clones) {
+    const mixer = new THREE.AnimationMixer(c);
+    if (clip) {
+      const a = mixer.clipAction(clip, c);
+      a.setLoop(THREE.LoopRepeat, Infinity);
+      a.play();
+    }
+    S.mixers.push(mixer);
+  }
+}
+/* Setelah fase 2 selesai (dansa tersedia), semua showcase yang sedang jalan
+ * pindah ke animasi dansa. */
+function gantiShowcaseKeDansa() {
+  const clip = R.clips.dance;
+  if (!clip) return;
+  for (const S of SHOWCASES.values()) {
+    if (S.aksi === 'dance') continue;
+    for (const m of S.mixers) m.stopAllAction();
+    S.mixers = [];
+    buatAksiShowcase(S, clip);
+    S.aksi = 'dance';
+  }
+}
+/* Tint satu klon showcase dengan warna roster (material di-klon supaya
+ * tidak mengubah pelari utama / klon lain). */
+function tintKlon(clone, warna) {
+  clone.traverse((o) => {
+    if ((o.isMesh || o.isSkinnedMesh) && o.material && o.material.name) {
+      const target = warnaUntukMaterial(o.material.name, warna);
+      if (!target) return;
+      o.material = o.material.clone();
+      try { o.material.color.set(hexNum(target)); } catch (e) {}
+    }
+  });
+}
+async function showcase(canvasId, opts) {
+  opts = opts || {};
   if (SHOWCASES.has(canvasId)) return SHOWCASES.get(canvasId).ok;
   const canvas = document.getElementById(canvasId);
   if (!canvas) return false;
   const ok = await preload();
   if (!ok || !R.char) return false;
+  const row = !!opts.row;
+  const colors = row ? (opts.colors || []) : null;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x1a1033);
   const camera = new THREE.PerspectiveCamera(45, 420 / 300, 0.1, 100);
-  camera.position.set(0, 1.7, 4.6);
-  camera.lookAt(0, 1.05, 0);
+  camera.position.set(0, 1.9, row ? 8.2 : 4.6);
+  camera.lookAt(0, 1.0, 0);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7a5a, 1.2));
   const dir = new THREE.DirectionalLight(0xffffff, 1.6);
   dir.position.set(4, 8, 5);
   scene.add(dir);
-  // panggung emas
+  // panggung emas (lebih lebar kalau baris)
   const platform = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.25, 1.35, 0.14, 40),
+    new THREE.CylinderGeometry(row ? 3.4 : 1.25, row ? 3.5 : 1.35, 0.14, 40),
     new THREE.MeshStandardMaterial({ color: 0x2d1b4d, roughness: 0.7, metalness: 0.2 })
   );
   platform.position.y = -0.07;
   scene.add(platform);
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(1.25, 0.035, 10, 48),
+    new THREE.TorusGeometry(row ? 3.4 : 1.25, 0.035, 10, 48),
     new THREE.MeshBasicMaterial({ color: 0xf5b301 })
   );
   ring.rotation.x = Math.PI / 2; ring.position.y = 0.01;
   scene.add(ring);
-  const clone = cloneSkinned(R.char);
-  clone.rotation.y = 0; // menghadap kamera (bukan membelakangi seperti saat lari)
-  clone.position.set(0, 0, 0);
-  scene.add(clone);
-  const mixer = new THREE.AnimationMixer(clone);
-  const clip = R.clips.dance || R.clips.run;
-  if (clip) {
-    const a = mixer.clipAction(clip, clone);
-    a.setLoop(THREE.LoopRepeat, Infinity);
-    a.play();
+  const group = new THREE.Group();
+  scene.add(group);
+  const clones = [];
+  const n = row ? 5 : 1;
+  for (let i = 0; i < n; i++) {
+    const clone = cloneSkinned(R.char);
+    clone.rotation.y = 0; // menghadap kamera
+    clone.position.set(row ? (i - 2) * 1.35 : 0, 0, 0);
+    if (row && colors && colors[i]) tintKlon(clone, colors[i]);
+    group.add(clone);
+    clones.push(clone);
   }
+  const clip = R.clips.dance || R.clips.idle || R.clips.run;
   const S = {
-    canvas, renderer, scene, camera, clone, mixer, ok: true,
-    rotY: 0, dragging: false, lastX: 0, lastDragAt: 0, raf: 0,
+    canvas, renderer, scene, camera, group, clones, mixers: [],
+    ok: true, rotY: 0, dragging: false, lastX: 0, lastDragAt: 0, raf: 0, timer: 0,
     clock: new THREE.Clock(), w: 0, h: 0,
+    aksi: R.clips.dance ? 'dance' : (R.clips.idle ? 'idle' : 'run'),
   };
+  buatAksiShowcase(S, clip);
   canvas.addEventListener('pointerdown', (e) => { S.dragging = true; S.lastX = e.clientX; try { canvas.setPointerCapture(e.pointerId); } catch (err) {} });
   canvas.addEventListener('pointermove', (e) => {
     if (!S.dragging) return;
@@ -631,8 +737,11 @@ async function showcase(canvasId) {
   canvas.addEventListener('pointerup', endDrag);
   canvas.addEventListener('pointercancel', endDrag);
   const tickShow = () => {
-    S.raf = requestAnimationFrame(tickShow);
-    if (!canvas.isConnected || canvas.offsetParent === null || canvas.clientWidth === 0) return;
+    S.raf = 0;
+    if (!canvas.isConnected || canvas.offsetParent === null || canvas.clientWidth === 0) {
+      S.timer = setTimeout(tickShow, 500); // tersembunyi: polling pelan, bukan RAF 60fps
+      return;
+    }
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (w !== S.w || h !== S.h) {
       S.w = w; S.h = h;
@@ -641,11 +750,12 @@ async function showcase(canvasId) {
       camera.updateProjectionMatrix();
     }
     const dt = Math.min(S.clock.getDelta(), 0.05);
-    mixer.update(dt);
+    for (const m of S.mixers) m.update(dt);
     if (!S.dragging && performance.now() - S.lastDragAt > 2000) S.rotY += 0.004; // putar pelan sendiri
-    clone.rotation.y = S.rotY;
-    clone.position.y = Math.sin(performance.now() / 500) * 0.02; // bob halus
+    group.rotation.y = S.rotY;
+    group.position.y = Math.sin(performance.now() / 500) * 0.02; // bob halus
     renderer.render(scene, camera);
+    S.raf = requestAnimationFrame(tickShow);
   };
   S.raf = requestAnimationFrame(tickShow);
   SHOWCASES.set(canvasId, S);
@@ -655,6 +765,7 @@ function showcaseStop(canvasId) {
   const S = SHOWCASES.get(canvasId);
   if (!S) return;
   cancelAnimationFrame(S.raf);
+  clearTimeout(S.timer);
   try { S.renderer.dispose(); } catch (e) {}
   SHOWCASES.delete(canvasId);
 }
@@ -663,7 +774,8 @@ function showcaseStop(canvasId) {
 if (typeof window !== 'undefined') {
   window.Run3D = {
     laneToX, worldZ, preload, setWorld, render, setIdle, playStumble,
-    showcase, showcaseStop, applySkin,
+    showcase, showcaseStop, applySkin, lanjutkanPhase2,
+    get phase2Done() { return R.phase2Done; },
     playJump() { play('jump'); },
     playSlide() { play('slide'); },
     playRun() { play('run'); },
