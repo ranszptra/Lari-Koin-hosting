@@ -1,4 +1,4 @@
-/* Lari Koin Online — halaman pemain. Token & progres hanya di memori JS. */
+/* Nailong Runner — halaman pemain. Token & progres hanya di memori JS. */
 'use strict';
 let token = null;
 let player = null;
@@ -241,9 +241,9 @@ $('btnRefreshBoard').addEventListener('click', muatLeaderboard);
 const KATALOG = {
   character: [
     { id: 'jolly', nama: 'Nailong', harga: 0, ikon: '🐲', desc: 'Naga kuning gembul kesayangan — sudah dimiliki.' },
-    { id: 'kiko', nama: 'Kiko', harga: 50000, ikon: '🟢', desc: 'Hijau ceria, telinga daun.' },
-    { id: 'momo', nama: 'Momo', harga: 100000, ikon: '🌸', desc: 'Pink manis, pita di kepala.' },
-    { id: 'rex', nama: 'Rex', harga: 200000, ikon: '🦖', desc: 'Oranye garang, tanduk naga.' }
+    { id: 'kiko', nama: 'Nailong Hijau', harga: 50000, ikon: '🐲', desc: 'Nailong hijau ceria.' },
+    { id: 'momo', nama: 'Nailong Pink', harga: 100000, ikon: '🐲', desc: 'Nailong pink manis, pita di kepala.' },
+    { id: 'rex', nama: 'Nailong Api', harga: 200000, ikon: '🐲', desc: 'Nailong oranye garang, tanduk naga.' }
   ],
   skin: [
     { id: 'emas', nama: 'Emas', harga: 25000, ikon: '✨', desc: 'Nailong kuning keemasan.' },
@@ -624,16 +624,24 @@ canvas.addEventListener('touchend', (e) => {
 }, { passive: true });
 canvas.addEventListener('click', () => { if (!game.running && token) mulaiGame(); });
 
-/* Gambar awal (diam) di canvas */
-(function gambarAwal() {
+/* Gambar awal di canvas — Nailong bergerak pelan walau belum main */
+let idleT = 0;
+function gambarAwal() {
+  if (game.running) return;
   const d = DUNIA[0];
   ctx.fillStyle = d.langit; ctx.fillRect(0, 0, 420, 520);
   ctx.fillStyle = d.tanah; ctx.fillRect(0, 0, 420, 520);
   ctx.fillStyle = 'rgba(255,255,255,.25)'; ctx.fillRect(135, 0, 6, 520); ctx.fillRect(279, 0, 6, 520);
-  drawJolly(210, 430, 30);
+  game.frame = idleT++;
+  const lompat = Math.abs(Math.sin(game.frame / 8)) * 6;
+  ctx.fillStyle = 'rgba(0,0,0,.25)';
+  ctx.beginPath(); ctx.ellipse(210, 464, 26, 8, 0, 0, Math.PI * 2); ctx.fill();
+  drawNailong(210, 430 - lompat, 30);
   ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
   ctx.fillText('Tekan ▶ Mulai Lari', 210, 120);
-})();
+}
+gambarAwal();
+setInterval(gambarAwal, 100);
 
 /* Service worker */
 if ('serviceWorker' in navigator) {

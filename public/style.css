@@ -97,7 +97,7 @@ body.pengelola a{color:#ffd54a}
 /* Layar memuat */
 #loadingScreen{position:fixed;inset:0;z-index:200;background:linear-gradient(180deg,#ffe066,#f5b301);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;transition:opacity .5s}
 #loadingScreen.done{opacity:0;pointer-events:none}
-#loadingScreen img{width:200px;height:200px;object-fit:cover;border-radius:50%;border:5px solid #fff;box-shadow:0 6px 20px rgba(90,50,0,.3);animation:nailong-lompat 1s ease-in-out infinite}
+#loadingScreen img{width:200px;height:200px;object-fit:cover;border-radius:28px;border:5px solid #fff;box-shadow:0 6px 20px rgba(90,50,0,.3);animation:nailong-lompat 1s ease-in-out infinite}
 #loadingScreen h1{margin:0;font-size:26px;color:#3b2410}
 #loadingScreen p{margin:0;font-weight:700;color:#5d3a1a;font-size:15px}
 .loading-bar{width:200px;height:12px;background:rgba(255,255,255,.6);border-radius:8px;overflow:hidden}
