@@ -118,6 +118,7 @@ CREATE TABLE IF NOT EXISTS daily_state (
   lastAdAt bigint,
   wheelLeft integer NOT NULL DEFAULT 1,
   chestLeft integer NOT NULL DEFAULT 1,
+  runCoinsToday integer NOT NULL DEFAULT 0,
   PRIMARY KEY (playerId, date)
 );
 
@@ -167,3 +168,4 @@ ALTER TABLE players ADD COLUMN IF NOT EXISTS providerId text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS banned integer NOT NULL DEFAULT 0;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS bannedReason text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS fullset_claimed integer NOT NULL DEFAULT 0;
+ALTER TABLE daily_state ADD COLUMN IF NOT EXISTS runCoinsToday integer NOT NULL DEFAULT 0;

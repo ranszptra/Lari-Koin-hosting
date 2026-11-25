@@ -145,18 +145,16 @@ app.post('/api/login', ah(async (req, res) => {
   res.json({ ok: true, token, player: publicPlayer(await freshPlayer(row.id)) });
 }));
 
-// --- Login sosial (Google / Facebook, sekali ketuk) -------------------------
-// Butuh env: GOOGLE_CLIENT_ID, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET.
-// Kalau belum diset, tombol sosial disembunyikan (lihat /api/auth/social-config).
-// Akun sosial tersimpan di server (provider + providerId) — hapus aplikasi pun
-// akun & koin tetap ada, tinggal ketuk Google/Facebook lagi.
+// --- Login sosial (Google, sekali ketuk) --------------------------------------
+// Butuh env: GOOGLE_CLIENT_ID. Kalau belum diset, tombol sosial disembunyikan
+// (lihat /api/auth/social-config). Akun sosial tersimpan di server
+// (provider + providerId) — hapus aplikasi pun akun & koin tetap ada,
+// tinggal ketuk Google lagi. (Login Facebook DIHAPUS atas keputusan Rans.)
 app.get('/api/auth/social-config', (req, res) => {
   res.json({
     ok: true,
     google: Boolean(process.env.GOOGLE_CLIENT_ID),
     googleClientId: process.env.GOOGLE_CLIENT_ID || null,
-    facebook: Boolean(process.env.FACEBOOK_APP_ID && process.env.FACEBOOK_APP_SECRET),
-    facebookAppId: process.env.FACEBOOK_APP_ID || null,
   });
 });
 async function verifyGoogleToken(idToken) {
@@ -166,23 +164,11 @@ async function verifyGoogleToken(idToken) {
   if (!d || d.aud !== process.env.GOOGLE_CLIENT_ID || d.email_verified !== 'true' || !d.sub) return null;
   return { providerId: d.sub, name: d.name || String(d.email || '').split('@')[0] };
 }
-async function verifyFacebookToken(accessToken) {
-  const appToken = process.env.FACEBOOK_APP_ID + '|' + process.env.FACEBOOK_APP_SECRET;
-  const r = await fetch('https://graph.facebook.com/debug_token?input_token=' + encodeURIComponent(accessToken) + '&access_token=' + encodeURIComponent(appToken));
-  if (!r.ok) return null;
-  const d = await r.json();
-  if (!d || !d.data || !d.data.is_valid || d.data.app_id !== process.env.FACEBOOK_APP_ID || !d.data.user_id) return null;
-  const r2 = await fetch('https://graph.facebook.com/' + encodeURIComponent(d.data.user_id) + '?fields=id,name&access_token=' + encodeURIComponent(accessToken));
-  if (!r2.ok) return null;
-  const me = await r2.json();
-  if (!me || !me.id) return null;
-  return { providerId: me.id, name: me.name || ('FB-' + String(me.id).slice(-6)) };
-}
 app.post('/api/auth/social', ah(async (req, res) => {
   const provider = String(req.body?.provider || '');
   const token = String(req.body?.token || '');
-  if (!['google', 'facebook'].includes(provider) || !token) return fail(res, 'Provider/token tidak valid');
-  const verified = provider === 'google' ? await verifyGoogleToken(token) : await verifyFacebookToken(token);
+  if (provider !== 'google' || !token) return fail(res, 'Provider/token tidak valid');
+  const verified = await verifyGoogleToken(token);
   if (!verified) return fail(res, 'Verifikasi ' + provider + ' gagal — coba lagi');
   const ip = clientIp(req);
   let row = await db.prepare('SELECT * FROM players WHERE provider=? AND providerId=?').get(provider, verified.providerId);
@@ -270,6 +256,39 @@ app.get('/api/profile', ah(requirePlayer), ah(async (req, res) => {
   });
 }));
 
+// --- Validasi lari (anti-cheat) -------------------------------------------------
+// Server tidak lagi percaya mentah angka koin dari HP: koin harus cocok dengan
+// jumlah pickup, jarak, dan durasi lari. Batas koin lari: 30.000/hari/pemain.
+const RUN_COINS_HARIAN_MAX = 30000;
+const RUN_JEDA_MIN_MS = 15000; // jeda minimal antar klaim level (1 lari valid ≥ ~20 detik)
+const lastFinishAt = new Map(); // playerId -> timestamp ms (rate limit, in-memory)
+function hitungTarget(level) { return ((level % 10 === 0 ? 700 : 450) + level * 30); }
+function kecepatanMax(level) { return (4 + level * 0.18) * 1.5; } // + skill Lari Cepat x1,5
+function validasiLari({ level, coins, coinCount, distance, durationMs, harusSelesai }) {
+  // Klien lama (tanpa bukti lari): batasi 1.000 koin/klaim — lari valid maksimal ~1.000.
+  if (coinCount == null || distance == null || durationMs == null) {
+    if (coins > 1000) return 'Koin lari tidak valid (melebihi batas tanpa bukti lari)';
+    return null;
+  }
+  if (!Number.isInteger(coinCount) || coinCount < 0 || coinCount > 1000) return 'Jumlah pickup koin tidak valid';
+  if (!Number.isInteger(distance) || distance < 0 || distance > 10000) return 'Jarak lari tidak valid';
+  if (!Number.isInteger(durationMs) || durationMs < 0 || durationMs > 3600000) return 'Durasi lari tidak valid';
+  if (coins % 10 !== 0) return 'Koin lari harus kelipatan 10';
+  if (coins > coinCount * 20) return 'Koin melebihi jumlah pickup (maks 20/pickup)';
+  if (harusSelesai && distance < hitungTarget(level)) return 'Level belum selesai (jarak kurang)';
+  // Durasi minimal: target / kecepatan maks (toleransi 20%).
+  const durMinMs = (hitungTarget(level) / (kecepatanMax(level) * 3.6)) * 1000 * 0.8;
+  if (harusSelesai && durationMs < durMinMs) return 'Lari terlalu cepat — tidak valid';
+  // Koin maksimal dari spawn: 1 spawn tiap max(28, 75-lv*1,6) frame @60fps, maks 20 koin/spawn, +30% toleransi.
+  const interval = Math.max(28, 75 - level * 1.6);
+  const maxSpawn = Math.ceil((durationMs / 1000) * 60 / interval) + 2;
+  if (coinCount > Math.ceil(maxSpawn * 1.3)) return 'Pickup koin melebihi yang mungkin muncul';
+  // Jarak maksimal dari durasi (toleransi 30%).
+  const jarakMax = (durationMs / 1000) * 60 * kecepatanMax(level) * 0.06 * 1.3;
+  if (distance > jarakMax) return 'Jarak melebihi yang mungkin ditempuh';
+  return null;
+}
+
 // --- Finish level -----------------------------------------------------------
 app.post('/api/finish-level', ah(requirePlayer), ah(async (req, res) => {
   const level = Number(req.body?.level);
@@ -286,14 +305,24 @@ app.post('/api/finish-level', ah(requirePlayer), ah(async (req, res) => {
   if (runCoins < 0 || runCoins > 10000) return fail(res, 'coins tidak valid');
   const p = await freshPlayer(req.player.id);
   if (level > p.maxLevel) return fail(res, 'Level belum terbuka');
+  const errValid = validasiLari({ level, coins: runCoins, coinCount: req.body?.coinCount, distance: req.body?.distance, durationMs: req.body?.durationMs, harusSelesai: true });
+  if (errValid) return fail(res, errValid);
   const isBoss = level % 10 === 0;
   const bonus = (100 + 15 * level) * (isBoss ? 5 : 1);
   const coinsEarned = runCoins + bonus;
+  // Jeda antar klaim + batas harian (anti-farm).
+  const nowMs = Date.now();
+  const lastMs = lastFinishAt.get(p.id) || 0;
+  if (nowMs - lastMs < RUN_JEDA_MIN_MS) return fail(res, 'Terlalu cepat — tunggu sebentar sebelum klaim lagi');
+  const today = todayStr();
+  const ds = await getDailyState(p.id, today);
+  if ((ds.runCoinsToday || 0) + coinsEarned > RUN_COINS_HARIAN_MAX) return fail(res, 'Batas koin lari harian tercapai (30.000)');
   const newMaxLevel = Math.max(p.maxLevel, level + 1);
   await db.prepare('UPDATE players SET coins=coins+?, totalEarned=totalEarned+?, totalLevels=totalLevels+1, maxLevel=?, lastActive=? WHERE id=?')
     .run(coinsEarned, coinsEarned, newMaxLevel, nowIso(), p.id);
+  await db.prepare('UPDATE daily_state SET runCoinsToday=runCoinsToday+? WHERE playerId=? AND date=?').run(coinsEarned, p.id, today);
+  lastFinishAt.set(p.id, nowMs);
   const skinsBaru = await grantLevelSkins(await freshPlayer(p.id));
-  const today = todayStr();
   await addMissionProgress(p.id, 'm_level3', 1, today);
   await addMissionProgress(p.id, 'm_coins500', coinsEarned, today);
   if (isBoss) await addMissionProgress(p.id, 'm_boss', 1, today);
@@ -304,9 +333,16 @@ app.post('/api/finish-level', ah(requirePlayer), ah(async (req, res) => {
 app.post('/api/bank-run-coins', ah(requirePlayer), ah(async (req, res) => {
   const coins = Number(req.body?.coins);
   if (!Number.isInteger(coins) || coins < 0 || coins > 10000) return fail(res, 'coins tidak valid');
+  const levelBank = Number(req.body?.level) || 1;
+  const errBank = validasiLari({ level: levelBank, coins, coinCount: req.body?.coinCount, distance: req.body?.distance, durationMs: req.body?.durationMs, harusSelesai: false });
+  if (errBank) return fail(res, errBank);
   if (coins > 0) {
+    const todayBank = todayStr();
+    const dsBank = await getDailyState(req.player.id, todayBank);
+    if ((dsBank.runCoinsToday || 0) + coins > RUN_COINS_HARIAN_MAX) return fail(res, 'Batas koin lari harian tercapai (30.000)');
     await touchCoins(req.player.id, coins);
-    await addMissionProgress(req.player.id, 'm_coins500', coins, todayStr());
+    await db.prepare('UPDATE daily_state SET runCoinsToday=runCoinsToday+? WHERE playerId=? AND date=?').run(coins, req.player.id, todayBank);
+    await addMissionProgress(req.player.id, 'm_coins500', coins, todayBank);
   }
   res.json({ ok: true, coins, totalCoins: (await freshPlayer(req.player.id)).coins });
 }));

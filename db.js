@@ -230,6 +230,7 @@ CREATE TABLE IF NOT EXISTS daily_state (
   lastAdAt INTEGER,
   wheelLeft INTEGER NOT NULL DEFAULT 1,
   chestLeft INTEGER NOT NULL DEFAULT 1,
+  runCoinsToday INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (playerId, date)
 );
 CREATE TABLE IF NOT EXISTS referrals (
@@ -432,6 +433,7 @@ async function initDb() {
       for (const col of ['ip TEXT', 'lastIp TEXT', 'provider TEXT', 'providerId TEXT', 'banned INTEGER NOT NULL DEFAULT 0', 'bannedReason TEXT', 'fullset_claimed INTEGER NOT NULL DEFAULT 0']) {
         try { sqliteDb.exec(`ALTER TABLE players ADD COLUMN ${col};`); } catch { /* kolom sudah ada */ }
       }
+      try { sqliteDb.exec('ALTER TABLE daily_state ADD COLUMN runCoinsToday INTEGER NOT NULL DEFAULT 0;'); } catch { /* kolom sudah ada */ }
       console.log('[db] SQLite lokal aktif (DATABASE_URL tidak diset).');
     }
     await seed();
@@ -468,8 +470,8 @@ function publicPlayer(row) {
 async function getDailyState(playerId, date) {
   let row = await db.prepare('SELECT * FROM daily_state WHERE playerId=? AND date=?').get(playerId, date);
   if (!row) {
-    await db.prepare('INSERT INTO daily_state(playerId,date,adsToday,lastAdAt,wheelLeft,chestLeft) VALUES(?,?,?,?,?,?)')
-      .run(playerId, date, 0, null, 1, 1);
+    await db.prepare('INSERT INTO daily_state(playerId,date,adsToday,lastAdAt,wheelLeft,chestLeft,runCoinsToday) VALUES(?,?,?,?,?,?,?)')
+      .run(playerId, date, 0, null, 1, 1, 0);
     row = await db.prepare('SELECT * FROM daily_state WHERE playerId=? AND date=?').get(playerId, date);
   }
   return row;
