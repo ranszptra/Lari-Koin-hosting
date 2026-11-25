@@ -22,6 +22,7 @@
 <!-- LAYAR MASUK / DAFTAR -->
 <section id="authScreen" class="card" style="margin-top:14px">
   <h2>Selamat datang, Pelari! 🏃</h2>
+  <div class="notice">🎁 <b>Download &amp; main — tukar koin jadi uang sampai Rp50.000!</b><br>1.000 koin = Rp15 &bull; Penarikan mulai Rp1.000 &bull; Undang teman dapat Rp5.000 per teman.</div>
   <p>Masuk dengan nama + PIN kamu. Belum punya akun? Isi nama &amp; PIN lalu tekan <b>Daftar</b> — akun langsung dibuat.</p>
   <label for="authName">Nama pemain</label>
   <input id="authName" type="text" placeholder="Contoh: Rans" autocomplete="username" maxlength="30">
@@ -32,6 +33,9 @@
   <div class="row">
     <button class="btn-emas" id="btnLogin">Masuk</button>
     <button class="btn-gelap" id="btnRegister">Daftar</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button class="btn-hijau" id="btnDownloadApp">📲 Download Aplikasi</button>
   </div>
   <p class="small" id="authMsg"></p>
   <p class="small">Catatan: sesi login hanya tersimpan selama halaman ini terbuka. Kalau halaman di-refresh, silakan masuk lagi dengan nama + PIN.</p>
@@ -214,5 +218,25 @@
 </div>
 
 <script src="/app.js"></script>
+<script>
+/* Tombol Download Aplikasi (PWA install) */
+(function () {
+  var btn = document.getElementById('btnDownloadApp');
+  if (!btn) return;
+  var deferred = null;
+  if (window.matchMedia('(display-mode: standalone)').matches) { btn.style.display = 'none'; return; }
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; });
+  btn.addEventListener('click', async function () {
+    if (deferred) {
+      deferred.prompt();
+      try { await deferred.userChoice; } catch (e) {}
+      deferred = null;
+      return;
+    }
+    var isiOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    toast(isiOS ? 'Di iPhone: tap Bagikan lalu "Tambah ke Layar Utama".' : 'Di Chrome: tap titik tiga lalu "Tambahkan ke Layar Utama" / "Instal aplikasi".');
+  });
+})();
+</script>
 </body>
 </html>
