@@ -1,6 +1,6 @@
-# Lari Koin Online — Proyek Mandiri (Standalone)
+# Runner Coin — Proyek Mandiri (Standalone)
 
-Game runner 3 jalur ala Subway Surfers (Jolly lari, hindari halangan, kumpulkan
+Game runner 3 jalur ala Subway Surfers (Xbot lari, hindari halangan, kumpulkan
 koin) **dengan akun pemain, dompet, dan Panel Pemilik**, sebagai proyek Node.js
 mandiri yang bisa di-host di Render gratis dan nanti dibungkus jadi APK (TWA).
 
@@ -26,8 +26,8 @@ mandiri yang bisa di-host di Render gratis dan nanti dibungkus jadi APK (TWA).
 - **Game runner (canvas):** 3 jalur, keyboard + swipe/tap, 60 level,
   kesulitan naik tiap level, level 60 tersulit, bos tiap 10 level (hadiah 5x),
   6 dunia (Kota Senja, Hutan Rimba, Gurun Pasir, Salju Abadi, Luar Angkasa,
-  Lava Berapi). Jolly digambar di canvas (plush krem, mata hitam mengkilap,
-  senyum kecil, pipi pink). Karakter Jolly/Kiko/Momo/Rex + skin
+  Lava Berapi). Xbot robot tampil 3D (Three.js + model Mixamo, animasi lari/lompat/guling).
+  Karakter Xbot/Xbot Hijau/Xbot Pink/Xbot Api + skin
   emas/ninja/astronot/pelangi/shadow + power-up magnet/perisai/koin x2.
   Koin dari lari yang gagal tetap disimpan (tanpa bonus level).
 - **Akun pemain:** daftar/masuk nama + PIN (hash scrypt), semua progres
@@ -50,7 +50,7 @@ mandiri yang bisa di-host di Render gratis dan nanti dibungkus jadi APK (TWA).
   nama/nominal/metode/nomor tujuan + tombol proses/tandai dibayar, daftar
   semua pemain (bisa dicari), statistik mediasi & offerwall, ganti PIN,
   kartu "Pasang di HP". **Ganti PIN admin segera setelah deploy (di /admin.html) — jangan pakai PIN bawaan.**
-- **PWA:** `manifest.json` + ikon Jolly (SVG + PNG 192/512) + service worker,
+- **PWA:** `manifest.json` + ikon Runner Coin (SVG + PNG 192/512) + service worker,
   siap dipasang ke layar utama HP dan dibungkus jadi APK (TWA) setelah
   hosting publik.
 

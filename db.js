@@ -1,4 +1,4 @@
-// db.js — Skema + seed + helper bersama untuk Nailong Runner.
+// db.js — Skema + seed + helper bersama untuk Runner Coin.
 //
 // DUA BACKEND (dipilih otomatis):
 //   - Jika env DATABASE_URL diset (Supabase Postgres) → pakai `pg` (Pool).
@@ -134,7 +134,7 @@ const ACHIEVEMENTS = [
   { id: 'a_level1', title: 'Langkah Pertama', desc: 'Selesaikan level 1.', reward: 500 },
   { id: 'a_level10', title: 'Pelari Pemula', desc: 'Selesaikan 10 level.', reward: 2000 },
   { id: 'a_level30', title: 'Pelari Andal', desc: 'Selesaikan 30 level.', reward: 5000 },
-  { id: 'a_level60', title: 'Legenda Nailong Runner', desc: 'Selesaikan 60 level.', reward: 10000 },
+  { id: 'a_level60', title: 'Legenda Runner Coin', desc: 'Selesaikan 60 level.', reward: 10000 },
   { id: 'a_coins100k', title: 'Sultan Koin', desc: 'Kumpulkan total 100.000 koin.', reward: 5000 },
   { id: 'a_streak7', title: 'Rajin Check-in', desc: 'Check-in 7 hari beruntun.', reward: 3000 },
   { id: 'a_invite1', title: 'Ajak Teman', desc: 'Undang 1 teman (teman mendaftar dengan kodemu).', reward: 2000 },
