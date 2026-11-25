@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Admin — Lari Koin Online</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#14100a">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body class="pengelola">
+<header class="topbar">
+  <div class="logo" aria-hidden="true">🪙</div>
+  <div><h1>Panel Admin — Lari Koin Online</h1><p>Dashboard pemilik • Hanya untuk pengelola</p></div>
+</header>
+<div id="toast" role="status"></div>
+
+<section id="adminLogin" class="card" style="margin-top:14px;max-width:420px;margin-left:auto;margin-right:auto">
+  <h2>🔐 Masuk Admin</h2>
+  <p class="muted">Masukkan PIN admin untuk membuka dashboard.</p>
+  <label for="adminPin">PIN Admin</label>
+  <input id="adminPin" type="password" placeholder="••••••" inputmode="numeric" autocomplete="current-password" maxlength="12">
+  <button class="btn-emas" id="btnAdminLogin" style="width:100%">Masuk Dashboard</button>
+  <p class="small" id="adminLoginMsg"></p>
+</section>
+
+<div id="adminApp" class="hidden" style="padding:12px 14px 40px">
+  <div class="row" style="margin-bottom:6px">
+    <button class="btn-putih btn-kecil" id="btnRefreshAdmin">🔄 Muat Ulang Data</button>
+    <button class="btn-putih btn-kecil" id="btnLogoutAdmin">Keluar</button>
+  </div>
+
+  <section class="card">
+    <h2>📊 Ringkasan</h2>
+    <div class="stat-grid">
+      <div class="stat"><small>Total Pemain</small><b id="statPemain">0</b></div>
+      <div class="stat"><small>Pemain Baru Hari Ini</small><b id="statBaru">0</b></div>
+      <div class="stat"><small>Koin Beredar</small><b id="statKoin">0</b></div>
+      <div class="stat"><small>Nilai Koin Beredar (Rp)</small><b id="statKoinRp">Rp0</b></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💸 Antrean Penarikan</h2>
+    <h3>Menunggu</h3>
+    <div id="tarikMenunggu"><p class="muted">Tidak ada.</p></div>
+    <h3>Diproses</h3>
+    <div id="tarikDiproses"><p class="muted">Tidak ada.</p></div>
+    <h3>Selesai</h3>
+    <div id="tarikSelesai"><p class="muted">Tidak ada.</p></div>
+  </section>
+
+  <section class="card">
+    <h2>👥 Semua Pemain</h2>
+    <input id="cariPemain" type="search" placeholder="Cari nama pemain…">
+    <div id="daftarPemain"><p class="muted">Memuat…</p></div>
+  </section>
+
+  <section class="card">
+    <h2>📺 Mediasi Iklan per Network</h2>
+    <p class="muted">Tayangan &amp; estimasi penghasilan (Rp) per jaringan iklan.</p>
+    <div id="statMediasi"><p class="muted">Memuat…</p></div>
+  </section>
+
+  <section class="card">
+    <h2>📲 Progres Offerwall per Penyedia</h2>
+    <div id="statOfferwall"><p class="muted">Memuat…</p></div>
+  </section>
+
+  <section class="card">
+    <h2>🔑 Ganti PIN Admin</h2>
+    <label for="pinLama">PIN lama</label>
+    <input id="pinLama" type="password" inputmode="numeric" maxlength="12">
+    <label for="pinBaru">PIN baru</label>
+    <input id="pinBaru" type="password" inputmode="numeric" maxlength="12">
+    <button class="btn-emas" id="btnGantiPin">Simpan PIN Baru</button>
+    <p class="small" id="gantiPinMsg"></p>
+  </section>
+
+  <section class="card">
+    <h2>📱 Pasang di HP (Add to Home Screen)</h2>
+    <p><b>Chrome Android:</b> buka situs ini di Chrome → menu titik tiga (⋮) → <b>Tambahkan ke Layar Utama / Install aplikasi</b> → Pasang. Ikon Lari Koin akan muncul seperti aplikasi.</p>
+    <p><b>Safari iPhone:</b> buka situs ini di Safari → tombol Bagikan (kotak + panah ke atas) → <b>Tambah ke Layar Utama</b> → Tambah.</p>
+    <p>Manifest PWA: <a href="/manifest.json" target="_blank" rel="noopener">/manifest.json</a> • Ikon: <a href="/icon-192.png" target="_blank" rel="noopener">192px</a> • <a href="/icon-512.png" target="_blank" rel="noopener">512px</a></p>
+    <p class="small">Syarat: situs harus dibuka lewat HTTPS agar instalasi PWA muncul.</p>
+  </section>
+</div>
+
+<script src="/admin.js"></script>
+</body>
+</html>

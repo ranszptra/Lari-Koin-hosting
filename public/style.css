@@ -1,0 +1,85 @@
+:root{--emas:#f5b301;--emas2:#ffd54a;--coklat:#3b2410;--coklat2:#5d3a1a;--krem:#fff8e7;--hijau:#2e7d32;--merah:#c62828;--bg:#fff3d6}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--coklat);max-width:480px;margin:0 auto;min-height:100vh}
+button{font-family:inherit;cursor:pointer;border:0;border-radius:12px;padding:10px 14px;font-weight:700}
+button:disabled{opacity:.5;cursor:not-allowed}
+input,select{font-family:inherit;width:100%;padding:11px 12px;border:2px solid #e0c48a;border-radius:12px;background:#fff;font-size:15px;margin:6px 0}
+input:focus,select:focus{outline:2px solid var(--emas)}
+a{color:#8a5a00}
+.topbar{background:linear-gradient(135deg,#7a4a12,#b97e1e);color:#fff;padding:14px 16px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20}
+.topbar .logo{width:44px;height:44px;border-radius:50%;background:#fff3d6;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0}
+.topbar h1{font-size:19px;margin:0;line-height:1.1}
+.topbar p{margin:2px 0 0;font-size:12px;opacity:.9}
+.saldo-bar{display:flex;gap:8px;padding:12px 14px 0}
+.saldo{flex:1;background:#fff;border:2px solid var(--emas);border-radius:14px;padding:10px 12px}
+.saldo small{display:block;color:#8a6d2b;font-size:11px;font-weight:700;letter-spacing:.5px}
+.saldo b{font-size:20px}
+.saldo span{font-size:12px;color:#666}
+main{padding:12px 14px 40px}
+.card{background:#fff;border-radius:16px;padding:14px;margin:12px 0;box-shadow:0 2px 8px rgba(90,50,0,.12)}
+.card h2{margin:0 0 4px;font-size:17px}
+.card h3{margin:14px 0 6px;font-size:15px}
+.card p{margin:6px 0;font-size:14px;line-height:1.5}
+.muted{color:#777;font-size:13px}
+.small{font-size:12px;color:#777}
+.btn-emas{background:var(--emas);color:#3b2410;font-size:16px;width:100%;padding:13px}
+.btn-emas:hover{background:var(--emas2)}
+.btn-gelap{background:var(--coklat);color:#fff}
+.btn-hijau{background:var(--hijau);color:#fff}
+.btn-putih{background:#fff;border:2px solid var(--emas);color:var(--coklat)}
+.btn-kecil{padding:7px 10px;font-size:13px;width:auto}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1;min-width:0}
+.row .btn-kecil{flex:0 0 auto}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.pill{display:inline-block;background:#fff3d6;border:1px solid var(--emas);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:700;margin:2px}
+.badge-bos{background:#c62828;color:#fff;border-radius:8px;padding:2px 8px;font-size:12px;font-weight:800}
+.notice{background:#fff8e1;border:2px dashed #d4a017;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.5;margin:10px 0}
+.notice b{color:#8a5a00}
+#gameCanvas{display:block;width:100%;max-width:420px;height:520px;margin:0 auto;background:#87ceeb;border-radius:14px;touch-action:pan-y}
+.game-wrap{position:relative;max-width:420px;margin:0 auto}
+.hud{position:absolute;top:8px;left:8px;right:8px;display:flex;justify-content:space-between;gap:6px;pointer-events:none}
+.hud span{background:rgba(0,0,0,.55);color:#fff;border-radius:10px;padding:5px 9px;font-size:13px;font-weight:700}
+.game-controls{display:flex;gap:8px;margin-top:10px}
+.game-controls button{flex:1}
+.lane-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+.lane-btns button{background:#fff;border:2px solid var(--emas);font-size:20px;padding:12px 0}
+#gameResult{margin-top:10px;background:#fff8e1;border-radius:12px;padding:12px;display:none}
+#gameResult.show{display:block}
+#gameResult h3{margin:0 0 6px}
+.misi,.prestasi,.tawaran,.pemain-row,.tarik-row{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#fffaf0;border:1px solid #f0d9a0;border-radius:12px;padding:10px;margin:8px 0}
+.misi div,.prestasi div{flex:1}
+.progress{height:10px;background:#eee;border-radius:6px;overflow:hidden;margin:6px 0}
+.progress i{display:block;height:100%;background:var(--emas)}
+.checkin{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:10px 0}
+.checkin button{padding:10px 2px;font-size:12px;background:#fff;border:2px solid var(--emas)}
+.checkin button.done{background:var(--hijau);color:#fff;border-color:var(--hijau)}
+.toko-item{border:1px solid #f0d9a0;border-radius:12px;padding:10px;margin:8px 0;background:#fffaf0}
+.toko-item .ikon{font-size:34px}
+.banner-iklan{background:#3b2410;color:#ffd54a;text-align:center;border-radius:12px;padding:14px;font-weight:700;margin:12px 0}
+.banner-iklan small{display:block;color:#fff;font-weight:400;font-size:12px;margin-top:4px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal.show{display:flex}
+.modal-box{background:#fff;border-radius:16px;padding:20px;max-width:360px;width:100%;text-align:center}
+.modal-box h3{margin-top:0}
+#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#3b2410;color:#fff;padding:11px 16px;border-radius:12px;font-size:14px;z-index:99;display:none;max-width:90vw;text-align:center}
+#toast.show{display:block}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td,th{padding:8px 6px;border-bottom:1px solid #eee;text-align:left}
+.hidden{display:none!important}
+/* Halaman pengelola: tema gelap / emas */
+body.pengelola{background:#14100a;color:#f5e6c8;max-width:900px}
+body.pengelola .topbar{background:linear-gradient(135deg,#1a1206,#6b4d00)}
+body.pengelola .card{background:#221a0e;color:#f5e6c8;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+body.pengelola .card p,body.pengelola .muted{color:#cbb98a}
+body.pengelola input,body.pengelola select{background:#2e2412;color:#fff;border-color:#6b4d00}
+body.pengelola .misi,body.pengelola .pemain-row,body.pengelola .tarik-row{background:#2e2412;border-color:#6b4d00}
+body.pengelola table td,body.pengelola table th{border-color:#3a2d15}
+body.pengelola .notice{background:#2e2412;border-color:#b8860b;color:#ffe9a8}
+body.pengelola a{color:#ffd54a}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:#2e2412;border:1px solid #6b4d00;border-radius:12px;padding:12px}
+.stat b{font-size:22px;display:block;color:#ffd54a}
+@media(max-width:380px){.saldo b{font-size:17px}#gameCanvas{height:480px}.checkin{grid-template-columns:repeat(4,1fr)}}
