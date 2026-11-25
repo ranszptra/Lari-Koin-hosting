@@ -75,12 +75,14 @@ jobs:
           BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ steps.keystore.outputs.password }}
           BUBBLEWRAP_KEY_PASSWORD: ${{ steps.keystore.outputs.password }}
         run: |
-          # gradlew kehilangan bit executable saat di-upload via web GitHub
-          chmod +x gradlew
           # Terapkan perubahan twa-manifest.json ke proyek Android dulu —
           # kalau tidak, `bubblewrap build` berhenti di prompt interaktif (Y/n)
           # dan gagal di CI non-interaktif (exit 130).
-          bubblewrap update
+          # --skipVersionUpgrade: versi sudah benar di twa-manifest.json
+          # (1.2.0/code 3) — jangan naikkan versi dan jangan tanya versionName.
+          bubblewrap update --skipVersionUpgrade
+          # gradlew kehilangan bit executable saat di-upload via web GitHub
+          chmod +x gradlew
           bubblewrap build
 
       - name: Upload APK + AAB
