@@ -43,6 +43,7 @@ const R = {
   decor: [], decorMats: {},
   groundMat: null, roadMat: null, dashTex: null, hemi: null, shieldRing: null,
   ready: false, loading: false, failed: false,
+  _phase2Promise: null, phase2Done: false, // fase 2 (animasi tambahan) jalan di latar belakang
   worldIdx: -1, world: null,
   mode: null, // null | 'idle' | 'crash'
   crashT: 0, idleT: 0, idleCoins: [],
@@ -284,7 +285,30 @@ function play(name) {
   R.current = a; R.currentName = name;
   a.reset().fadeIn(0.18).play();
 }
-async function loadModels() {
+/* Muat satu animasi FBX jadi aksi mixer (dipakai fase 1 & 2). */
+async function muatAnimasi(loader, name, file, loop, ts) {
+  const g = await loader.loadAsync(MODEL_BASE + file);
+  if (!g.animations || !g.animations[0]) return false;
+  const clip = g.animations[0];
+  clip.name = name;
+  if (name === 'jump' || name === 'slide') stripRootMotion(clip);
+  R.actions[name] = makeAction(clip, loop, ts);
+  R.clips[name] = clip;
+  return true;
+}
+/* Muat satu berkas dengan batas waktu (fase 2 tidak boleh macet selamanya). */
+function muatDenganTimeout(loader, file, ms) {
+  return Promise.race([
+    loader.loadAsync(MODEL_BASE + file),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout ' + file)), ms || 20000)),
+  ]);
+}
+
+/* ---------- Fase 1 (blokir, ~2,3 MB): karakter + animasi lari + koin ----------
+ * Hanya ini yang harus selesai sebelum mode 3D bisa dipakai. Total model
+ * ~5,5 MB: kalau semua dimuat sekaligus, koneksi lambat tidak pernah selesai
+ * sebelum timeout 15 detik dan game jatuh ke 2D. */
+async function loadModelsPhase1() {
   const loader = new FBXLoader();
   // Karakter (wajib — kalau gagal, mode 3D dimatikan total)
   const charGroup = await loader.loadAsync(MODEL_BASE + 'xbot.fbx');
@@ -303,25 +327,9 @@ async function loadModels() {
     // klip sekali jalan selesai -> kembali ke animasi lari (kecuali saat crash)
     if (R.mode !== 'crash') play('run');
   });
-  // Animasi — masing-masing opsional; kalau satu gagal, animasi itu dilewati.
-  const anims = [
-    ['dance', 'xbot@dancing.fbx', true, 1],
-    ['run', 'xbot@running.fbx', true, 1],
-    ['jump', 'xbot@jumping.fbx', false, 1.7],
-    ['slide', 'xbot@sliding.fbx', false, 2.2],
-    ['stumble', 'xbot@stumbling.fbx', false, 1.5],
-  ];
-  for (const [name, file, loop, ts] of anims) {
-    try {
-      const g = await loader.loadAsync(MODEL_BASE + file);
-      if (!g.animations || !g.animations[0]) continue;
-      const clip = g.animations[0];
-      clip.name = name;
-      if (name === 'jump' || name === 'slide') stripRootMotion(clip);
-      R.actions[name] = makeAction(clip, loop, ts);
-      R.clips[name] = clip;
-    } catch (e) { console.warn('[run3d] animasi ' + name + ' gagal dimuat:', e.message); }
-  }
+  // Animasi lari (wajib untuk mulai main 3D) — kalau gagal, karakter diam saja.
+  try { await muatAnimasi(loader, 'run', 'xbot@running.fbx', true, 1); }
+  catch (e) { console.warn('[run3d] animasi run gagal dimuat:', e.message); }
   // Koin — kalau gagal, pakai torus emas.
   try {
     const coin = await loader.loadAsync(MODEL_BASE + 'coin.fbx');
@@ -344,6 +352,39 @@ async function loadModels() {
     slot.pivot = pivot;
   }
   if (R.actions.run) play('run');
+}
+
+/* ---------- Fase 2 (latar belakang): lompat / guling / tersandung / dansa ----------
+ * Dimuat setelah fase 1 berhasil, tanpa memblokir main. Sebelum berkasnya
+ * tiba, play() mengabaikan animasi yang belum ada — karakter tetap berlari
+ * dengan animasi run (degradasi aman, tidak pernah throw). */
+const ANIMASI_FASE2 = [
+  ['jump', 'xbot@jumping.fbx', false, 1.7],
+  ['slide', 'xbot@sliding.fbx', false, 2.2],
+  ['stumble', 'xbot@stumbling.fbx', false, 1.5],
+  ['dance', 'xbot@dancing.fbx', true, 1],
+];
+async function loadModelsPhase2() {
+  if (R._phase2Promise) return R._phase2Promise;
+  R._phase2Promise = (async () => {
+    if (R.failed) return false;
+    const loader = new FBXLoader();
+    for (const [name, file, loop, ts] of ANIMASI_FASE2) {
+      if (R.failed) break; // fase 1 gagal belakangan — hentikan
+      try {
+        const g = await muatDenganTimeout(loader, file, 20000);
+        if (!g.animations || !g.animations[0]) continue;
+        const clip = g.animations[0];
+        clip.name = name;
+        if (name === 'jump' || name === 'slide') stripRootMotion(clip);
+        R.actions[name] = makeAction(clip, loop, ts);
+        R.clips[name] = clip;
+      } catch (e) { console.warn('[run3d] animasi ' + name + ' gagal dimuat:', e.message); }
+    }
+    R.phase2Done = true;
+    return true;
+  })();
+  return R._phase2Promise;
 }
 
 /* ---------- Sinkronisasi objek game -> mesh 3D ---------- */
@@ -494,14 +535,17 @@ async function preload() {
     try {
       if (!webglOK()) throw new Error('WebGL tidak tersedia di perangkat ini');
       initRenderer();
-      // Model 3D total ~5,5 MB: di koneksi lambat jangan tunggu selamanya —
-      // 15 detik cukup, kalau lewat langsung pakai mode 2D yang ringan.
+      // Fase 1 saja yang diblokir (~2,3 MB: xbot + lari + koin). Animasi lain
+      // (lompat/guling/tersandung/dansa, ~3,2 MB) menyusul di latar belakang —
+      // di koneksi lambat, 15 detik tidak cukup untuk semua model (~5,5 MB),
+      // jadi game 3D bisa mulai lebih cepat; kalau fase 1 lewat, tetap 2D.
       await Promise.race([
-        loadModels(),
+        loadModelsPhase1(),
         new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout memuat model 3D (15 detik)')), 15000)),
       ]);
       if (gen !== R._gen) return false; // sudah gagal/timeout duluan
       R.ready = true;
+      loadModelsPhase2().catch(() => {}); // latar belakang, jangan blokir main
     } catch (e) {
       R.failed = true;
       console.warn('[run3d] Mode 3D tidak aktif, pakai 2D:', e.message);

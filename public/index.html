@@ -12,8 +12,8 @@
 <link rel="stylesheet" href="/style.css">
   <script type="importmap">
     { "imports": {
-      "three": "https://unpkg.com/three@0.170.0/build/three.module.js",
-      "three/addons/": "https://unpkg.com/three@0.170.0/examples/jsm/"
+      "three": "/vendor/three/three.module.js",
+      "three/addons/": "/vendor/three/addons/"
     } }
   </script>
   <script type="module" src="/run3d.js"></script>
@@ -131,6 +131,11 @@
           <canvas id="gameCanvas3d" width="420" height="520" aria-label="Arena 3D Runner Coin"></canvas>
           <div id="tekanMulai" class="tekan-mulai" hidden>Tekan ▶ Mulai Lari</div>
           <div class="hud"><span id="hudKoin">🪙 0</span><span id="hudJarak">0 m</span><span id="hudLevel">Lv 1</span></div>
+          <div class="fs-bar" id="fsBar">
+            <button class="btn-putih btn-kecil" id="btnFsJeda" type="button">⏸ Jeda</button>
+            <span class="fs-title">🎮 Runner Coin</span>
+            <button class="btn-putih btn-kecil" id="btnFsKeluar" type="button">✕ Keluar</button>
+          </div>
           <div class="pause-overlay hidden" id="pauseOverlay">
             <p>⏸ Jeda</p>
             <button class="btn-emas" id="btnLanjut">▶ Lanjut</button>

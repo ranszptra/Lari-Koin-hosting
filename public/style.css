@@ -190,3 +190,27 @@ body.mode-3d #gameCanvas3d{max-width:480px}
 .karakter-card.terkunci{cursor:not-allowed;box-shadow:inset 0 0 0 999px rgba(10,10,25,.30),0 2px 8px rgba(0,0,0,.25)}
 .karakter-card.terkunci img{filter:grayscale(.55) brightness(.8)}
 .karakter-card.aktif{border-color:var(--emas);box-shadow:0 0 0 2px var(--emas),0 4px 14px rgba(245,179,1,.5)}
+
+/* ===== Mode layar penuh (masuk game) ===== */
+.fs-bar{display:none}
+body.mode-fullscreen{overflow:hidden}
+body.mode-fullscreen #gameSection{position:fixed;inset:0;z-index:60;margin:0;border:0;border-radius:0;background:linear-gradient(180deg,#1a1033,#2d1b4d);display:flex;flex-direction:column;padding:0;overflow:hidden}
+body.mode-fullscreen #gameSection h2,
+body.mode-fullscreen #gameSection>p.muted,
+body.mode-fullscreen #gameSection .row,
+body.mode-fullscreen #gameSection #duniaInfo,
+body.mode-fullscreen #gameSection .skill-row,
+body.mode-fullscreen #gameSection .lives-bar,
+body.mode-fullscreen #gameSection .game-controls,
+body.mode-fullscreen #gameSection .lane-btns,
+body.mode-fullscreen #gameSection #btnCaraMain,
+body.mode-fullscreen #gameSection>p.small{display:none}
+body.mode-fullscreen .game-wrap{flex:1;min-height:0;max-width:none;margin:0;display:flex;align-items:center;justify-content:center}
+body.mode-fullscreen #gameCanvas,
+body.mode-fullscreen #gameCanvas3d{width:100%;height:100%;max-width:none;margin:0;border-radius:0;aspect-ratio:auto}
+body.mode-fullscreen .fs-bar{display:flex;position:absolute;left:10px;right:10px;bottom:10px;z-index:6;align-items:center;justify-content:space-between;gap:8px;pointer-events:none}
+body.mode-fullscreen .fs-bar button{pointer-events:auto}
+body.mode-fullscreen .fs-title{color:#fff;font-weight:800;font-size:13px;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+body.mode-fullscreen #gameResult.show{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,380px);z-index:7;margin:0;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+body.mode-fullscreen .modal{z-index:80}
+body.mode-fullscreen .pause-overlay{border-radius:0}

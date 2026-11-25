@@ -1051,8 +1051,20 @@ function drawNailongBelakang(c, x, y, r, lean, frame, shield) {
   if (shield) { c.strokeStyle = 'rgba(68,138,255,.8)'; c.lineWidth = 4; c.beginPath(); c.arc(x, y, r + 10, 0, Math.PI * 2); c.stroke(); }
   c.restore();
 }
+/* Skala gambar 2D ke ukuran canvas: arena digambar dalam ruang logis 420x520,
+   lalu dipusatkan (letterbox) kalau canvas lebih besar — misal layar penuh.
+   Canvas 420x520 biasa -> skala 1, tanpa perubahan. */
+function skalaCanvas(c) {
+  const W = (c.canvas && c.canvas.width) || 420, H = (c.canvas && c.canvas.height) || 520;
+  const s = Math.min(W / 420, H / 520);
+  return { s, ox: (W - 420 * s) / 2, oy: (H - 520 * s) / 2 };
+}
 function renderScene(c, st) {
   const d = duniaUntuk(st.level);
+  const { s, ox, oy } = skalaCanvas(c);
+  c.fillStyle = d.langit; c.fillRect(0, 0, c.canvas.width, c.canvas.height); // latar penuh (bilah letterbox menyatu dengan langit)
+  c.save();
+  c.translate(ox, oy); c.scale(s, s);
   gambarLatar(Math.min(5, Math.floor(((st.level || 1) - 1) / 10)), st.frame, c);
   c.fillStyle = d.tanah; c.fillRect(0, P3.hy, 420, 520 - P3.hy);
   c.fillStyle = 'rgba(0,0,0,.25)';
@@ -1092,6 +1104,7 @@ function renderScene(c, st) {
   const lean = ((st.lane || 1) - st.lanePos) * 0.25;
   const rKarakter = st.sliding ? 26 : 34; // guling: karakter merunduk
   drawNailongBelakang(c, pp.x, 448 - lompat + (st.sliding ? 10 : 0), rKarakter, lean, st.frame, st.shield);
+  c.restore();
 }
 
 /* Skill iklan: 3 item — aktif setelah nonton iklan, berlaku 1x lari */
@@ -1249,6 +1262,7 @@ async function mulaiGame() {
     return;
   }
   cobaPreload3D(); // jaga-jaga kalau modul 3D baru termuat setelah login
+  bukaModeLayarPenuh(); // masuk layar game penuh (canvas disesuaikan ke layar)
   resetGame();
   mulaiMusik();
   game.running = true; game.paused = false;
@@ -1261,6 +1275,37 @@ async function mulaiGame() {
   $('btnPause').textContent = '⏸ Jeda';
   requestAnimationFrame(loop);
 }
+/* ---------- Mode layar penuh (masuk game) ----------
+ * Ketuk "Mulai Lari" -> #gameSection jadi layar game penuh (fixed, menutupi
+ * tab & header), canvas mengisi layar, HUD di atas, tombol Jeda + Keluar di
+ * bawah. Jalan di mode 3D maupun 2D (canvas 2D di-scale tanpa distorsi lewat
+ * skalaCanvas di renderScene; canvas 3D menyesuaikan sendiri via ensureSize).
+ * Hasil lari (game over / level selesai) tampil sebagai overlay di layar ini.
+ * Keluar: kalau masih lari, sama seperti "Akhiri Lari" (koin tetap dibank),
+ * lalu kembali ke Beranda dengan arena digambar ulang ukuran normal. */
+const FS_W = 420, FS_H = 520; // ukuran canvas normal (di luar layar penuh)
+function samakanUkuranCanvasLayarPenuh() {
+  const wrap = document.querySelector('.game-wrap');
+  const w = (wrap && wrap.clientWidth) || FS_W, h = (wrap && wrap.clientHeight) || FS_H;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  canvas.width = Math.max(1, Math.round(w * dpr));
+  canvas.height = Math.max(1, Math.round(h * dpr));
+}
+function bukaModeLayarPenuh() {
+  if (document.body.classList.contains('mode-fullscreen')) return;
+  document.body.classList.add('mode-fullscreen');
+  samakanUkuranCanvasLayarPenuh(); // canvas 2D: backing store = ukuran layar (tajam)
+}
+function keluarModeLayarPenuh() {
+  if (!document.body.classList.contains('mode-fullscreen')) return;
+  if (game.running) gameOver(); // akhiri lari seperti tombol "Akhiri Lari"
+  document.body.classList.remove('mode-fullscreen');
+  canvas.width = FS_W; canvas.height = FS_H; // kembali ke ukuran normal
+  try { renderScene(ctx, game); } catch (e) {} // gambar ulang arena di Beranda
+}
+window.addEventListener('resize', () => { if (document.body.classList.contains('mode-fullscreen')) samakanUkuranCanvasLayarPenuh(); });
+$('btnFsJeda').addEventListener('click', () => { if (game.running) $('btnPause').click(); });
+$('btnFsKeluar').addEventListener('click', keluarModeLayarPenuh);
 function pindah(arah) {
   if (!game.running) return;
   if (arah === 'kiri') game.lane = Math.max(0, game.lane - 1);
@@ -1299,6 +1344,7 @@ $('btnKanan').addEventListener('click', () => pindah('kanan'));
 $('btnTengah').addEventListener('click', () => pindah('tengah'));
 document.addEventListener('keydown', (e) => {
   if ($('app').classList.contains('hidden')) return;
+  if (e.key === 'Escape' && document.body.classList.contains('mode-fullscreen')) { e.preventDefault(); keluarModeLayarPenuh(); return; }
   if (e.key === 'ArrowLeft') { e.preventDefault(); pindah('kiri'); }
   if (e.key === 'ArrowRight') { e.preventDefault(); pindah('kanan'); }
   if (e.key === 'ArrowUp') { e.preventDefault(); if (game.running) mulaiLompat(); }
@@ -1350,8 +1396,9 @@ function gambarAwal() {
   idleCoins.forEach((o) => { o.z -= 0.004; if (o.z < 0.05) o.z = 1; });
   const st = { level: 1, frame: game.frame, lane: 1, lanePos: 1 + Math.sin(game.frame / 40) * 0.12, objects: idleCoins, roadScroll: game.frame * 0.004, debu: [], shield: false };
   renderScene(ctx, st);
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
-  ctx.fillText('Tekan ▶ Mulai Lari', 210, 110);
+  const sk = skalaCanvas(ctx); // teks ikut skala arena (layar penuh)
+  ctx.fillStyle = '#fff'; ctx.font = 'bold ' + Math.max(12, Math.round(20 * sk.s)) + 'px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Tekan ▶ Mulai Lari', sk.ox + 210 * sk.s, sk.oy + 110 * sk.s);
 }
 gambarAwal();
 setInterval(gambarAwal, 100);
