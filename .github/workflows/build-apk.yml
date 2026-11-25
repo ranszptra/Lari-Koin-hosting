@@ -73,7 +73,10 @@ jobs:
         env:
           BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ steps.keystore.outputs.password }}
           BUBBLEWRAP_KEY_PASSWORD: ${{ steps.keystore.outputs.password }}
-        run: bubblewrap build
+        run: |
+          # gradlew kehilangan bit executable saat di-upload via web GitHub
+          chmod +x gradlew
+          bubblewrap build
 
       - name: Upload APK, AAB, keystore
         uses: actions/upload-artifact@v4
