@@ -91,60 +91,6 @@ async function freshPlayer(id) {
 app.get('/api/health', (req, res) => res.json({ ok: true, service: 'lari-koin-online', time: nowIso() }));
 
 // --- Register / Login -----------------------------------------------------
-app.post('/api/register', ah(async (req, res) => {
-  const name = String(req.body?.name || '').trim();
-  const pin = String(req.body?.pin || '');
-  const referrer = req.body?.referrer ? String(req.body.referrer).trim() : null;
-  if (name.length < 2 || name.length > 30) return fail(res, 'Nama harus 2–30 karakter');
-  if (pin.length < 4 || pin.length > 12) return fail(res, 'PIN harus 4–12 karakter');
-  const exists = await db.prepare('SELECT id FROM players WHERE name=? COLLATE NOCASE').get(name);
-  if (exists) return fail(res, 'Nama sudah dipakai, pilih nama lain');
-  let referrerRow = null;
-  if (referrer) {
-    referrerRow = await db.prepare('SELECT * FROM players WHERE name=? COLLATE NOCASE').get(referrer);
-    if (!referrerRow) return fail(res, 'Pengundang tidak ditemukan');
-    if (referrerRow.name.toLowerCase() === name.toLowerCase()) return fail(res, 'Tidak bisa mengundang diri sendiri');
-  }
-  const { salt, hash } = hashPin(pin);
-  const now = nowIso();
-  const ip = clientIp(req);
-  let banned = 0, bannedReason = null;
-  if (ip) {
-    const dupe = await db.prepare('SELECT name FROM players WHERE ip=? ORDER BY createdAt').all(ip);
-    if (dupe.length) { banned = 1; bannedReason = 'IP sama dengan akun: ' + dupe.map((x) => x.name).join(', '); }
-  }
-  const info = await db.prepare(
-    `INSERT INTO players(name,pinHash,pinSalt,coins,maxLevel,characters,skins,equipped,powerups,
-     streak,lastCheckin,referrer,totalEarned,totalAds,totalLevels,createdAt,lastActive,ip,lastIp,banned,bannedReason)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).run(name, hash, salt, 500, 1, '["jolly"]', '[]', '{"character":"jolly","skin":null}', '{}',
-    0, null, referrerRow ? referrerRow.name : null, 0, 0, 0, now, now, ip, ip, banned, bannedReason);
-  const playerId = info.lastInsertRowid;
-  if (referrerRow) {
-    await db.prepare('INSERT OR IGNORE INTO referrals(referrerId,friendId,status,createdAt) VALUES(?,?,?,?)')
-      .run(referrerRow.id, playerId, 'pending', now);
-  }
-  const token = makeToken(playerId);
-  res.cookie('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/' });
-  res.json({ ok: true, token, player: publicPlayer(await freshPlayer(playerId)) });
-}));
-
-app.post('/api/login', ah(async (req, res) => {
-  const name = String(req.body?.name || '').trim();
-  const pin = String(req.body?.pin || '');
-  if (!name || !pin) return fail(res, 'Nama dan PIN wajib diisi');
-  const row = await db.prepare('SELECT * FROM players WHERE name=? COLLATE NOCASE').get(name);
-  if (!row) return fail(res, 'Nama atau PIN salah');
-  let okPin = false;
-  try { okPin = verifyPin(pin, row.pinSalt, row.pinHash); } catch { okPin = false; }
-  if (!okPin) return fail(res, 'Nama atau PIN salah');
-  if (row.banned) return fail(res, 'Akun diblokir: ' + (row.bannedReason || 'hubungi admin'));
-  await db.prepare('UPDATE players SET lastActive=?, lastIp=? WHERE id=?').run(nowIso(), clientIp(req), row.id);
-  const token = makeToken(row.id);
-  res.cookie('token', token, { httpOnly: true, sameSite: 'lax', maxAge: 30 * 24 * 3600 * 1000, path: '/' });
-  res.json({ ok: true, token, player: publicPlayer(await freshPlayer(row.id)) });
-}));
-
 // --- Login sosial (Google, sekali ketuk) --------------------------------------
 // Butuh env: GOOGLE_CLIENT_ID. Kalau belum diset, tombol sosial disembunyikan
 // (lihat /api/auth/social-config). Akun sosial tersimpan di server
@@ -167,6 +113,7 @@ async function verifyGoogleToken(idToken) {
 app.post('/api/auth/social', ah(async (req, res) => {
   const provider = String(req.body?.provider || '');
   const token = String(req.body?.token || '');
+  const referrer = req.body?.referrer ? String(req.body.referrer).trim() : null;
   if (provider !== 'google' || !token) return fail(res, 'Provider/token tidak valid');
   const verified = await verifyGoogleToken(token);
   if (!verified) return fail(res, 'Verifikasi ' + provider + ' gagal — coba lagi');
@@ -178,9 +125,15 @@ app.post('/api/auth/social', ah(async (req, res) => {
       const dupe = await db.prepare('SELECT name FROM players WHERE ip=? ORDER BY createdAt').all(ip);
       if (dupe.length) { banned = 1; bannedReason = 'IP sama dengan akun: ' + dupe.map((x) => x.name).join(', '); }
     }
-    let name = String(verified.name || '').trim().slice(0, 30) || (provider === 'google' ? 'Pemain Google' : 'Pemain FB');
+    let name = String(verified.name || '').trim().slice(0, 30) || 'Pemain Google';
     const taken = await db.prepare('SELECT id FROM players WHERE name=? COLLATE NOCASE').get(name);
     if (taken) name = (name.slice(0, 24) + '-' + Math.floor(1000 + Math.random() * 9000)).slice(0, 30);
+    let referrerRow = null;
+    if (referrer) {
+      referrerRow = await db.prepare('SELECT * FROM players WHERE name=? COLLATE NOCASE').get(referrer);
+      if (!referrerRow) return fail(res, 'Pengundang tidak ditemukan');
+      if (referrerRow.name.toLowerCase() === name.toLowerCase()) return fail(res, 'Tidak bisa mengundang diri sendiri');
+    }
     const { salt, hash } = hashPin(crypto.randomBytes(32).toString('hex'));
     const now = nowIso();
     const info = await db.prepare(
@@ -188,7 +141,11 @@ app.post('/api/auth/social', ah(async (req, res) => {
        streak,lastCheckin,referrer,totalEarned,totalAds,totalLevels,createdAt,lastActive,ip,lastIp,provider,providerId,banned,bannedReason)
        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).run(name, hash, salt, 500, 1, '["jolly"]', '[]', '{"character":"jolly","skin":null}', '{}',
-      0, null, null, 0, 0, 0, now, now, ip, ip, provider, verified.providerId, banned, bannedReason);
+      0, null, referrerRow ? referrerRow.name : null, 0, 0, 0, now, now, ip, ip, provider, verified.providerId, banned, bannedReason);
+    if (referrerRow) {
+      await db.prepare('INSERT OR IGNORE INTO referrals(referrerId,friendId,status,createdAt) VALUES(?,?,?,?)')
+        .run(referrerRow.id, info.lastInsertRowid, 'pending', now);
+    }
     row = await freshPlayer(info.lastInsertRowid);
   } else {
     await db.prepare('UPDATE players SET lastActive=?, lastIp=? WHERE id=?').run(nowIso(), ip, row.id);
