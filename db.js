@@ -101,6 +101,24 @@ const CHARACTERS = { jolly: 0, kiko: 50000, momo: 100000, rex: 200000 };
 const SKINS = { emas: 25000, ninja: 50000, astronot: 75000, pelangi: 100000, shadow: 150000 };
 const POWERUPS = { magnet: 2000, perisai: 2000, koinx2: 3000 };
 
+// Skin level — GRATIS, terbuka otomatis tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 skin).
+const LEVEL_SKINS = [
+  { id: 'es', level: 5, nama: 'Es', ikon: '❄️' },
+  { id: 'sakura', level: 10, nama: 'Sakura', ikon: '🌸' },
+  { id: 'laut', level: 15, nama: 'Laut', ikon: '🌊' },
+  { id: 'hutan', level: 20, nama: 'Hutan', ikon: '🌿' },
+  { id: 'senja', level: 25, nama: 'Senja', ikon: '🌇' },
+  { id: 'salju', level: 30, nama: 'Salju', ikon: '⛄' },
+  { id: 'lava', level: 35, nama: 'Lava', ikon: '🌋' },
+  { id: 'galaksi', level: 40, nama: 'Galaksi', ikon: '🌌' },
+  { id: 'madu', level: 45, nama: 'Madu', ikon: '🍯' },
+  { id: 'mint', level: 50, nama: 'Mint', ikon: '🍃' },
+  { id: 'komet', level: 55, nama: 'Komet', ikon: '☄️' },
+  { id: 'legenda', level: 60, nama: 'Legenda', ikon: '👑' },
+];
+// Hadiah tukar set lengkap 12 skin level = Rp100.000 → 6.666.667 koin (1.000 koin = Rp15).
+const FULLSET_COINS = 6666667;
+
 // Misi harian — pool 6 misi, tiap hari diambil 3 secara rotasi.
 const MISSION_POOL = [
   { id: 'm_level3', title: 'Selesaikan 3 level', desc: 'Selesaikan 3 level apa saja hari ini.', target: 3, reward: 1000 },
@@ -151,7 +169,8 @@ CREATE TABLE IF NOT EXISTS players (
   provider TEXT,
   providerId TEXT,
   banned INTEGER NOT NULL DEFAULT 0,
-  bannedReason TEXT
+  bannedReason TEXT,
+  fullset_claimed INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS withdrawals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -410,7 +429,7 @@ async function initDb() {
       sqliteDb.exec('PRAGMA foreign_keys = ON;');
       sqliteDb.exec(SQLITE_DDL);
       // Migrasi kolom baru untuk DB SQLite lama (aman diulang — gagal = sudah ada).
-      for (const col of ['ip TEXT', 'lastIp TEXT', 'provider TEXT', 'providerId TEXT', 'banned INTEGER NOT NULL DEFAULT 0', 'bannedReason TEXT']) {
+      for (const col of ['ip TEXT', 'lastIp TEXT', 'provider TEXT', 'providerId TEXT', 'banned INTEGER NOT NULL DEFAULT 0', 'bannedReason TEXT', 'fullset_claimed INTEGER NOT NULL DEFAULT 0']) {
         try { sqliteDb.exec(`ALTER TABLE players ADD COLUMN ${col};`); } catch { /* kolom sudah ada */ }
       }
       console.log('[db] SQLite lokal aktif (DATABASE_URL tidak diset).');
@@ -443,6 +462,7 @@ function publicPlayer(row) {
     powerups: parseJson(row.powerups, {}),
     banned: row.banned ? true : false,
     bannedReason: row.bannedReason || null,
+    fullsetClaimed: row.fullset_claimed ? true : false,
   };
 }
 async function getDailyState(playerId, date) {
@@ -502,6 +522,7 @@ module.exports = {
   GIFT_CODES, REFERRAL_REWARD_COINS,
   NETWORKS, estRevenueRp,
   CHARACTERS, SKINS, POWERUPS,
+  LEVEL_SKINS, FULLSET_COINS,
   MISSION_POOL, ACHIEVEMENTS,
   publicPlayer, parseJson,
   getDailyState, todaysMissions, ensureMissionRows, addMissionProgress,

@@ -20,6 +20,7 @@ const {
   GIFT_CODES, REFERRAL_REWARD_COINS,
   NETWORKS, estRevenueRp,
   CHARACTERS, SKINS, POWERUPS,
+  LEVEL_SKINS, FULLSET_COINS,
   MISSION_POOL, ACHIEVEMENTS,
   publicPlayer, parseJson,
   getDailyState, todaysMissions, ensureMissionRows, addMissionProgress,
@@ -213,8 +214,20 @@ app.post('/api/auth/social', ah(async (req, res) => {
 }));
 
 // --- Profile ---------------------------------------------------------------
+// Skin level: beri semua skin yang levelnya sudah dicapai pemain (idempotent).
+async function grantLevelSkins(p) {
+  const owned = new Set(parseJson(p.skins, []));
+  const baru = LEVEL_SKINS.filter((s) => p.maxLevel >= s.level && !owned.has(s.id));
+  if (!baru.length) return [];
+  const all = [...owned, ...baru.map((s) => s.id)];
+  await db.prepare('UPDATE players SET skins=? WHERE id=?').run(JSON.stringify(all), p.id);
+  return baru;
+}
+
 app.get('/api/profile', ah(requirePlayer), ah(async (req, res) => {
-  const p = await freshPlayer(req.player.id);
+  let p = await freshPlayer(req.player.id);
+  // Skin level: beri otomatis semua skin yang levelnya sudah dicapai (idempotent).
+  if ((await grantLevelSkins(p)).length) p = await freshPlayer(p.id);
   const today = todayStr();
   const daily = await getDailyState(p.id, today);
   await ensureMissionRows(p.id, today);
@@ -279,11 +292,12 @@ app.post('/api/finish-level', ah(requirePlayer), ah(async (req, res) => {
   const newMaxLevel = Math.max(p.maxLevel, level + 1);
   await db.prepare('UPDATE players SET coins=coins+?, totalEarned=totalEarned+?, totalLevels=totalLevels+1, maxLevel=?, lastActive=? WHERE id=?')
     .run(coinsEarned, coinsEarned, newMaxLevel, nowIso(), p.id);
+  const skinsBaru = await grantLevelSkins(await freshPlayer(p.id));
   const today = todayStr();
   await addMissionProgress(p.id, 'm_level3', 1, today);
   await addMissionProgress(p.id, 'm_coins500', coinsEarned, today);
   if (isBoss) await addMissionProgress(p.id, 'm_boss', 1, today);
-  res.json({ ok: true, coinsEarned, bonus, isBoss, newMaxLevel, coins: (await freshPlayer(p.id)).coins });
+  res.json({ ok: true, coinsEarned, bonus, isBoss, newMaxLevel, skinsBaru: skinsBaru.map((s) => s.nama), coins: (await freshPlayer(p.id)).coins });
 }));
 
 // --- Bank koin lari yang gagal (tanpa bonus level / buka level) -------------
@@ -464,7 +478,8 @@ app.post('/api/equip', ah(requirePlayer), ah(async (req, res) => {
   const kind = String(req.body?.kind || '');
   const id = String(req.body?.id || '');
   const catalog = shopCatalog(kind);
-  if (!catalog || catalog[id] === undefined) return fail(res, 'Item tidak dikenal');
+  const isLevelSkin = kind === 'skin' && LEVEL_SKINS.some((s) => s.id === id);
+  if (!catalog || (catalog[id] === undefined && !isLevelSkin)) return fail(res, 'Item tidak dikenal');
   const p = await freshPlayer(req.player.id);
   const equipped = parseJson(p.equipped, { character: 'jolly', skin: null });
   if (kind === 'powerup') {
@@ -480,6 +495,17 @@ app.post('/api/equip', ah(requirePlayer), ah(async (req, res) => {
   }
   await db.prepare('UPDATE players SET equipped=? WHERE id=?').run(JSON.stringify(equipped), p.id);
   res.json({ ok: true, equipped });
+}));
+
+// --- Tukar set lengkap skin level → Rp100.000 (sekali saja) ---------------------
+app.post('/api/skins/fullset-claim', ah(requirePlayer), ah(async (req, res) => {
+  const p = await freshPlayer(req.player.id);
+  if (p.fullset_claimed) return fail(res, 'Set lengkap sudah ditukar');
+  const owned = new Set(parseJson(p.skins, []));
+  const kurang = LEVEL_SKINS.filter((s) => !owned.has(s.id));
+  if (kurang.length) return fail(res, `Belum lengkap — kurang ${kurang.length} skin level`);
+  await db.prepare('UPDATE players SET coins=coins+?, totalEarned=totalEarned+?, fullset_claimed=1 WHERE id=?').run(FULLSET_COINS, FULLSET_COINS, p.id);
+  res.json({ ok: true, coins: (await freshPlayer(p.id)).coins, rupiah: 100000 });
 }));
 
 // --- Offerwall ---------------------------------------------------------------
