@@ -72,163 +72,206 @@
   </div>
 
   <main>
-    <!-- GAME -->
-    <section class="card" id="gameSection">
-      <h2>🎮 Main — Nailong Runner <span id="labelBos"></span></h2>
-      <p class="muted">Geser <b>kiri / kanan</b> untuk pindah jalur. Hindari batu, kotak &amp; pagar. Kumpulkan koin — tiap koin <b>+10 koin</b>. Selesai level = lari sampai jarak target.</p>
-      <div class="row">
-        <div>
-          <label for="levelSelect">Level yang dimainkan</label>
-          <select id="levelSelect"></select>
+    <!-- TAB: BERANDA -->
+    <div class="tab-panel aktif" id="tab-beranda">
+      <!-- GAME -->
+      <section class="card" id="gameSection">
+        <h2>🎮 Main — Nailong Runner <span id="labelBos"></span></h2>
+        <p class="muted">Geser <b>kiri / kanan</b> untuk pindah jalur. Hindari batu, kotak &amp; pagar. Kumpulkan koin — tiap koin <b>+10 koin</b>. Selesai level = lari sampai jarak target.</p>
+        <div class="row">
+          <div>
+            <label for="levelSelect">Level yang dimainkan</label>
+            <select id="levelSelect"></select>
+          </div>
+          <div>
+            <label for="powerupSelect">Power-up untuk lari ini</label>
+            <select id="powerupSelect"><option value="">Tanpa power-up</option></select>
+          </div>
         </div>
-        <div>
-          <label for="powerupSelect">Power-up untuk lari ini</label>
-          <select id="powerupSelect"><option value="">Tanpa power-up</option></select>
+        <p id="duniaInfo" class="pill">🌇 Dunia 1: Kota Senja (Level 1–10)</p>
+        <!-- SKILL IKLAN: 3 item, aktif setelah nonton iklan, berlaku 1x lari -->
+        <div class="skill-row" id="skillRow">
+          <div class="skill-card">
+            <span class="skill-ico">⚡</span><b>Lari Cepat</b>
+            <small>Lari 1,5x lebih cepat</small>
+            <button class="btn-emas btn-kecil" data-skill="cepat">▶ Nonton Iklan</button>
+          </div>
+          <div class="skill-card">
+            <span class="skill-ico">🧲</span><b>Magnet Koin</b>
+            <small>Koin ketarik semua</small>
+            <button class="btn-emas btn-kecil" data-skill="magnet">▶ Nonton Iklan</button>
+          </div>
+          <div class="skill-card">
+            <span class="skill-ico">🛡</span><b>Perisai</b>
+            <small>Tahan 1 tabrakan</small>
+            <button class="btn-emas btn-kecil" data-skill="perisai">▶ Nonton Iklan</button>
+          </div>
         </div>
-      </div>
-      <p id="duniaInfo" class="pill">🌇 Dunia 1: Kota Senja (Level 1–10)</p>
-      <div class="game-wrap">
-        <canvas id="gameCanvas" width="420" height="520" aria-label="Arena game Nailong Runner"></canvas>
-        <div class="hud"><span id="hudKoin">🪙 0</span><span id="hudJarak">0 m</span><span id="hudLevel">Lv 1</span></div>
-      </div>
-      <div class="game-controls">
-        <button class="btn-emas" id="btnStart">▶ Mulai Lari</button>
-        <button class="btn-putih" id="btnPause">⏸ Jeda</button>
-        <button class="btn-putih" id="btnMusik">🎵 Musik: Nyala</button>
-        <button class="btn-putih" id="btnSuara">🔊 Suara: Nyala</button>
-      </div>
-      <div class="lane-btns">
-        <button id="btnKiri" aria-label="Pindah ke kiri">⬅ Kiri</button>
-        <button id="btnTengah" aria-label="Kembali ke tengah">● Tengah</button>
-        <button id="btnKanan" aria-label="Pindah ke kanan">Kanan ➡</button>
-      </div>
-      <p class="small">Keyboard: panah ← → untuk pindah jalur, Spasi untuk mulai/jeda. Layar sentuh: geser kiri/kanan di canvas, atau ketuk tombol di atas.</p>
-      <button class="btn-putih btn-kecil" id="btnCaraMain" style="margin-top:4px">📖 Cara Main</button>
-      <div id="gameResult"></div>
-    </section>
-
-    <!-- IKLAN BANNER -->
-    <div class="banner-iklan" id="bannerIklan">📢 Iklan (simulasi)<br><small id="bannerNama">Memuat jaringan iklan…</small></div>
-
-    <!-- DOMPET -->
-    <section class="card" id="dompetSection">
-      <h2>💰 Dompet</h2>
-      <p>Saldo: <b id="dompetKoin">0 koin</b> = <b id="dompetRp">Rp0</b></p>
-      <p class="muted">Nilai tukar: 1.000 koin = Rp15. Penarikan minimal Rp1.000.</p>
-      <div class="progress"><i id="progressTarik" style="width:0%"></i></div>
-      <p class="small" id="progressTarikText">0% menuju penarikan Rp1.000</p>
-      <h3>Tarik Uang</h3>
-      <label for="tarikJumlah">Nominal penarikan</label>
-      <select id="tarikJumlah">
-        <option value="1000">Rp1.000</option>
-        <option value="5000">Rp5.000</option>
-        <option value="10000">Rp10.000</option>
-        <option value="50000">Rp50.000</option>
-      </select>
-      <label for="tarikMetode">Metode</label>
-      <select id="tarikMetode"><option>DANA</option><option>GoPay</option><option>OVO</option><option>ShopeePay</option></select>
-      <label for="tarikNomor">Nomor tujuan</label>
-      <input id="tarikNomor" type="tel" placeholder="Contoh: 0812xxxxxxx" inputmode="tel">
-      <button class="btn-hijau" id="btnTarik" style="width:100%">Ajukan Penarikan</button>
-      <h3>Riwayat Penarikan</h3>
-      <div id="riwayatTarik"><p class="muted">Belum ada penarikan.</p></div>
-    </section>
-
-    <!-- MISI -->
-    <section class="card">
-      <h2>🎯 Misi Harian</h2>
-      <p class="muted">Selesaikan misi, klaim hadiah koinnya.</p>
-      <div id="daftarMisi"><p class="muted">Memuat misi…</p></div>
-    </section>
-
-    <!-- CHECK-IN -->
-    <section class="card">
-      <h2>📅 Check-in 7 Hari</h2>
-      <p class="muted">Masuk tiap hari, koin check-in makin besar. Streak kamu: <b id="streakText">0 hari</b></p>
-      <div class="checkin" id="checkinGrid"></div>
-      <button class="btn-emas" id="btnCheckin">✅ Check-in Hari Ini</button>
-    </section>
-
-    <!-- RODA + PETI -->
-    <section class="card">
-      <h2>🎡 Roda Hadiah &amp; Peti Misteri</h2>
-      <div class="grid2">
-        <div>
-          <p>Sisa putaran hari ini: <b id="wheelLeft">—</b></p>
-          <button class="btn-emas" id="btnSpin" style="width:100%">🎡 Putar Roda</button>
-          <p class="small" id="spinHasil"></p>
+        <div class="game-wrap">
+          <canvas id="gameCanvas" width="420" height="520" aria-label="Arena game Nailong Runner"></canvas>
+          <div class="hud"><span id="hudKoin">🪙 0</span><span id="hudJarak">0 m</span><span id="hudLevel">Lv 1</span></div>
+          <div class="pause-overlay hidden" id="pauseOverlay">
+            <p>⏸ Jeda</p>
+            <button class="btn-emas" id="btnLanjut">▶ Lanjut</button>
+            <button class="btn-putih" id="btnAkhiri">🏁 Akhiri Lari</button>
+          </div>
         </div>
-        <div>
-          <p>Sisa peti hari ini: <b id="chestLeft">—</b></p>
-          <button class="btn-gelap" id="btnChest" style="width:100%">🎁 Buka Peti</button>
-          <p class="small" id="chestHasil"></p>
+        <div class="game-controls">
+          <button class="btn-emas" id="btnStart">▶ Mulai Lari</button>
+          <button class="btn-putih" id="btnPause">⏸ Jeda</button>
+          <button class="btn-putih" id="btnMusik">🎵 Musik: Nyala</button>
+          <button class="btn-putih" id="btnSuara">🔊 Suara: Nyala</button>
         </div>
-      </div>
-    </section>
+        <div class="lane-btns">
+          <button id="btnKiri" aria-label="Pindah ke kiri">⬅ Kiri</button>
+          <button id="btnTengah" aria-label="Kembali ke tengah">● Tengah</button>
+          <button id="btnKanan" aria-label="Pindah ke kanan">Kanan ➡</button>
+        </div>
+        <p class="small">Keyboard: panah ← → untuk pindah jalur, Spasi untuk mulai/jeda. Layar sentuh: geser kiri/kanan di canvas, atau ketuk tombol di atas.</p>
+        <button class="btn-putih btn-kecil" id="btnCaraMain" style="margin-top:4px">📖 Cara Main</button>
+        <div id="gameResult"></div>
+      </section>
 
-    <!-- PRESTASI -->
-    <section class="card">
-      <h2>🏅 Prestasi</h2>
-      <div id="daftarPrestasi"><p class="muted">Memuat prestasi…</p></div>
-    </section>
+      <!-- IKLAN BANNER -->
+      <div class="banner-iklan" id="bannerIklan">📢 Iklan (simulasi)<br><small id="bannerNama">Memuat jaringan iklan…</small></div>
 
-    <!-- LEADERBOARD -->
-    <section class="card">
-      <h2>🏆 Leaderboard</h2>
-      <button class="btn-putih btn-kecil" id="btnRefreshBoard">🔄 Muat Ulang</button>
-      <div id="leaderboard"><p class="muted">Memuat…</p></div>
-    </section>
+      <!-- LEADERBOARD -->
+      <section class="card">
+        <h2>🏆 Leaderboard</h2>
+        <button class="btn-putih btn-kecil" id="btnRefreshBoard">🔄 Muat Ulang</button>
+        <div id="leaderboard"><p class="muted">Memuat…</p></div>
+      </section>
 
-    <!-- KODE HADIAH -->
-    <section class="card">
-      <h2>🎟 Kode Hadiah</h2>
-      <p class="muted">Punya kode dari event? Tukar di sini.</p>
-      <div class="row">
-        <input id="kodeHadiah" type="text" placeholder="Masukkan kode" style="flex:2">
-        <button class="btn-hijau btn-kecil" id="btnKode">Klaim</button>
-      </div>
-      <p class="small" id="kodeHasil"></p>
-    </section>
+      <!-- TOKO -->
+      <section class="card">
+        <h2>🛍 Toko</h2>
+        <h3>Karakter</h3>
+        <div id="tokoKarakter"></div>
+        <h3>Skin Nailong</h3>
+        <div id="tokoSkin"></div>
+        <h3>Power-up</h3>
+        <div id="tokoPowerup"></div>
+      </section>
 
-    <!-- UNDANG TEMAN -->
-    <section class="card">
-      <h2>👥 Undang Teman — Bonus Rp5.000</h2>
-      <p>Kode undangan kamu (bagikan nama ini): <b id="kodeInvite">—</b></p>
-      <p class="muted">Teman daftar pakai kode kamu, lalu nonton iklan + selesaikan level — kamu dapat <b>Rp5.000</b> per teman.</p>
-      <div id="daftarTeman"><p class="muted">Belum ada teman yang diundang.</p></div>
-    </section>
+      <p class="small" style="text-align:center">Nailong Runner • Main gratis, koin dari main, misi, iklan &amp; undang teman.</p>
+    </div>
 
-    <!-- TOKO -->
-    <section class="card">
-      <h2>🛍 Toko</h2>
-      <h3>Karakter</h3>
-      <div id="tokoKarakter"></div>
-      <h3>Skin Nailong</h3>
-      <div id="tokoSkin"></div>
-      <h3>Power-up</h3>
-      <div id="tokoPowerup"></div>
-    </section>
+    <!-- TAB: WALLET -->
+    <div class="tab-panel" id="tab-dompet">
+      <!-- DOMPET -->
+      <section class="card" id="dompetSection">
+        <h2>💰 Dompet</h2>
+        <p>Saldo: <b id="dompetKoin">0 koin</b> = <b id="dompetRp">Rp0</b></p>
+        <p class="muted">Nilai tukar: 1.000 koin = Rp15. Penarikan minimal Rp1.000.</p>
+        <div class="progress"><i id="progressTarik" style="width:0%"></i></div>
+        <p class="small" id="progressTarikText">0% menuju penarikan Rp1.000</p>
+        <h3>Tarik Uang</h3>
+        <label for="tarikJumlah">Nominal penarikan</label>
+        <select id="tarikJumlah">
+          <option value="1000">Rp1.000</option>
+          <option value="5000">Rp5.000</option>
+          <option value="10000">Rp10.000</option>
+          <option value="50000">Rp50.000</option>
+        </select>
+        <label for="tarikMetode">Metode</label>
+        <select id="tarikMetode"><option>DANA</option><option>GoPay</option><option>OVO</option><option>ShopeePay</option></select>
+        <label for="tarikNomor">Nomor tujuan</label>
+        <input id="tarikNomor" type="tel" placeholder="Contoh: 0812xxxxxxx" inputmode="tel">
+        <button class="btn-hijau" id="btnTarik" style="width:100%">Ajukan Penarikan</button>
+        <h3>Riwayat Penarikan</h3>
+        <div id="riwayatTarik"><p class="muted">Belum ada penarikan.</p></div>
+      </section>
+    </div>
 
-    <!-- OFFERWALL -->
-    <section class="card">
-      <h2>📲 Misi Install Aplikasi (Offerwall)</h2>
-      <div class="notice"><b>SIMULASI saat ini.</b> Daftar misi di bawah ini masih simulasi — belum ada instalasi / pembayaran beneran. Kampanye beneran butuh API key dari penyedia offerwall (AdGem, Tapjoy, AdscendMedia, ayeT-Studios, RevU, Torox, adjoe).</div>
-      <p class="muted">Penyedia: AdGem • Tapjoy • AdscendMedia • ayeT-Studios • RevU • Torox • adjoe</p>
-      <div id="daftarOffer"><p class="muted">Memuat misi…</p></div>
-    </section>
+    <!-- TAB: TUGAS -->
+    <div class="tab-panel" id="tab-tugas">
+      <!-- MISI -->
+      <section class="card">
+        <h2>🎯 Misi Harian</h2>
+        <p class="muted">Selesaikan misi, klaim hadiah koinnya.</p>
+        <div id="daftarMisi"><p class="muted">Memuat misi…</p></div>
+      </section>
 
-    <!-- IKLAN -->
-    <section class="card">
-      <h2>📺 Nonton Iklan Dapat Koin</h2>
-      <div class="notice"><b>SIMULASI saat ini.</b> Iklan di sini masih simulasi — belum ada tayangan / penghasilan beneran. Iklan beneran butuh API key &amp; akun jaringan iklan.</div>
-      <p>Hari ini sudah nonton: <b id="adsToday">0</b> / 10 iklan</p>
-      <button class="btn-emas" id="btnNontonIklan">▶ Nonton Iklan +1.000 koin</button>
-      <p class="small" id="iklanCooldown"></p>
-      <p class="small">Cooldown 5 menit antar iklan • Maksimal 10 iklan per hari.</p>
-    </section>
+      <!-- CHECK-IN -->
+      <section class="card">
+        <h2>📅 Check-in 7 Hari</h2>
+        <p class="muted">Masuk tiap hari, koin check-in makin besar. Streak kamu: <b id="streakText">0 hari</b></p>
+        <div class="checkin" id="checkinGrid"></div>
+        <button class="btn-emas" id="btnCheckin">✅ Check-in Hari Ini</button>
+      </section>
 
-    <p class="small" style="text-align:center">Nailong Runner • Main gratis, koin dari main, misi, iklan &amp; undang teman.</p>
+      <!-- RODA + PETI -->
+      <section class="card">
+        <h2>🎡 Roda Hadiah &amp; Peti Misteri</h2>
+        <div class="grid2">
+          <div>
+            <p>Sisa putaran hari ini: <b id="wheelLeft">—</b></p>
+            <button class="btn-emas" id="btnSpin" style="width:100%">🎡 Putar Roda</button>
+            <p class="small" id="spinHasil"></p>
+          </div>
+          <div>
+            <p>Sisa peti hari ini: <b id="chestLeft">—</b></p>
+            <button class="btn-gelap" id="btnChest" style="width:100%">🎁 Buka Peti</button>
+            <p class="small" id="chestHasil"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PRESTASI -->
+      <section class="card">
+        <h2>🏅 Prestasi</h2>
+        <div id="daftarPrestasi"><p class="muted">Memuat prestasi…</p></div>
+      </section>
+
+      <!-- KODE HADIAH -->
+      <section class="card">
+        <h2>🎟 Kode Hadiah</h2>
+        <p class="muted">Punya kode dari event? Tukar di sini.</p>
+        <div class="row">
+          <input id="kodeHadiah" type="text" placeholder="Masukkan kode" style="flex:2">
+          <button class="btn-hijau btn-kecil" id="btnKode">Klaim</button>
+        </div>
+        <p class="small" id="kodeHasil"></p>
+      </section>
+
+      <!-- OFFERWALL -->
+      <section class="card">
+        <h2>📲 Misi Install Aplikasi (Offerwall)</h2>
+        <div class="notice"><b>SIMULASI saat ini.</b> Daftar misi di bawah ini masih simulasi — belum ada instalasi / pembayaran beneran. Kampanye beneran butuh API key dari penyedia offerwall (AdGem, Tapjoy, AdscendMedia, ayeT-Studios, RevU, Torox, adjoe).</div>
+        <p class="muted">Penyedia: AdGem • Tapjoy • AdscendMedia • ayeT-Studios • RevU • Torox • adjoe</p>
+        <div id="daftarOffer"><p class="muted">Memuat misi…</p></div>
+      </section>
+
+      <!-- IKLAN -->
+      <section class="card">
+        <h2>📺 Nonton Iklan Dapat Koin</h2>
+        <div class="notice"><b>SIMULASI saat ini.</b> Iklan di sini masih simulasi — belum ada tayangan / penghasilan beneran. Iklan beneran butuh API key &amp; akun jaringan iklan.</div>
+        <p>Hari ini sudah nonton: <b id="adsToday">0</b> / 10 iklan</p>
+        <button class="btn-emas" id="btnNontonIklan">▶ Nonton Iklan +1.000 koin</button>
+        <p class="small" id="iklanCooldown"></p>
+        <p class="small">Cooldown 5 menit antar iklan • Maksimal 10 iklan per hari.</p>
+      </section>
+    </div>
+
+    <!-- TAB: UNDANG TEMAN -->
+    <div class="tab-panel" id="tab-undang">
+      <!-- UNDANG TEMAN -->
+      <section class="card">
+        <h2>👥 Undang Teman — Bonus Rp5.000</h2>
+        <p>Kode undangan kamu (bagikan nama ini): <b id="kodeInvite">—</b></p>
+        <p class="muted">Teman daftar pakai kode kamu, lalu nonton iklan + selesaikan level — kamu dapat <b>Rp5.000</b> per teman.</p>
+        <div id="daftarTeman"><p class="muted">Belum ada teman yang diundang.</p></div>
+      </section>
+    </div>
   </main>
+
+  <!-- NAVIGASI TAB BAWAH -->
+  <nav class="tab-nav" aria-label="Navigasi utama">
+    <button data-tab="beranda" class="aktif"><span class="ico">🏠</span>Beranda</button>
+    <button data-tab="dompet"><span class="ico">💰</span>Wallet</button>
+    <button data-tab="tugas"><span class="ico">🎯</span>Tugas</button>
+    <button data-tab="undang"><span class="ico">👥</span>Undang</button>
+  </nav>
 </div>
 
 <!-- MODAL IKLAN SELINGAN (SIMULASI) -->

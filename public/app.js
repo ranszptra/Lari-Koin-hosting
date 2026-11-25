@@ -146,7 +146,20 @@ async function sesudahLogin(pesan) {
   let tourDone = false;
   try { tourDone = localStorage.getItem('nr_tour_done') === '1'; } catch (e) {}
   if (!tourDone) tampilTour(0);
+  pindahTab('beranda');
 }
+
+/* Navigasi tab bawah: Beranda / Wallet / Tugas / Undang Teman */
+function pindahTab(nama) {
+  document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('aktif', p.id === 'tab-' + nama));
+  document.querySelectorAll('.tab-nav button').forEach((b) => b.classList.toggle('aktif', b.dataset.tab === nama));
+  if (nama !== 'beranda' && typeof game !== 'undefined' && game.running && !game.paused) {
+    game.paused = true;
+    const bp = $('btnPause'); if (bp) bp.textContent = '▶ Lanjut';
+  }
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.tab-nav button').forEach((b) => b.addEventListener('click', () => pindahTab(b.dataset.tab)));
 $('btnLogin').addEventListener('click', () => doAuth('login'));
 $('btnRegister').addEventListener('click', () => doAuth('register'));
 $('authPin').addEventListener('keydown', (e) => { if (e.key === 'Enter') doAuth('login'); });
@@ -412,6 +425,21 @@ const KATALOG = {
     { id: 'koinx2', nama: 'Koin x2', harga: 3000, ikon: '✖️2', desc: 'Koin ganda selama satu lari.' }
   ]
 };
+/* Skin level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 skin). Set lengkap bisa ditukar Rp100.000. */
+const LEVEL_SKINS = [
+  { id: 'es', level: 5, nama: 'Es', ikon: '❄️', desc: 'Nailong biru es yang sejuk.' },
+  { id: 'sakura', level: 10, nama: 'Sakura', ikon: '🌸', desc: 'Nailong pink bunga sakura.' },
+  { id: 'laut', level: 15, nama: 'Laut', ikon: '🌊', desc: 'Nailong biru laut dalam.' },
+  { id: 'hutan', level: 20, nama: 'Hutan', ikon: '🌿', desc: 'Nailong hijau rimba.' },
+  { id: 'senja', level: 25, nama: 'Senja', ikon: '🌇', desc: 'Nailong ungu senja.' },
+  { id: 'salju', level: 30, nama: 'Salju', ikon: '⛄', desc: 'Nailong putih salju.' },
+  { id: 'lava', level: 35, nama: 'Lava', ikon: '🌋', desc: 'Nailong oranye lava panas.' },
+  { id: 'galaksi', level: 40, nama: 'Galaksi', ikon: '🌌', desc: 'Nailong ungu galaksi.' },
+  { id: 'madu', level: 45, nama: 'Madu', ikon: '🍯', desc: 'Nailong kuning madu.' },
+  { id: 'mint', level: 50, nama: 'Mint', ikon: '🍃', desc: 'Nailong hijau mint segar.' },
+  { id: 'komet', level: 55, nama: 'Komet', ikon: '☄️', desc: 'Nailong oranye komet.' },
+  { id: 'legenda', level: 60, nama: 'Legenda', ikon: '👑', desc: 'Nailong emas legenda — skin terakhir!' }
+];
 function dimiliki(kind, id) {
   if (!profile) return false;
   if (kind === 'character') return (profile.characters || ['jolly']).includes(id);
@@ -426,6 +454,7 @@ function terpakai(kind, id) {
 function renderToko() {
   renderTokoBagian('character', 'tokoKarakter');
   renderTokoBagian('skin', 'tokoSkin');
+  renderSkinLevel();
   renderTokoBagian('powerup', 'tokoPowerup');
   const ps = $('powerupSelect'); const cur = ps.value;
   ps.innerHTML = '<option value="">Tanpa power-up</option>';
@@ -457,6 +486,32 @@ function renderTokoBagian(kind, elId) {
     }
     d.appendChild(row); el.appendChild(d);
   });
+}
+/* Skin level (gratis per 5 level) + panel tukar set lengkap → Rp100.000 */
+function renderSkinLevel() {
+  const el = $('tokoSkin');
+  const judul = document.createElement('h4'); judul.textContent = '🎨 Skin Level — Gratis tiap naik 5 level'; el.appendChild(judul);
+  const milik = LEVEL_SKINS.filter((s) => dimiliki('skin', s.id)).length;
+  LEVEL_SKINS.forEach((item) => {
+    const d = document.createElement('div'); d.className = 'toko-item';
+    const punya = dimiliki('skin', item.id);
+    d.innerHTML = '<div class="row"><span class="ikon">' + item.ikon + '</span><div style="flex:1"><b>' + esc(item.nama) + '</b><br><span class="muted">' + esc(item.desc) + '</span><br><span class="small">' + (punya ? (terpakai('skin', item.id) ? '✅ Dipakai' : 'Dimiliki') : '🔒 Terbuka di Lv ' + item.level) + '</span></div></div>';
+    const row = document.createElement('div'); row.className = 'row'; row.style.marginTop = '8px';
+    if (punya) {
+      const b = document.createElement('button'); b.className = 'btn-gelap btn-kecil'; b.textContent = terpakai('skin', item.id) ? 'Dipakai ✓' : 'Pakai';
+      b.disabled = terpakai('skin', item.id);
+      b.addEventListener('click', async () => { try { await api('/api/equip', 'POST', { kind: 'skin', id: item.id }); toast(item.nama + ' dipakai!'); await muatProfil(); } catch (e) { toast(e.message); } });
+      row.appendChild(b);
+    }
+    d.appendChild(row); el.appendChild(d);
+  });
+  const panel = document.createElement('div'); panel.className = 'fullset-panel';
+  const sudah = profile && profile.fullsetClaimed;
+  panel.innerHTML = '<b>🎁 Set Lengkap Skin Level: ' + milik + '/12</b><p class="muted">Kalau 12 skin level sudah lengkap, tukar jadi saldo <b>Rp100.000</b>! (Sekali saja)</p>';
+  const b = document.createElement('button'); b.className = 'btn-emas'; b.textContent = sudah ? '✅ Sudah ditukar Rp100.000' : '💱 Tukar Set Lengkap → Rp100.000';
+  b.disabled = sudah || milik < 12;
+  b.addEventListener('click', async () => { try { await api('/api/skins/fullset-claim', 'POST', {}); toast('Set lengkap ditukar! +Rp100.000 🎉'); await muatProfil(); } catch (e) { toast(e.message); } });
+  panel.appendChild(b); el.appendChild(panel);
 }
 
 /* ---------- Offerwall ---------- */
@@ -534,6 +589,16 @@ function drawNailong(x, y, r, skinId, charId) {
   if (skin === 'astronot') { warna = '#ffffff'; garis = '#b0bec5'; perut = '#eef6fb'; }
   if (skin === 'shadow') { warna = '#5a5a7a'; garis = '#33334d'; perut = '#7a7a9a'; }
   if (skin === 'pelangi') { warna = '#ffe082'; garis = '#ff8a65'; perut = '#fff3c4'; }
+  // warna skin level (12 skin gratis per 5 level)
+  const WARNA_SKIN_LEVEL = {
+    es: ['#b3e5fc', '#4fc3f7', '#e1f5fe'], sakura: ['#f8bbd0', '#f06292', '#fce4ec'],
+    laut: ['#4fc3f7', '#0288d1', '#e1f5fe'], hutan: ['#81c784', '#43a047', '#e8f5e9'],
+    senja: ['#ce93d8', '#8e24aa', '#f3e5f5'], salju: ['#eceff1', '#90a4ae', '#ffffff'],
+    lava: ['#ff7043', '#d84315', '#ffccbc'], galaksi: ['#7e57c2', '#512da8', '#ede7f6'],
+    madu: ['#ffca28', '#ff8f00', '#fff8e1'], mint: ['#80cbc4', '#00897b', '#e0f2f1'],
+    komet: ['#ff9800', '#e65100', '#fff3e0'], legenda: ['#ffd700', '#b8860b', '#fffde7']
+  };
+  if (WARNA_SKIN_LEVEL[skin]) { warna = WARNA_SKIN_LEVEL[skin][0]; garis = WARNA_SKIN_LEVEL[skin][1]; perut = WARNA_SKIN_LEVEL[skin][2]; }
   const f = game.frame || 0;
   const lari = Math.sin(f / 4); // ayunan kaki saat lari
   const goyang = Math.sin(f / 6) * 0.12; // ekor bergoyang
@@ -548,11 +613,14 @@ function drawNailong(x, y, r, skinId, charId) {
   ctx.quadraticCurveTo(x - r * 1.5, y + r * (0.7 + goyang), x - r * 1.35, y + r * 0.1);
   ctx.quadraticCurveTo(x - r * 1.1, y + r * 0.35, x - r * 0.6, y + r * 0.3);
   ctx.closePath(); ctx.fill(); ctx.stroke();
-  // kaki lari (bergantian naik-turun)
+  // kaki lari (bergantian naik-turun) + telapak pink (sesuai foto referensi)
   const kakiY1 = y + r * 0.95 + Math.max(0, lari) * r * 0.25;
   const kakiY2 = y + r * 0.95 + Math.max(0, -lari) * r * 0.25;
   ctx.beginPath(); ctx.ellipse(x - r * 0.35, kakiY1, r * 0.28, r * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.ellipse(x + r * 0.35, kakiY2, r * 0.28, r * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#ffb6c1';
+  ctx.beginPath(); ctx.ellipse(x - r * 0.35, kakiY1 + r * 0.07, r * 0.17, r * 0.07, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x + r * 0.35, kakiY2 + r * 0.07, r * 0.17, r * 0.07, 0, 0, Math.PI * 2); ctx.fill();
   // lengan kecil (mengayun)
   ctx.beginPath(); ctx.ellipse(x - r * 0.95, y + r * (0.1 - lari * 0.15), r * 0.16, r * 0.3, -0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.ellipse(x + r * 0.95, y + r * (0.1 + lari * 0.15), r * 0.16, r * 0.3, 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -572,15 +640,27 @@ function drawNailong(x, y, r, skinId, charId) {
   if (skin === 'astronot') { ctx.strokeStyle = 'rgba(120,180,220,.9)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, y, r + 6, 0, Math.PI * 2); ctx.stroke(); }
   if (skin === 'ninja') { ctx.fillStyle = '#c62828'; ctx.fillRect(x - r, y - r * 0.55, r * 2, r * 0.22); }
   if (skin === 'pelangi') { ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r * 0.75, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); ctx.strokeStyle = '#448aff'; ctx.beginPath(); ctx.arc(x, y, r * 0.6, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
+  // bintik hijau di punggung (sesuai foto referensi, hanya Nailong kuning polos)
+  if (char === 'jolly' && !skin) {
+    ctx.fillStyle = '#8bc34a';
+    ctx.beginPath(); ctx.arc(x - r * 0.28, y - r * 0.62, r * 0.09, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y - r * 0.78, r * 0.09, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + r * 0.28, y - r * 0.62, r * 0.09, 0, Math.PI * 2); ctx.fill();
+  }
   // pipi pink
   ctx.fillStyle = 'rgba(255,182,193,.9)';
   ctx.beginPath(); ctx.arc(x - r * 0.55, y + r * 0.25, r * 0.2, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(x + r * 0.55, y + r * 0.25, r * 0.2, 0, Math.PI * 2); ctx.fill();
-  // mata hitam mengkilap
-  const mata = skin === 'ninja' ? '#fff' : '#111';
+  // mata hijau mengkilap (sesuai foto referensi)
+  const mata = skin === 'ninja' ? '#fff' : '#43a047';
   ctx.fillStyle = mata;
   ctx.beginPath(); ctx.ellipse(x - r * 0.32, y - r * 0.1, r * 0.16, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.ellipse(x + r * 0.32, y - r * 0.1, r * 0.16, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
+  if (skin !== 'ninja') {
+    ctx.fillStyle = '#1b5e20';
+    ctx.beginPath(); ctx.ellipse(x - r * 0.32, y - r * 0.08, r * 0.07, r * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(x + r * 0.32, y - r * 0.08, r * 0.07, r * 0.11, 0, 0, Math.PI * 2); ctx.fill();
+  }
   ctx.fillStyle = '#fff';
   ctx.beginPath(); ctx.arc(x - r * 0.27, y - r * 0.2, r * 0.06, 0, Math.PI * 2); ctx.fill();
   ctx.beginPath(); ctx.arc(x + r * 0.37, y - r * 0.2, r * 0.06, 0, Math.PI * 2); ctx.fill();
@@ -612,15 +692,32 @@ function drawObstacle(o) {
     for (let i = -1; i <= 1; i++) { ctx.fillRect(x + i * 20 - 3, y - 22, 6, 44); }
   }
 }
+/* Skill iklan: 3 item — aktif setelah nonton iklan, berlaku 1x lari */
+const skillIklan = { cepat: false, magnet: false, perisai: false };
+function resetSkillIklan() {
+  skillIklan.cepat = skillIklan.magnet = skillIklan.perisai = false;
+  document.querySelectorAll('#skillRow [data-skill]').forEach((b) => { b.disabled = false; b.textContent = '▶ Nonton Iklan'; });
+}
+document.querySelectorAll('#skillRow [data-skill]').forEach((b) => b.addEventListener('click', () => {
+  const nama = b.dataset.skill;
+  if (skillIklan[nama]) return;
+  b.disabled = true; b.textContent = '⏳ Memutar iklan…';
+  tampilIklanSelingan(() => {
+    skillIklan[nama] = true;
+    b.textContent = '✅ Aktif';
+    toast('Skill aktif untuk lari ini!');
+  });
+}));
 function resetGame() {
   const lv = parseInt($('levelSelect').value || 1, 10);
   const pu = $('powerupSelect').value;
   game.level = lv; game.lane = 1; game.coins = 0; game.coinCount = 0; game.distance = 0;
   game.target = (isBos(lv) ? 700 : 450) + lv * 30;
   game.speed = 4 + lv * 0.18;
+  if (skillIklan.cepat) game.speed = Math.round(game.speed * 1.5);
   game.objects = []; game.spawnT = 0; game.frame = 0; game.debu = [];
-  game.shield = pu === 'perisai' || ((profile && profile.equipped && profile.equipped.powerup) === 'perisai');
-  game.magnet = pu === 'magnet' || ((profile && profile.equipped && profile.equipped.powerup) === 'magnet');
+  game.shield = pu === 'perisai' || ((profile && profile.equipped && profile.equipped.powerup) === 'perisai') || skillIklan.perisai;
+  game.magnet = pu === 'magnet' || ((profile && profile.equipped && profile.equipped.powerup) === 'magnet') || skillIklan.magnet;
   game.mult = (pu === 'koinx2' || ((profile && profile.equipped && profile.equipped.powerup) === 'koinx2')) ? 2 : 1;
   $('gameResult').classList.remove('show'); $('gameResult').innerHTML = '';
   $('hudKoin').textContent = '🪙 0'; $('hudJarak').textContent = '0 m'; $('hudLevel').textContent = 'Lv ' + lv;
@@ -698,6 +795,9 @@ function loop() {
 }
 function gameOver() {
   game.running = false;
+  document.body.classList.remove('mode-lari');
+  const po0 = $('pauseOverlay'); if (po0) po0.classList.add('hidden');
+  resetSkillIklan();
   const el = $('gameResult');
   el.innerHTML = '<h3>💥 Kena Halangan!</h3><p>Lari selesai di level ' + game.level + '. Koin terkumpul: <b>' + game.coins + '</b> (jarak ' + Math.floor(game.distance) + ' m).</p><p class="muted">Koin tetap dihitung — tekan Main Lagi untuk mencoba lagi.</p>';
   el.classList.add('show');
@@ -706,12 +806,16 @@ function gameOver() {
 }
 async function selesaiLevel() {
   game.running = false;
+  document.body.classList.remove('mode-lari');
+  const po1 = $('pauseOverlay'); if (po1) po1.classList.add('hidden');
+  resetSkillIklan();
   beep(660, 0.15); setTimeout(() => beep(880, 0.2), 150);
   tampilIklanSelingan(async () => {
     let pesan = '<h3>🎉 Level ' + game.level + ' Selesai!</h3><p>Koin terkumpul: <b>' + game.coins + '</b>' + (isBos(game.level) ? ' • 👹 LEVEL BOS — bonus 5x!' : '') + '</p>';
     try {
       const d = await api('/api/finish-level', 'POST', { level: game.level, coins: game.coins });
       pesan += '<p>Bonus level: <b>+' + (d.bonus != null ? d.bonus : 0) + '</b> • Total dari lari ini: <b>' + (d.coinsEarned != null ? d.coinsEarned : game.coins) + ' koin</b><br><span class="muted">Saldo sekarang: ' + (d.coins != null ? d.coins : '') + ' koin.</span></p>';
+      if (d.skinsBaru && d.skinsBaru.length) pesan += '<p>🎨 Skin baru terbuka: <b>' + d.skinsBaru.map(esc).join(', ') + '</b> — cek di Toko!</p>';
       await muatProfil();
     } catch (e) { pesan += '<p class="muted">Gagal menyimpan ke server (' + esc(e.message) + ') — koin lokal tetap tercatat di panel hasil.</p>'; }
     pesan += '<button class="btn-emas" id="btnLagi" style="width:100%;margin-top:8px">▶ Main Lagi</button>';
@@ -739,6 +843,8 @@ function mulaiGame() {
   resetGame();
   mulaiMusik();
   game.running = true; game.paused = false;
+  document.body.classList.add('mode-lari');
+  const po2 = $('pauseOverlay'); if (po2) po2.classList.add('hidden');
   $('btnStart').textContent = '🏃 Lagi Lari…';
   $('btnPause').textContent = '⏸ Jeda';
   requestAnimationFrame(loop);
@@ -755,8 +861,11 @@ $('btnPause').addEventListener('click', () => {
   if (!game.running) return;
   game.paused = !game.paused;
   $('btnPause').textContent = game.paused ? '▶ Lanjut' : '⏸ Jeda';
+  const po = $('pauseOverlay'); if (po) po.classList.toggle('hidden', !(game.paused && document.body.classList.contains('mode-lari')));
   if (!game.paused) requestAnimationFrame(loop);
 });
+$('btnLanjut').addEventListener('click', () => $('btnPause').click());
+$('btnAkhiri').addEventListener('click', () => { if (game.running) gameOver(); });
 function tulisTombolSuara() {
   $('btnMusik').textContent = musikNyala ? '🎵 Musik: Nyala' : '🔇 Musik: Mati';
   $('btnSuara').textContent = suaraNyala ? '🔊 Suara: Nyala' : '🔇 Suara: Mati';
@@ -785,15 +894,17 @@ document.addEventListener('keydown', (e) => {
   }
 });
 let touchX = null;
+let abaikanKlik = false; /* cegah klik susulan setelah tap di layar sentuh */
 canvas.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
 canvas.addEventListener('touchend', (e) => {
   if (touchX == null) return;
   const dx = e.changedTouches[0].clientX - touchX;
   if (dx < -24) pindah('kiri'); else if (dx > 24) pindah('kanan');
   else if (!game.running) mulaiGame();
+  else { abaikanKlik = true; setTimeout(() => abaikanKlik = false, 400); $('btnPause').click(); }
   touchX = null;
 }, { passive: true });
-canvas.addEventListener('click', () => { if (!game.running && token) mulaiGame(); });
+canvas.addEventListener('click', () => { if (abaikanKlik) return; if (!game.running && token) mulaiGame(); else if (game.running) $('btnPause').click(); });
 
 /* Gambar awal di canvas — Nailong bergerak pelan walau belum main */
 let idleT = 0;
