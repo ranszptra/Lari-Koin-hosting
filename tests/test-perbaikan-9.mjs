@@ -74,7 +74,7 @@ cek('(g1) run3d: showcase punya mode baris (row)', run3d.includes('const row = !
 cek('(g2) run3d: mode baris membuat 5 klon', run3d.includes('const n = row ? 5 : 1'));
 cek('(g3) run3d: klon memakai SkeletonUtils.clone', run3d.includes('cloneSkinned(R.char)'));
 cek('(g4) run3d: klon baris diwarnai warna roster berbeda', run3d.includes('tintKlon(clone, colors[i])'));
-cek('(g5) app.js: login memakai mode baris dengan 5 warna roster', app.includes("mulaiShowcase('loginShowcase', 'loginShowcaseFallback', { row: true, colors: LEVEL_CHARACTERS.slice(0, 5).map((c) => c.warna) })"));
+cek('(g5) app.js: login memakai mode baris dengan 5 warna roster (+ accs topi/kacamata)', app.includes("mulaiShowcase('loginShowcase', 'loginShowcaseFallback', { row: true, colors: LEVEL_CHARACTERS.slice(0, 5).map((c) => c.warna), accs: LEVEL_CHARACTERS.slice(0, 5) })"));
 cek('(g6) index.html: tidak ada lagi kartu gambar login (#loginCharCard)', !html.includes('loginCharCard'));
 cek('(g7) index.html: tidak ada lagi kartu gambar Beranda (#berandaCharCard)', !html.includes('berandaCharCard'));
 cek('(g8) index.html: strip nama Beranda tetap ada (#berandaCharNama)', html.includes('id="berandaCharNama"'));
@@ -99,10 +99,10 @@ cek('(i1) app.js: selesaiLevel menangkap lvSelesai', app.includes('const lvSeles
 cek('(i2) app.js: ada hitung mundur auto-lanjut 3 detik', app.includes('Lanjut ke Level') && app.includes('let hitung = 3;'));
 cek('(i3) app.js: auto-lanjut memanggil mulaiGame()', /const lanjutkan = \(\) => \{[\s\S]*?mulaiGame\(\);/.test(app));
 cek('(i4) app.js: mulaiGame memanggil /api/run-start (gerbang nyawa)', app.includes("api('/api/run-start', 'POST', {}, 10000)"));
-cek('(i5) app.js: level 60 tidak auto-lanjut (tamat)', app.includes('if (lvSelesai >= 60)'));
-cek('(i6) app.js: simpan gagal -> ulang level yang sama, bukan loncat', app.includes('if (!tersimpan)') && app.includes("b.textContent = '▶ Main Lagi (Level ' + lvSelesai + ')'"));
+cek('(i5) app.js: level 60 tidak auto-lanjut (tamat)', app.includes('const tamat = lvSelesai >= 60;') && app.includes('if (tamat) return;'));
+cek('(i6) app.js: simpan gagal -> ulang level yang sama, bukan loncat', app.includes('if (!tersimpan)') && app.includes("bUlang.textContent = '▶ Main Lagi (Level ' + lvSelesai + ')'"));
 cek('(i7) app.js: autoLanjutTimer dibatalkan saat keluar layar penuh', app.includes('keluarModeLayarPenuh') && /function keluarModeLayarPenuh\(\) \{[\s\S]*?clearInterval\(autoLanjutTimer\)/.test(app));
-cek('(i8) sw.js CACHE = lari-koin-v14', sw.includes("const CACHE = 'lari-koin-v14';"));
+cek('(i8) sw.js CACHE = lari-koin-v18', sw.includes("const CACHE = 'lari-koin-v18';"));
 
 console.log(`\nHasil: ${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);
