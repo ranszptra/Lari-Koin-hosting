@@ -1,4 +1,4 @@
-// server.js — Backend Lari Koin Online
+// server.js — Backend Nailong Runner
 // Node.js + Express + SQLite (node:sqlite bawaan Node 24) atau Postgres
 // (Supabase) bila env DATABASE_URL diset — lihat db.js.
 // Start: `npm start` (PORT env, default 3000). Serve statis dari ./public/.
@@ -564,7 +564,7 @@ app.use((e, req, res, next) => {
 // Skema + seed (SQLite lokal atau Postgres) harus siap sebelum listen.
 initDb().then(() => {
   app.listen(PORT, () => {
-    console.log(`Lari Koin Online backend jalan di port ${PORT}`);
+    console.log(`Nailong Runner backend jalan di port ${PORT}`);
     if (!process.env.OWNER_SECRET) console.warn('[PERINGATAN] OWNER_SECRET memakai default DEV — set di environment sebelum produksi!');
   });
 }).catch((e) => {

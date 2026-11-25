@@ -1,4 +1,4 @@
-// db.js — Skema + seed + helper bersama untuk Lari Koin Online.
+// db.js — Skema + seed + helper bersama untuk Nailong Runner.
 //
 // DUA BACKEND (dipilih otomatis):
 //   - Jika env DATABASE_URL diset (Supabase Postgres) → pakai `pg` (Pool).
@@ -74,7 +74,7 @@ const CHECKIN_RP = [50, 50, 100, 150, 200, 500, 1000]; // hari ke-1..7
 const WITHDRAW_AMOUNTS = [1000, 5000, 10000, 50000];
 const WITHDRAW_METHODS = ['DANA', 'GoPay', 'OVO', 'ShopeePay'];
 
-const GIFT_CODES = { LARIKOIN: 1000, JOLLYGAS: 2500, RANSGACOR: 5000, HOKI777: 7777 };
+const GIFT_CODES = { NAILONG: 1000, NAILONGGAS: 2500, RANSGACOR: 5000, HOKI777: 7777 };
 
 const REFERRAL_REWARD_COINS = rpToCoins(5000); // 333.333 koin
 
@@ -116,7 +116,7 @@ const ACHIEVEMENTS = [
   { id: 'a_level1', title: 'Langkah Pertama', desc: 'Selesaikan level 1.', reward: 500 },
   { id: 'a_level10', title: 'Pelari Pemula', desc: 'Selesaikan 10 level.', reward: 2000 },
   { id: 'a_level30', title: 'Pelari Andal', desc: 'Selesaikan 30 level.', reward: 5000 },
-  { id: 'a_level60', title: 'Legenda Lari Koin', desc: 'Selesaikan 60 level.', reward: 10000 },
+  { id: 'a_level60', title: 'Legenda Nailong Runner', desc: 'Selesaikan 60 level.', reward: 10000 },
   { id: 'a_coins100k', title: 'Sultan Koin', desc: 'Kumpulkan total 100.000 koin.', reward: 5000 },
   { id: 'a_streak7', title: 'Rajin Check-in', desc: 'Check-in 7 hari beruntun.', reward: 3000 },
   { id: 'a_invite1', title: 'Ajak Teman', desc: 'Undang 1 teman (teman mendaftar dengan kodemu).', reward: 2000 },

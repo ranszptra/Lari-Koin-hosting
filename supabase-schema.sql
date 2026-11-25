@@ -1,4 +1,4 @@
--- supabase-schema.sql — Skema Postgres (Supabase) untuk Lari Koin Online.
+-- supabase-schema.sql — Skema Postgres (Supabase) untuk Nailong Runner.
 --
 -- CARA PAKAI (pilih satu):
 --   1. Supabase Dashboard → SQL Editor → tempel seluruh file ini → Run.
