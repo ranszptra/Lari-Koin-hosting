@@ -29,8 +29,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      # Runner GitHub (ubuntu-latest) SUDAH punya Android SDK bawaan
+      # (/usr/local/lib/android/sdk) — jangan pakai android-actions/setup-android,
+      # karena action itu gagal: ia mencoba memasang paket "tools" yang sudah
+      # tidak didistribusikan Google lagi (sdkmanager exit 1).
+      - name: Pakai Android SDK bawaan runner
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ls "$ANDROID_HOME/cmdline-tools" "$ANDROID_HOME/build-tools" "$ANDROID_HOME/platforms" | head -20
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
