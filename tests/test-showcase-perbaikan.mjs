@@ -150,7 +150,7 @@ cek(`LEVEL_CHARACTERS db.js cermin: 11 bertopi (ketemu ${topiDb})`, topiDb === 1
 cek('db.js Frost null/null', db.includes('topi: null, kacamata: null'));
 
 console.log('== F. sw.js ==');
-cek('CACHE v17 (showcase + rintangan + tema)', baca('public/sw.js').includes("lari-koin-v17"));
+cek('CACHE v19 (showcase + rintangan + tema + hero login)', baca('public/sw.js').includes("lari-koin-v19"));
 
 console.log(`\n${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

@@ -73,8 +73,8 @@ const iLogo = html.indexOf('class="hero-logo"');
 const iCanvas = html.indexOf('id="loginShowcase"');
 cek('(h10) index.html: logo di atas canvas showcase', iLogo > 0 && iCanvas > iLogo);
 
-// h11: SW cache naik ke v18 (perubahan CSS ikut terkirim ke HP).
-cek('(h11) sw.js CACHE v18', sw.includes("const CACHE = 'lari-koin-v18';"));
+// h11: SW cache naik ke v19 (perubahan CSS ikut terkirim ke HP).
+cek('(h11) sw.js CACHE v19', sw.includes("const CACHE = 'lari-koin-v19';"));
 
 console.log(`\nLogin hero: ${lolos} lolos, ${gagal} gagal`);
 process.exitCode = gagal ? 1 : 0;

@@ -62,8 +62,8 @@ cek('(d9) CSS hasil lari jadi overlay di layar penuh', css.includes('body.mode-f
 cek('(d10) CSS modal tetap di atas layar penuh', css.includes('body.mode-fullscreen .modal{z-index:80}'));
 
 // (e) sw.js CACHE v13
-cek('(e1) sw.js CACHE = lari-koin-v14', sw.includes("const CACHE = 'lari-koin-v14';"));
-cek('(e2) sw.js TIDAK lagi v13', !sw.includes('lari-koin-v13'));
+cek('(e1) sw.js CACHE = lari-koin-v19', sw.includes("const CACHE = 'lari-koin-v19';"));
+cek('(e2) sw.js TIDAK lagi v14', !sw.includes('lari-koin-v14'));
 
 console.log(`\nHasil: ${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);
