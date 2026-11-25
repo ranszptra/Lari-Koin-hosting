@@ -170,7 +170,10 @@ CREATE TABLE IF NOT EXISTS players (
   providerId TEXT,
   banned INTEGER NOT NULL DEFAULT 0,
   bannedReason TEXT,
-  fullset_claimed INTEGER NOT NULL DEFAULT 0
+  fullset_claimed INTEGER NOT NULL DEFAULT 0,
+  lives INTEGER NOT NULL DEFAULT 15,
+  livesDay TEXT,
+  livesCooldownUntil TEXT
 );
 CREATE TABLE IF NOT EXISTS withdrawals (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -430,7 +433,7 @@ async function initDb() {
       sqliteDb.exec('PRAGMA foreign_keys = ON;');
       sqliteDb.exec(SQLITE_DDL);
       // Migrasi kolom baru untuk DB SQLite lama (aman diulang — gagal = sudah ada).
-      for (const col of ['ip TEXT', 'lastIp TEXT', 'provider TEXT', 'providerId TEXT', 'banned INTEGER NOT NULL DEFAULT 0', 'bannedReason TEXT', 'fullset_claimed INTEGER NOT NULL DEFAULT 0']) {
+      for (const col of ['ip TEXT', 'lastIp TEXT', 'provider TEXT', 'providerId TEXT', 'banned INTEGER NOT NULL DEFAULT 0', 'bannedReason TEXT', 'fullset_claimed INTEGER NOT NULL DEFAULT 0', 'lives INTEGER NOT NULL DEFAULT 15', 'livesDay TEXT', 'livesCooldownUntil TEXT']) {
         try { sqliteDb.exec(`ALTER TABLE players ADD COLUMN ${col};`); } catch { /* kolom sudah ada */ }
       }
       try { sqliteDb.exec('ALTER TABLE daily_state ADD COLUMN runCoinsToday INTEGER NOT NULL DEFAULT 0;'); } catch { /* kolom sudah ada */ }
@@ -465,6 +468,8 @@ function publicPlayer(row) {
     banned: row.banned ? true : false,
     bannedReason: row.bannedReason || null,
     fullsetClaimed: row.fullset_claimed ? true : false,
+    lives: row.lives == null ? 15 : row.lives,
+    livesCooldownUntil: row.livesCooldownUntil || null,
   };
 }
 async function getDailyState(playerId, date) {

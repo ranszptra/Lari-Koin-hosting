@@ -50,7 +50,10 @@ CREATE TABLE IF NOT EXISTS players (
   providerId text,
   banned integer NOT NULL DEFAULT 0,
   bannedReason text,
-  fullset_claimed integer NOT NULL DEFAULT 0
+  fullset_claimed integer NOT NULL DEFAULT 0,
+  lives integer NOT NULL DEFAULT 15,
+  livesDay text,
+  livesCooldownUntil text
 );
 
 CREATE TABLE IF NOT EXISTS withdrawals (
@@ -168,4 +171,7 @@ ALTER TABLE players ADD COLUMN IF NOT EXISTS providerId text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS banned integer NOT NULL DEFAULT 0;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS bannedReason text;
 ALTER TABLE players ADD COLUMN IF NOT EXISTS fullset_claimed integer NOT NULL DEFAULT 0;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS lives integer NOT NULL DEFAULT 15;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS livesDay text;
+ALTER TABLE players ADD COLUMN IF NOT EXISTS livesCooldownUntil text;
 ALTER TABLE daily_state ADD COLUMN IF NOT EXISTS runCoinsToday integer NOT NULL DEFAULT 0;

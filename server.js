@@ -171,6 +171,9 @@ app.get('/api/profile', ah(requirePlayer), ah(async (req, res) => {
   let p = await freshPlayer(req.player.id);
   // Skin level: beri otomatis semua skin yang levelnya sudah dicapai (idempotent).
   if ((await grantLevelSkins(p)).length) p = await freshPlayer(p.id);
+  // Nyawa: reset harian otomatis kalau hari sudah berganti.
+  await getLives(p);
+  p = await freshPlayer(p.id);
   const today = todayStr();
   const daily = await getDailyState(p.id, today);
   await ensureMissionRows(p.id, today);
@@ -302,6 +305,43 @@ app.post('/api/bank-run-coins', ah(requirePlayer), ah(async (req, res) => {
     await addMissionProgress(req.player.id, 'm_coins500', coins, todayBank);
   }
   res.json({ ok: true, coins, totalCoins: (await freshPlayer(req.player.id)).coins });
+}));
+
+// --- Nyawa: 15/hari, cooldown 15 menit kalau habis, +1 nyawa per iklan --------
+const LIVES_PER_DAY = 15;
+const LIVES_COOLDOWN_MS = 15 * 60 * 1000;
+async function getLives(p) {
+  const today = todayStr();
+  if (p.livesDay !== today) {
+    await db.prepare('UPDATE players SET lives=?, livesDay=?, livesCooldownUntil=NULL WHERE id=?').run(LIVES_PER_DAY, today, p.id);
+    return { lives: LIVES_PER_DAY, cooldownUntil: null };
+  }
+  return { lives: p.lives == null ? LIVES_PER_DAY : p.lives, cooldownUntil: p.livesCooldownUntil || null };
+}
+app.post('/api/run-start', ah(requirePlayer), ah(async (req, res) => {
+  let p = await freshPlayer(req.player.id);
+  let { lives, cooldownUntil } = await getLives(p);
+  if (lives <= 0) {
+    if (cooldownUntil && new Date(cooldownUntil).getTime() > Date.now()) {
+      return fail(res, 'Nyawa habis — tunggu cooldown selesai atau nonton iklan buat +1 nyawa');
+    }
+    // Cooldown selesai: isi ulang 15 nyawa.
+    await db.prepare('UPDATE players SET lives=?, livesDay=?, livesCooldownUntil=NULL WHERE id=?').run(LIVES_PER_DAY, todayStr(), p.id);
+    lives = LIVES_PER_DAY; cooldownUntil = null;
+  }
+  lives -= 1;
+  let cd = null;
+  if (lives === 0) cd = new Date(Date.now() + LIVES_COOLDOWN_MS).toISOString();
+  await db.prepare('UPDATE players SET lives=?, livesCooldownUntil=? WHERE id=?').run(lives, cd, p.id);
+  res.json({ ok: true, lives, cooldownUntil: cd });
+}));
+app.post('/api/lives/ad', ah(requirePlayer), ah(async (req, res) => {
+  const p = await freshPlayer(req.player.id);
+  const { lives } = await getLives(p);
+  if (lives >= LIVES_PER_DAY) return fail(res, 'Nyawa sudah penuh (' + LIVES_PER_DAY + '/' + LIVES_PER_DAY + ')');
+  const baru = Math.min(LIVES_PER_DAY, lives + 1);
+  await db.prepare('UPDATE players SET lives=?, livesCooldownUntil=NULL, totalAds=totalAds+1 WHERE id=?').run(baru, p.id);
+  res.json({ ok: true, lives: baru });
 }));
 
 // --- Iklan rewarded ---------------------------------------------------------
