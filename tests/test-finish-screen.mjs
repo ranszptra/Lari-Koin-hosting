@@ -70,7 +70,7 @@ cek('(f8) kode Tapjoy utuh',
   js.includes('async function bukaTapjoyOfferwall()') && js.includes('async function perbaruiStatusTapjoy()') && js.includes("$('btnTapjoy').addEventListener('click', bukaTapjoyOfferwall);"));
 
 // f9: satu bump SW untuk login + finish (tetap v19, tidak naik lagi).
-cek('(f9) sw.js CACHE v25', sw.includes("const CACHE = 'lari-koin-v25';"));
+cek('(f9) sw.js CACHE v27', sw.includes("const CACHE = 'lari-koin-v27';"));
 
 console.log(`\nFinish screen: ${lolos} lolos, ${gagal} gagal`);
 process.exitCode = gagal ? 1 : 0;

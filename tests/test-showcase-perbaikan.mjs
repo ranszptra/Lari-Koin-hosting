@@ -116,7 +116,7 @@ cek(`LEVEL_CHARACTERS db.js cermin: 12 tanpa topi/kacamata (ketemu ${topiNullDb}
 cek('db.js Rex = Fox', db.includes("nama: 'Rex'") && db.includes("model: 'Fox'"));
 
 console.log('== F. sw.js ==');
-cek('CACHE v25', baca('public/sw.js').includes("lari-koin-v25"));
+cek('CACHE v27', baca('public/sw.js').includes("lari-koin-v27"));
 
 console.log(`\n${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

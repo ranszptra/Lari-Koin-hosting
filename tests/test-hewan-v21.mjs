@@ -142,7 +142,7 @@ cek('style.css: .hero-logo pakai animasi logo-hewan (gerak)', css.includes('anim
 
 console.log('== F. sw.js + manifest ==');
 const sw = baca('public/sw.js');
-cek('sw.js CACHE = lari-koin-v25', sw.includes("const CACHE = 'lari-koin-v25';"));
+cek('sw.js CACHE = lari-koin-v27', sw.includes("const CACHE = 'lari-koin-v27';"));
 cek('sw.js: TIDAK precache 12 model hewan (36 MB)', !sw.includes('models-animals'));
 const manifest = JSON.parse(baca('public/manifest.json'));
 cek('manifest.json: deskripsi menyebut Rex (bukan robot/manusia)', /Rex/.test(manifest.description) && !/robot/i.test(manifest.description));

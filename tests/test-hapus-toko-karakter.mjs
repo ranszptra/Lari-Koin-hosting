@@ -1,7 +1,9 @@
 // Tes hapus toko karakter Xbot lama (v25) — lanjutan penghapusan toko skin di v24.
 // Memastikan: beli/pakai karakter toko lama (jolly/kiko/momo/rex) ditolak 400
-// dengan pesan jelas, sementara karakter level (12 hewan) + skin level +
-// power-up tetap jalan, dan tidak ada referensi toko karakter tersisa.
+// dengan pesan jelas, sementara karakter level (12 hewan) + power-up tetap jalan,
+// dan tidak ada referensi toko karakter tersisa.
+// v26: skin level JUGA dihapus (Rans membalikkan keputusan 10:53) — asersi
+// s13/s14/s15 + L3 + L8 di bawah dibalik: skin level + fullset kini DITOLAK.
 //
 // Jalankan: node tests/test-hapus-toko-karakter.mjs
 // (Menyalakan server lokal di port tes dengan DB SQLite temp — file DB temp
@@ -43,14 +45,14 @@ cek('(s8) server.js: /api/buy tolak karakter toko', serverJs.includes("Toko kara
 cek('(s9) server.js: penolakan karakter ada di buy DAN equip',
   (serverJs.match(/Toko karakter sudah dihapus/g) || []).length >= 2);
 cek('(s10) server.js: /api/character/select tetap ada', serverJs.includes("app.post('/api/character/select'"));
-cek('(s11) sw.js: cache naik ke v25', sw.includes("CACHE = 'lari-koin-v25'"));
+cek('(s11) sw.js: cache naik ke v27', sw.includes("CACHE = 'lari-koin-v27'"));
 cek('(s12) app.js: renderTokoBagian power-up tetap ada', app.includes("renderTokoBagian('powerup'"));
-cek('(s13) app.js: skin level + fullset tetap ada (tidak ikut dihapus)',
-  app.includes('function renderSkinLevel') && app.includes('/api/skins/fullset-claim'));
-cek('(s14) server.js: endpoint fullset-claim tetap ada (tidak ikut dihapus)',
-  serverJs.includes("app.post('/api/skins/fullset-claim'") && serverJs.includes('FULLSET_COINS'));
-cek('(s15) db.js: LEVEL_SKINS 12 skin level tetap ada',
-  dbJs.includes("id: 'es'") && dbJs.includes("id: 'legenda'") && dbJs.includes('const LEVEL_SKINS'));
+cek('(s13) v26: app.js skin level + fullset sudah dihapus',
+  !app.includes('function renderSkinLevel') && !app.includes('/api/skins/fullset-claim'));
+cek('(s14) v26: server.js fullset-claim hanya menolak (tanpa FULLSET_COINS)',
+  serverJs.includes("app.post('/api/skins/fullset-claim'") && serverJs.includes('hadiah tukar set lengkap tidak tersedia lagi') && !serverJs.includes('FULLSET_COINS'));
+cek('(s15) v26: db.js LEVEL_SKINS dikosongkan',
+  /const LEVEL_SKINS = \[\];/.test(dbJs) && !dbJs.includes("id: 'es'"));
 
 // ---------- (2) Tes live: server lokal ----------
 const TMP = mkdtempSync(join(tmpdir(), 'hapus-toko-karakter-test-'));
@@ -129,10 +131,10 @@ try {
   cek('(L2b) pakai jolly -> 400 toko karakter dihapus', rEq2.status === 400 && /Toko karakter sudah dihapus/.test(rEq2.body.error || ''), 'status=' + rEq2.status);
   cek('(L2c) equipped.character tetap char-01', equippedDb(1).character === 'char-01', 'equipped=' + JSON.stringify(equippedDb(1)));
 
-  // (L3) pakai skin level es (dimiliki) -> 200
+  // (L3) v26: pakai skin level es (masih tersimpan di DB) -> 400 ditolak
   const rEs = await panggil('POST', '/api/equip', 1, { kind: 'skin', id: 'es' });
-  cek('(L3) pakai skin level es -> 200', rEs.status === 200, 'status=' + rEs.status + ' err=' + rEs.body.error);
-  cek('(L3b) equipped.skin jadi es', equippedDb(1).skin === 'es', 'equipped=' + JSON.stringify(equippedDb(1)));
+  cek('(L3) pakai skin level es -> 400 Skin Level dihapus', rEs.status === 400 && /Skin Level sudah dihapus/.test(rEs.body.error || ''), 'status=' + rEs.status + ' err=' + rEs.body.error);
+  cek('(L3b) equipped.skin tetap null', equippedDb(1).skin === null, 'equipped=' + JSON.stringify(equippedDb(1)));
 
   // (L4) pilih karakter level char-01 (dimiliki) -> 200
   const rSel = await panggil('POST', '/api/character/select', 1, { id: 'char-01' });
@@ -152,26 +154,23 @@ try {
   const rUnk = await panggil('POST', '/api/buy', 1, { kind: 'alien', id: 'x' });
   cek('(L7) beli kind alien -> 400 Item tidak dikenal', rUnk.status === 400 && /tidak dikenal/.test(rUnk.body.error || ''), 'status=' + rUnk.status);
 
-  // (L8) KOREKSI Rans: skin level + klaim fullset TETAP jalan normal (tidak dihapus).
-  // Pemain 3: 12 skin level lengkap -> klaim fullset ok +6.666.667 koin; klaim ulang ditolak.
+  // (L8) v26: skin level + klaim fullset DIHAPUS (Rans membalikkan keputusan).
+  // Pemain 3: 12 skin level lengkap (data lama) -> klaim fullset tetap 400 ditolak.
   const SEMUA_SKIN = ['es', 'sakura', 'laut', 'hutan', 'senja', 'salju', 'lava', 'galaksi', 'madu', 'mint', 'komet', 'legenda'];
   dbTes.prepare(
     'INSERT INTO players(id,name,pinHash,pinSalt,coins,totalAds,maxLevel,createdAt,lastActive) VALUES(?,?,?,?,?,?,?,?,?)'
   ).run(3, 'Pemain3', 'x', 'y', 500, 0, 60, now, now);
   dbTes.prepare('UPDATE players SET skins=?, fullset_claimed=0 WHERE id=?').run(JSON.stringify(SEMUA_SKIN), 3);
   const rFs = await panggil('POST', '/api/skins/fullset-claim', 3, {});
-  cek('(L8) klaim fullset 12 skin -> 200 +6666667', rFs.status === 200 && rFs.body.coins === 6667167, 'status=' + rFs.status + ' coins=' + rFs.body.coins);
-  cek('(L8b) saldo pemain 3 jadi 6.667.167', (await profil(3)).coins === 6667167, 'coins=' + (await profil(3)).coins);
-  const rFs2 = await panggil('POST', '/api/skins/fullset-claim', 3, {});
-  cek('(L8c) klaim fullset ulang -> 400 sudah ditukar', rFs2.status === 400 && /sudah ditukar/.test(rFs2.body.error || ''), 'status=' + rFs2.status + ' err=' + rFs2.body.error);
-  cek('(L8d) saldo tetap setelah klaim ulang', (await profil(3)).coins === 6667167);
-  // Pemain 4: baru 11 skin -> klaim ditolak, koin tetap.
+  cek('(L8) klaim fullset 12 skin -> 400 tidak tersedia lagi', rFs.status === 400 && /tidak tersedia lagi/.test(rFs.body.error || ''), 'status=' + rFs.status + ' err=' + rFs.body.error);
+  cek('(L8b) saldo pemain 3 tetap 500 (tidak +6.666.667)', (await profil(3)).coins === 500, 'coins=' + (await profil(3)).coins);
+  // Pemain 4: baru 11 skin -> klaim juga ditolak dengan pesan yang sama.
   dbTes.prepare(
     'INSERT INTO players(id,name,pinHash,pinSalt,coins,totalAds,maxLevel,createdAt,lastActive) VALUES(?,?,?,?,?,?,?,?,?)'
   ).run(4, 'Pemain4', 'x', 'y', 500, 0, 60, now, now);
   dbTes.prepare('UPDATE players SET skins=?, fullset_claimed=0 WHERE id=?').run(JSON.stringify(SEMUA_SKIN.slice(0, 11)), 4);
   const rFs3 = await panggil('POST', '/api/skins/fullset-claim', 4, {});
-  cek('(L8e) klaim fullset 11 skin -> 400 Belum lengkap', rFs3.status === 400 && /Belum lengkap/.test(rFs3.body.error || ''), 'status=' + rFs3.status + ' err=' + rFs3.body.error);
+  cek('(L8e) klaim fullset 11 skin -> 400 tidak tersedia lagi', rFs3.status === 400 && /tidak tersedia lagi/.test(rFs3.body.error || ''), 'status=' + rFs3.status + ' err=' + rFs3.body.error);
   cek('(L8f) koin pemain 4 tetap 500', (await profil(4)).coins === 500);
 
   dbTes.close();

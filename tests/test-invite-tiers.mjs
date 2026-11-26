@@ -1,7 +1,7 @@
 // Tes tangga hadiah undang teman (v24) — menggantikan toko skin + bonus lama Rp5.000/teman.
 // Memastikan: syarat terkualifikasi (10 iklan + level 5), ambang tiap tingkat,
 // klaim ganda ditolak, klaim sebelum ambang ditolak, endpoint lama menolak dengan
-// pesan jelas, beli/pakai skin toko ditolak, skin level tetap jalan.
+// pesan jelas, beli/pakai skin ditolak (v26: skin level juga dihapus).
 //
 // Jalankan: node tests/test-invite-tiers.mjs
 // (Menyalakan server lokal di port tes dengan DB SQLite temp — file DB temp
@@ -41,7 +41,7 @@ cek('(s5) db.js: SKINS toko dikosongkan', /const SKINS = \{\};/.test(dbJs));
 cek('(s6) server.js: POST /api/referral/tier-claim ada', serverJs.includes("app.post('/api/referral/tier-claim'"));
 cek('(s7) server.js: tier-claim dedup INSERT OR IGNORE invite_tier_claims', serverJs.includes('INSERT OR IGNORE INTO invite_tier_claims'));
 cek('(s8) server.js: endpoint lama /api/referral/claim beri pesan pengganti', /referral\/claim[\s\S]{0,600}diganti sistem tingkat invite/.test(serverJs));
-cek('(s9) server.js: /api/buy tolak skin toko', serverJs.includes("Toko skin sudah dihapus"));
+cek('(s9) server.js: /api/buy tolak skin (pesan v26)', serverJs.includes('Skin Level sudah dihapus'));
 cek('(s10) server.js: profil kembalikan inviteTiers (qualified + claimed)', serverJs.includes('inviteTiers: { qualified: qualifiedReferrals'));
 cek('(s11) app.js: KATALOG.skin sudah dihapus', !app.includes('KATALOG.skin') && !app.includes("id: 'emas', nama: 'Emas'"));
 cek('(s12) app.js: renderTokoBagian skin toko sudah dihapus', !app.includes("renderTokoBagian('skin'"));
@@ -52,9 +52,9 @@ cek('(s16) app.js: teks tour invite menyebut syarat 10 iklan + level 5', app.inc
 cek('(s17) index.html: wadah #tanggaInvite ada', html.includes('id="tanggaInvite"'));
 cek('(s18) index.html: judul Undang Teman baru (tanpa Bonus Rp5.000)', !html.includes('Undang Teman — Bonus Rp5.000') && html.includes('Hadiah sampai Rp250.000'));
 cek('(s19) index.html: notice beranda tanpa Rp5.000 per teman', !html.includes('Undang teman dapat Rp5.000 per teman'));
-cek('(s20) index.html: judul "Skin Karakter" dihapus, div #tokoSkin tetap (skin level)', !html.includes('<h3>Skin Karakter</h3>') && html.includes('id="tokoSkin"'));
-cek('(s21) sw.js: cache naik ke v25', sw.includes("CACHE = 'lari-koin-v25'"));
-cek('(s22) app.js: skin level + fullset tetap ada (tidak ikut dihapus)', app.includes('function renderSkinLevel') && app.includes('/api/skins/fullset-claim'));
+cek('(s20) v26: index.html div #tokoSkin dihapus', !html.includes('<h3>Skin Karakter</h3>') && !html.includes('id="tokoSkin"'));
+cek('(s21) sw.js: cache naik ke v27', sw.includes("CACHE = 'lari-koin-v27'"));
+cek('(s22) v26: app.js skin level + fullset sudah dihapus', !app.includes('function renderSkinLevel') && !app.includes('/api/skins/fullset-claim'));
 
 // ---------- (2) Tes live: server lokal + klaim tingkat beneran ----------
 const TMP = mkdtempSync(join(tmpdir(), 'invite-tiers-test-'));
@@ -174,13 +174,13 @@ try {
 
   // (L8) beli skin toko -> 400 pesan dihapus
   const r8 = await panggil('POST', '/api/buy', 1, { kind: 'skin', id: 'astronot' });
-  cek('(L8) beli skin astronot -> 400 toko skin dihapus', r8.status === 400 && /Toko skin sudah dihapus/.test(r8.body.error || ''), 'status=' + r8.status + ' err=' + r8.body.error);
+  cek('(L8) beli skin astronot -> 400 Skin Level dihapus', r8.status === 400 && /Skin Level sudah dihapus/.test(r8.body.error || ''), 'status=' + r8.status + ' err=' + r8.body.error);
 
   // (L9) pakai skin toko -> 400; pakai skin level (belum dimiliki) -> pesan lain (bukan "dihapus")
   const r9 = await panggil('POST', '/api/equip', 1, { kind: 'skin', id: 'ninja' });
-  cek('(L9) pakai skin ninja -> 400 toko skin dihapus', r9.status === 400 && /Toko skin sudah dihapus/.test(r9.body.error || ''), 'status=' + r9.status);
+  cek('(L9) pakai skin ninja -> 400 Skin Level dihapus', r9.status === 400 && /Skin Level sudah dihapus/.test(r9.body.error || ''), 'status=' + r9.status);
   const r9b = await panggil('POST', '/api/equip', 1, { kind: 'skin', id: 'es' });
-  cek('(L9b) pakai skin level es (belum dimiliki) -> 400 bukan pesan dihapus', r9b.status === 400 && !/Toko skin sudah dihapus/.test(r9b.body.error || ''), 'status=' + r9b.status + ' err=' + r9b.body.error);
+  cek('(L9b) v26: pakai skin level es -> 400 Skin Level dihapus', r9b.status === 400 && /Skin Level sudah dihapus/.test(r9b.body.error || ''), 'status=' + r9b.status + ' err=' + r9b.body.error);
 
   dbTes.close();
   await matikanServer();

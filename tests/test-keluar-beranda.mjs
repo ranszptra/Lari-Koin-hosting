@@ -66,7 +66,7 @@ cek('.modal-box bisa di-scroll (max-height + overflow-y)', css.includes('.modal-
 cek('#gameResult fullscreen bisa di-scroll', /body\.mode-fullscreen #gameResult\.show\{[^}]*max-height:80vh;overflow-y:auto/.test(css));
 
 // 7. Cache service worker naik ke v23
-cek('sw.js CACHE = lari-koin-v25', swjs.includes("lari-koin-v25"));
+cek('sw.js CACHE = lari-koin-v27', swjs.includes("lari-koin-v27"));
 
 console.log(`\n${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);
