@@ -1,0 +1,53 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'id.ranszshop.larikoin'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'id.ranszshop.larikoin'
+        minSdk 24
+        targetSdk 34
+        versionCode 5
+        versionName '1.4.0'
+    }
+
+    signingConfigs {
+        release {
+            // Keystore v2 (SAMA seperti TWA) dipulihkan workflow dari
+            // GitHub Secrets ANDROID_KEYSTORE_BASE64 + ANDROID_KEYSTORE_PASSWORD.
+            // Alias keystore = "android"; password key = password keystore
+            // (sama seperti workflow TWA: BUBBLEWRAP_KEYSTORE_PASSWORD dan
+            // BUBBLEWRAP_KEY_PASSWORD memakai secret yang sama).
+            // JANGAN hardcode password di sini — baca dari env CI.
+            storeFile file('android.keystore')
+            storePassword System.getenv('KEYSTORE_PASSWORD')
+            keyAlias 'android'
+            keyPassword System.getenv('KEY_PASSWORD')
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    // Hanya AdMob SDK — tanpa AppCompat (MainActivity extends Activity biasa)
+    // supaya dependensi seminimal mungkin dan build CI paling andal.
+    implementation 'com.google.android.gms:play-services-ads:23.6.0'
+}
