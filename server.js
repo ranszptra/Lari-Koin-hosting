@@ -20,7 +20,7 @@ const {
   GIFT_CODES, INVITE_TIERS,
   NETWORKS, estRevenueRp,
   CHARACTERS, SKINS, POWERUPS,
-  LEVEL_CHARACTERS, levelCharactersBaru, LEVEL_SKINS, FULLSET_COINS,
+  LEVEL_CHARACTERS, levelCharactersBaru,
   MISSION_POOL, ACHIEVEMENTS,
   publicPlayer, parseJson,
   getDailyState, todaysMissions, ensureMissionRows, addMissionProgress,
@@ -185,15 +185,6 @@ app.post('/api/auth/social', ah(async (req, res) => {
 }));
 
 // --- Profile ---------------------------------------------------------------
-// Skin level: beri semua skin yang levelnya sudah dicapai pemain (idempotent).
-async function grantLevelSkins(p) {
-  const owned = new Set(parseJson(p.skins, []));
-  const baru = LEVEL_SKINS.filter((s) => p.maxLevel >= s.level && !owned.has(s.id));
-  if (!baru.length) return [];
-  const all = [...owned, ...baru.map((s) => s.id)];
-  await db.prepare('UPDATE players SET skins=? WHERE id=?').run(JSON.stringify(all), p.id);
-  return baru;
-}
 
 // Karakter level: beri semua karakter yang levelnya sudah dicapai pemain (idempotent).
 async function grantLevelCharacters(p) {
@@ -207,8 +198,6 @@ async function grantLevelCharacters(p) {
 
 app.get('/api/profile', ah(requirePlayer), ah(async (req, res) => {
   let p = await freshPlayer(req.player.id);
-  // Skin level: beri otomatis semua skin yang levelnya sudah dicapai (idempotent).
-  if ((await grantLevelSkins(p)).length) p = await freshPlayer(p.id);
   // Karakter level: beri otomatis semua karakter yang levelnya sudah dicapai.
   if ((await grantLevelCharacters(p)).length) p = await freshPlayer(p.id);
   // Migrasi default: pemain lama yang masih pakai karakter default 'jolly'
@@ -339,12 +328,11 @@ app.post('/api/finish-level', ah(requirePlayer), ah(async (req, res) => {
     .run(coinsEarned, coinsEarned, newMaxLevel, nowIso(), p.id);
   await db.prepare('UPDATE daily_state SET runCoinsToday=runCoinsToday+? WHERE playerId=? AND date=?').run(coinsEarned, p.id, today);
   lastFinishAt.set(p.id, nowMs);
-  const skinsBaru = await grantLevelSkins(await freshPlayer(p.id));
   const charsBaru = await grantLevelCharacters(await freshPlayer(p.id));
   await addMissionProgress(p.id, 'm_level3', 1, today);
   await addMissionProgress(p.id, 'm_coins500', coinsEarned, today);
   if (isBoss) await addMissionProgress(p.id, 'm_boss', 1, today);
-  res.json({ ok: true, coinsEarned, bonus, isBoss, newMaxLevel, skinsBaru: skinsBaru.map((s) => s.nama), charsBaru: charsBaru.map((c) => c.nama), coins: (await freshPlayer(p.id)).coins });
+  res.json({ ok: true, coinsEarned, bonus, isBoss, newMaxLevel, charsBaru: charsBaru.map((c) => c.nama), coins: (await freshPlayer(p.id)).coins });
 }));
 
 // --- Bank koin lari yang gagal (tanpa bonus level / buka level) -------------
@@ -596,8 +584,8 @@ function shopCatalog(kind) {
 app.post('/api/buy', ah(requirePlayer), ah(async (req, res) => {
   const kind = String(req.body?.kind || '');
   const id = String(req.body?.id || '');
-  // v24: toko skin dihapus — tidak ada lagi skin toko yang bisa dibeli.
-  if (kind === 'skin') return fail(res, 'Toko skin sudah dihapus — diganti tangga hadiah undang teman di tab Undang');
+  // v26: Skin Level dihapus — tidak ada lagi skin yang bisa dibeli.
+  if (kind === 'skin') return fail(res, 'Skin Level sudah dihapus — karakter sekarang hewan yang terbuka tiap naik 5 level');
   // v25: toko karakter dihapus — tidak ada lagi karakter toko yang bisa dibeli.
   if (kind === 'character') return fail(res, 'Toko karakter sudah dihapus — karakter sekarang hewan yang terbuka tiap naik 5 level');
   const catalog = shopCatalog(kind);
@@ -623,12 +611,11 @@ app.post('/api/equip', ah(requirePlayer), ah(async (req, res) => {
   const kind = String(req.body?.kind || '');
   const id = String(req.body?.id || '');
   const catalog = shopCatalog(kind);
-  const isLevelSkin = kind === 'skin' && LEVEL_SKINS.some((s) => s.id === id);
-  // v24: toko skin dihapus — hanya skin level gratis yang masih bisa dipakai.
-  if (kind === 'skin' && !isLevelSkin) return fail(res, 'Toko skin sudah dihapus — diganti tangga hadiah undang teman di tab Undang');
+  // v26: Skin Level dihapus — tidak ada lagi skin yang bisa dipakai.
+  if (kind === 'skin') return fail(res, 'Skin Level sudah dihapus — karakter sekarang hewan yang terbuka tiap naik 5 level');
   // v25: toko karakter dihapus — karakter level tetap lewat /api/character/select.
   if (kind === 'character') return fail(res, 'Toko karakter sudah dihapus — karakter sekarang hewan yang terbuka tiap naik 5 level');
-  if (!catalog || (catalog[id] === undefined && !isLevelSkin)) return fail(res, 'Item tidak dikenal');
+  if (!catalog || catalog[id] === undefined) return fail(res, 'Item tidak dikenal');
   const p = await freshPlayer(req.player.id);
   const equipped = parseJson(p.equipped, { character: 'jolly', skin: null });
   if (kind === 'powerup') {
@@ -664,15 +651,12 @@ app.post('/api/character/select', ah(requirePlayer), ah(async (req, res) => {
   res.json({ ok: true, equipped, character: def });
 }));
 
-// --- Tukar set lengkap skin level → Rp100.000 (sekali saja) ---------------------
+// --- Tukar set lengkap skin level → Rp100.000: DINONAKTIFKAN di v26 ---------
+// v26: Skin Level dihapus (perintah Rans — skin karakter juga Xbot, sudah tidak
+// berguna); hadiah tukar 12 skin jadi Rp100.000 ikut hilang. Route dipertahankan
+// supaya klien lama dapat pesan jelas, bukan 404.
 app.post('/api/skins/fullset-claim', ah(requirePlayer), ah(async (req, res) => {
-  const p = await freshPlayer(req.player.id);
-  if (p.fullset_claimed) return fail(res, 'Set lengkap sudah ditukar');
-  const owned = new Set(parseJson(p.skins, []));
-  const kurang = LEVEL_SKINS.filter((s) => !owned.has(s.id));
-  if (kurang.length) return fail(res, `Belum lengkap — kurang ${kurang.length} skin level`);
-  await db.prepare('UPDATE players SET coins=coins+?, totalEarned=totalEarned+?, fullset_claimed=1 WHERE id=?').run(FULLSET_COINS, FULLSET_COINS, p.id);
-  res.json({ ok: true, coins: (await freshPlayer(p.id)).coins, rupiah: 100000 });
+  return fail(res, 'Skin Level sudah dihapus — hadiah tukar set lengkap tidak tersedia lagi');
 }));
 
 // --- Tapjoy Offerwall (web) -------------------------------------------------

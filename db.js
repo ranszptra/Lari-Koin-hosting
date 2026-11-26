@@ -116,8 +116,8 @@ const estRevenueRp = (impressions, ecpm) => Math.round((impressions * ecpm) / 10
 const CHARACTERS = {};
 // v24: toko skin DIHAPUS (diputuskan Rans 2026-11-26 — skin tidak nempel ke
 // hewan, jadi fitur tidak kepakai; diganti tangga hadiah invite). Katalog
-// dikosongkan supaya tidak ada lagi skin toko yang bisa dibeli/dipakai;
-// skin level gratis (LEVEL_SKINS) TIDAK disentuh dan tetap lewat /api/equip.
+// dikosongkan supaya tidak ada lagi skin toko yang bisa dibeli/dipakai.
+// v26: skin level gratis (LEVEL_SKINS) JUGA dihapus — lihat di bawah.
 const SKINS = {};
 const POWERUPS = { magnet: 2000, perisai: 2000, koinx2: 3000 };
 
@@ -148,22 +148,14 @@ function levelCharactersBaru(maxLevel, owned) {
   return LEVEL_CHARACTERS.filter((c) => maxLevel >= c.level && !o.has(c.id));
 }
 
-// Skin level — GRATIS, terbuka otomatis tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 skin).
-const LEVEL_SKINS = [
-  { id: 'es', level: 5, nama: 'Es', ikon: '❄️' },
-  { id: 'sakura', level: 10, nama: 'Sakura', ikon: '🌸' },
-  { id: 'laut', level: 15, nama: 'Laut', ikon: '🌊' },
-  { id: 'hutan', level: 20, nama: 'Hutan', ikon: '🌿' },
-  { id: 'senja', level: 25, nama: 'Senja', ikon: '🌇' },
-  { id: 'salju', level: 30, nama: 'Salju', ikon: '⛄' },
-  { id: 'lava', level: 35, nama: 'Lava', ikon: '🌋' },
-  { id: 'galaksi', level: 40, nama: 'Galaksi', ikon: '🌌' },
-  { id: 'madu', level: 45, nama: 'Madu', ikon: '🍯' },
-  { id: 'mint', level: 50, nama: 'Mint', ikon: '🍃' },
-  { id: 'komet', level: 55, nama: 'Komet', ikon: '☄️' },
-  { id: 'legenda', level: 60, nama: 'Legenda', ikon: '👑' },
-];
-// Hadiah tukar set lengkap 12 skin level = Rp100.000 → 6.666.667 koin (1.000 koin = Rp15).
+// v26: Skin Level DIHAPUS (diputuskan Rans 2026-11-26 — skin karakter juga Xbot,
+// sudah tidak berguna; lanjutan penghapusan toko karakter di v25). Katalog
+// dikosongkan, mengikuti pola SKINS di v24 dan CHARACTERS di v25; hadiah tukar
+// set lengkap 12 skin (Rp100.000) ikut hilang — endpoint fullset-claim di
+// server.js kini hanya menolak dengan pesan jelas.
+const LEVEL_SKINS = [];
+// Hadiah tukar set lengkap 12 skin level = Rp100.000 → 6.666.667 koin —
+// TIDAK DIPAKAI LAGI sejak v26 (dipertahankan sebagai konstanta referensi).
 const FULLSET_COINS = 6666667;
 
 // Misi harian — pool 6 misi, tiap hari diambil 3 secara rotasi.

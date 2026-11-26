@@ -91,3 +91,42 @@ yang membeli Xbot buang-buang koin (game fallback ke foto rubah).
   `/api/character/select`), skin level gratis + klaim set lengkap Rp100.000,
   tangga invite v24, Tapjoy, AdMob.
 - Tes: `tests/test-hapus-toko-karakter.mjs`; cache service worker naik ke v25.
+
+## v26 — Skin Level dihapus (2026-11-26, perintah Rans "toko xbot, skin level — hps")
+
+Pembalikan keputusan 10:53: Rans semula membatalkan penghapusan Skin Level
+("jangan", "yg 12 sekin tetep"), lalu ~10:55 memutuskan hapus keduanya —
+"toko xbot, skin level", "skin karakter juga xbot, udah ga guna". Skin Level
+(Es/Sakura/Laut/Hutan/Senja/Salju/Lava/Galaksi/Madu/Mint/Komet/Legenda) memang
+skin Xbot juga, dan sejak pivot hewan v21 tidak nempel ke hewan.
+
+- Client: `LEVEL_SKINS` + `renderSkinLevel()` + wadah `#tokoSkin` + judul
+  "Skin Level — Gratis tiap naik 5 level" + panel tukar set lengkap dihapus;
+  label Beranda "Skin aktif" jadi "Karakter aktif" (`namaKarakterAktif()`,
+  tanpa suffix skin); pesan "Skin baru terbuka" di layar finish dihapus.
+- Server: `LEVEL_SKINS` di `db.js` dikosongkan; `grantLevelSkins()` dihapus
+  (tidak lagi dipanggil dari `/api/profile` maupun `/api/finish-level`,
+  dan respons finish-level tidak lagi berisi `skinsBaru`); `POST /api/buy`
+  dan `POST /api/equip` menolak `kind: 'skin'` dengan pesan jelas
+  ("Skin Level sudah dihapus — karakter sekarang hewan yang terbuka tiap
+  naik 5 level"); `POST /api/skins/fullset-claim` dipertahankan sebagai route
+  yang hanya menolak ("Skin Level sudah dihapus — hadiah tukar set lengkap
+  tidak tersedia lagi"). Hadiah tukar 12 skin jadi Rp100.000 ikut hilang.
+- TIDAK disentuh: grid karakter level 12 hewan (`#tokoKarakterLevel`,
+  `/api/character/select`), tangga invite v24, Tapjoy, AdMob.
+- Tes: `tests/test-hapus-skin-level.mjs`; cache service worker naik ke v26.
+
+## v27 — Musik latar DJ (2026-11-26 ~11:01, perintah Rans "gas")
+- Musik game diganti dari melodi prosedural sederhana menjadi sequencer gaya
+  DJ remix Indo/TikTok (`public/app.js`, fungsi `dj*`): 130 BPM, kick
+  four-on-the-floor (jedag-jedug), bass offbeat, hi-hat, clap di ketukan
+  2 & 4, lead synth orisinal + riser; struktur 8 bar berulang
+  (intro 2 -> build 2 -> drop 4); scheduler lookahead 0,5 dtk / interval
+  100 ms (loop mulus). Level >= 10: layer ekstra (hat 16th + lead lebih
+  keras).
+- 100% sintesis WebAudio — tanpa file MP3, tanpa lagu TikTok asli (bebas
+  copyright; lagu orang berisiko klaim di game penghasil iklan).
+- Perilaku lama dipertahankan: musik mulai setelah interaksi pengguna,
+  tombol Musik/Suara + localStorage `nr_musik`/`nr_suara`, SFX (`beep`)
+  terpisah dari musik.
+- Tes: `tests/test-musik-dj.mjs` (27 cek); cache service worker naik ke v27.
