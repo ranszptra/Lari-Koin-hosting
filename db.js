@@ -236,6 +236,16 @@ CREATE TABLE IF NOT EXISTS tapjoy_rewards (
   coins INTEGER NOT NULL,
   createdAt TEXT NOT NULL
 );
+-- Hadiah rewarded AdMob (wrapper WebView, tahap 2): nonce unik per klaim
+-- (UUID dari wrapper) — PRIMARY KEY = dedup atomik anti-replay, pola sama
+-- seperti tapjoy_rewards. rewardType HANYA 'life' (KEBIJAKAN Google:
+-- hadiah moneter dilarang — koin TIDAK PERNAH boleh masuk sini).
+CREATE TABLE IF NOT EXISTS admob_rewards (
+  nonce TEXT PRIMARY KEY,
+  playerId INTEGER NOT NULL REFERENCES players(id),
+  rewardType TEXT NOT NULL,
+  createdAt TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS ad_impressions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   network TEXT NOT NULL,

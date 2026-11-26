@@ -54,6 +54,16 @@ const TAPJOY_SECRET_KEY = process.env.TAPJOY_SECRET_KEY || '';
 // membayar $0,20–$100 per event; di atas $200 dianggap tidak wajar → tolak).
 const TAPJOY_MAX_COINS_PER_CALLBACK = 100000000;
 
+// --- AdMob (wrapper WebView, tahap 2) -------------------------------------
+// Unit ID diambil wrapper saat runtime dari GET /api/ads/config — JANGAN
+// hardcode di kode Android kecuali sebagai fallback (lihat wrapper/).
+// Nilai default = ID beneran yang sudah dibuat di AdMob (2026-11-26).
+// Bisa di-override lewat env Railway tanpa rebuild APK:
+//   ADMOB_APP_ID, ADMOB_REWARDED_UNIT_ID, ADMOB_INTERSTITIAL_UNIT_ID
+const ADMOB_APP_ID = process.env.ADMOB_APP_ID || 'ca-app-pub-3929807789448089~9100558334';
+const ADMOB_REWARDED_UNIT_ID = process.env.ADMOB_REWARDED_UNIT_ID || 'ca-app-pub-3929807789448089/9615563652';
+const ADMOB_INTERSTITIAL_UNIT_ID = process.env.ADMOB_INTERSTITIAL_UNIT_ID || 'ca-app-pub-3929807789448089/1088180253';
+
 app.use(express.json());
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*');
@@ -384,6 +394,39 @@ app.post('/api/lives/ad', ah(requirePlayer), ah(async (req, res) => {
   const baru = Math.min(LIVES_PER_DAY, lives + 1);
   await db.prepare('UPDATE players SET lives=?, livesCooldownUntil=NULL, totalAds=totalAds+1 WHERE id=?').run(baru, p.id);
   res.json({ ok: true, lives: baru });
+}));
+
+// --- Verifikasi rewarded AdMob (wrapper WebView, tahap 2) -------------------
+// KEBIJAKAN (Google, support.google.com/admob/answer/7313578): hadiah
+// moneter (uang tunai / kripto / gift card) DILARANG untuk rewarded ads.
+// Koin Runner Coin bisa dicairkan jadi Rp → koin = hadiah moneter.
+// Maka endpoint ini HANYA memberi hadiah non-uang: +1 nyawa.
+// 'coins' TIDAK PERNAH ada di whitelist ini — jangan ditambahkan.
+// Verifikasi berlapis (client-asserted, BUKAN Server-Side Verification
+// Google — lihat wrapper/WRAPPER-README.md § "Celah yang tersisa"):
+//   1. Auth pemain (Bearer token) — klaim tanpa login ditolak.
+//   2. Nonce unik per klaim (UUID dari wrapper) — dedup atomik via
+//      PRIMARY KEY admob_rewards.nonce; replay nonce sama → 403.
+//   3. Batas 10 klaim/hari per pemain + nyawa maks 15 (seperti /api/lives/ad).
+// SSV resmi Google (callback server-to-server bertanda tangan) BELUM
+// diaktifkan — butuh setup di dashboard AdMob (lihat README).
+const ADMOB_REWARDED_TYPES = ['life'];
+app.post('/api/ads/rewarded-verify', ah(requirePlayer), ah(async (req, res) => {
+  const rewardType = String(req.body?.rewardType || '');
+  const nonce = String(req.body?.nonce || '');
+  if (!ADMOB_REWARDED_TYPES.includes(rewardType)) return err(res, 400, 'rewardType tidak diizinkan (hanya life)');
+  if (!/^[A-Za-z0-9-]{8,64}$/.test(nonce)) return err(res, 400, 'nonce tidak valid');
+  const p = await freshPlayer(req.player.id);
+  const { lives } = await getLives(p);
+  if (lives >= LIVES_PER_DAY) return fail(res, 'Nyawa sudah penuh (' + LIVES_PER_DAY + '/' + LIVES_PER_DAY + ')');
+  const today = todayStr();
+  const klaimHariIni = await db.prepare("SELECT COUNT(*) AS c FROM admob_rewards WHERE playerId=? AND substr(createdAt,1,10)=?").get(p.id, today);
+  if ((klaimHariIni?.c || 0) >= AD_MAX_PER_DAY) return fail(res, `Batas reward iklan harian tercapai (${AD_MAX_PER_DAY}x/hari)`);
+  const ins = await db.prepare('INSERT OR IGNORE INTO admob_rewards(nonce,playerId,rewardType,createdAt) VALUES(?,?,?,?)').run(nonce, p.id, rewardType, nowIso());
+  if (!ins.changes) return err(res, 403, 'Reward sudah diklaim (nonce dipakai ulang)');
+  const baru = Math.min(LIVES_PER_DAY, lives + 1);
+  await db.prepare('UPDATE players SET lives=?, livesCooldownUntil=NULL, totalAds=totalAds+1 WHERE id=?').run(baru, p.id);
+  res.json({ ok: true, rewardType, lives: baru });
 }));
 
 // --- Iklan rewarded ---------------------------------------------------------
@@ -720,6 +763,11 @@ app.post('/api/offers/claim', ah(requirePlayer), ah(async (req, res) => {
 }));
 
 // --- Mediasi iklan ---------------------------------------------------------------
+// Konfigurasi AdMob untuk wrapper WebView (tahap 2): unit ID dibaca wrapper
+// saat runtime — ganti unit cukup lewat env Railway, tanpa rebuild APK.
+app.get('/api/ads/config', (req, res) => {
+  res.json({ ok: true, admobAppId: ADMOB_APP_ID, rewardedUnitId: ADMOB_REWARDED_UNIT_ID, interstitialUnitId: ADMOB_INTERSTITIAL_UNIT_ID });
+});
 app.get('/api/ads/networks', (req, res) => {
   res.json({ ok: true, networks: NETWORKS });
 });

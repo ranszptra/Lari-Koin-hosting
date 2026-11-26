@@ -261,6 +261,28 @@ Sumber resmi: https://support.google.com/admob/answer/7313578
 
 ## 6. Rute C — AdMob native (SDK Android) — PALING LAMA, OPSIONAL
 
+> **STATUS 2026-11-26: DIBANGUN (lokal), BELUM DIPUBLISH.** Wrapper WebView
+> + AdMob SDK v1.4.0 sudah selesai dibangun + dites lokal (83/83 cek,
+> `tests/test-wrapper.mjs`; total suite 12/12 lolos, 647 cek + LOAD OK).
+> Yang BELUM: (1) build APK di GitHub Actions (`.github/workflows/build-wrapper.yml`),
+> (2) verifikasi APK (package, versionCode 5, v1.4.0, sertifikat v2),
+> (3) publish + tes di HP Rans — TERUTAMA login Google di dalam WebView
+> (kemungkinan diblokir Google, `disallowed_useragent` — lihat
+> `wrapper/WRAPPER-README.md` § "Celah yang tersisa"). Jangan janjikan iklan
+> beneran sampai APK ini terpasang + review AdMob selesai (app masih
+> "Sedang disiapkan"). Detail lengkap: `wrapper/WRAPPER-README.md`.
+> Yang SUDAH jalan: proyek native di `wrapper/` (Kotlin, package
+> `id.ranszshop.larikoin`, minSdk 24, versionCode 5 / 1.4.0, ikon rubah),
+> bridge `window.AdMobBridge` (`showInterstitial()`, `showRewarded('life')`,
+> `isInterstitialReady/RewardedReady()`), `GET /api/ads/config` (unit ID dari
+> server, bukan hardcode), `POST /api/ads/rewarded-verify` (whitelist HANYA
+> `'life'` — koin TIDAK PERNAH — nonce anti-replay, batas 10/hari, nyawa
+> penuh → 400), wiring `public/app.js` (`tampilIklanSelingan` →
+> `tampilIklanAdMob` kalau bridge ada, fallback simulasi kalau gagal;
+> `mintaNyawaRewarded()` untuk +1 nyawa; tombol koin TIDAK memakai rewarded
+> AdMob), sw.js v22. **Verifikasi rewarded masih client-asserted, BUKAN
+> SSV Google — SSV belum dibangun** (lihat README wrapper).
+
 ### 6.1 Fakta teknis (sudah diverifikasi)
 - **TWA murni (Bubblewrap) TIDAK BISA menjalankan AdMob SDK.** TWA dirender oleh browser
   Chrome di HP pemain, bukan oleh proses aplikasi — tidak ada WebView milik aplikasi, tidak
@@ -275,30 +297,34 @@ Sumber resmi: https://support.google.com/admob/answer/7313578
   ("Technical requirements for web content viewing frames for apps").
 
 ### 6.2 Rute praktis kalau Rans tetap mau AdMob native
-1. **Ganti wrapper**: dari TWA murni → aplikasi Android hybrid/WebView (proyek Android baru,
-   mis. berbasis `android-browser-helper` dengan WebView fallback, atau framework converter —
-   yang berbayar seperti AppSorcerer/Web2App juga ada, tapi itu berarti build pindah ke
-   platform mereka; bukan rekomendasi, hanya dicatat sebagai opsi).
-   Game tetap web yang sama (URL Railway tidak berubah); yang berubah hanya "kulit" Android-nya.
-2. **Di proyek Android baru:** tambah dependensi Google Mobile Ads SDK, `APPLICATION_ID`
-   `ca-app-pub-3929807789448089~9100558334` di `AndroidManifest`, buat unit
-   **interstitial** + **rewarded** (butuh jawaban Rans soal jenis unit pertama, §2.1),
-   tambah JS bridge (`addJavascriptInterface`) mis. `window.NativeAds.showInterstitial()` /
-   `showRewarded()` yang dipanggil dari `tampilIklanSelingan()` (app.js:1260) kalau
-   `window.NativeAds` ada — kalau tidak ada (main di browser biasa), fallback ke rute B
-   (H5) atau simulasi.
-3. **Rebuild APK baru** via GitHub Actions dengan keystore v2 yang sama (supaya pemain lama
-   bisa update tanpa uninstall) + naikkan `versionCode`. Package ID tetap
-   `id.ranszshop.larikoin`.
+✅ **Langkah 1–3 SUDAH DIBANGUN 2026-11-26 (lihat status di atas):**
+proyek Android baru di `wrapper/` (Kotlin native — BUKAN berbasis
+`android-browser-helper`, bukan framework converter berbayar); dependensi
+Google Mobile Ads SDK `play-services-ads:23.6.0`; `APPLICATION_ID`
+`ca-app-pub-3929807789448089~9100558334` di `AndroidManifest`; unit
+**interstitial** (`.../1088180253`) + **rewarded** (`.../9615563652`) —
+diambil runtime dari `GET /api/ads/config`, BUKAN hardcode (fallback ke ID
+yang sama hanya kalau fetch config gagal); JS bridge `window.AdMobBridge`
+(nama final — bukan `window.NativeAds` seperti draf awal) dipanggil dari
+`tampilIklanSelingan()` kalau bridge ada, fallback simulasi kalau tidak ada.
+**YANG MASIH BERJALAN:** rebuild APK via GitHub Actions (workflow
+`build-wrapper.yml`) dengan keystore v2 yang sama + `versionCode` 5.
+Package ID tetap `id.ranszshop.larikoin`.
 4. **Risiko Play Store:** aplikasi yang isinya hanya WebView membungkus website berisiko
    ditolak di review "Minimum Functionality" Google Play — wrapper harus punya fungsi native
    yang nyata (AdMob + bridge itu sendiri membantu, tapi bukan jaminan lolos).
 5. **Kebijakan hadiah §5 tetap berlaku** untuk rewarded AdMob (tidak boleh koin).
 
 ### 6.3 Estimasi (jujur)
-- Bukan pekerjaan sejam: proyek Android baru + bridge + tes di HP + rebuild + review.
-- Jangan mulai rute ini sebelum rute A (AdGem) menghasilkan uang — AdMob native adalah
-  optimasi tahap 2, bukan penghasil uang pertama.
+- Pekerjaan build-nya SUDAH selesai (26 Nov 2026, lokal + tes 83/83).
+  Yang tersisa: build CI (±30 menit kalau workflow jalan mulus) + verifikasi
+  APK + tes di HP (login Google di WebView adalah risiko terbesar — kalau
+  diblokir, butuh jembatan login Custom Tabs, pekerjaan tambahan) + review
+  AdMob (di luar kendali kita).
+- Rute A (AdGem) sudah DIGANTI Tapjoy (lihat §10) — AdGem dilewati total
+  (Rans 26 Nov 2026). Jadi urutan "AdMob native setelah rute A menghasilkan"
+  tidak lagi berlaku persis: Tapjoy sudah live, AdMob native menyusul
+  sebagai jalur kedua.
 
 ---
 

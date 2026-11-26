@@ -94,6 +94,13 @@ CREATE TABLE IF NOT EXISTS tapjoy_rewards (
   createdAt text NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS admob_rewards (
+  nonce text PRIMARY KEY,
+  playerId bigint NOT NULL REFERENCES players(id),
+  rewardType text NOT NULL,
+  createdAt text NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS ad_impressions (
   id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   network text NOT NULL,
