@@ -45,15 +45,21 @@ jobs:
 
       # Keystore diambil dari GitHub Secrets (bukan generate baru tiap run),
       # supaya update APK selalu ditandatangani kunci yang sama.
+      # PENTING: app/build.gradle memakai storeFile file('android.keystore')
+      # yang relatif terhadap direktori modul app (wrapper/app/), jadi
+      # keystore HARUS dipulihkan ke app/android.keystore — BUKAN ke
+      # wrapper/android.keystore (itu penyebab run #4 gagal di
+      # validateSigningRelease: "Keystore file .../wrapper/app/android.keystore
+      # not found").
       - name: Pulihkan keystore dari Secrets
         id: keystore
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          echo "$KEYSTORE_B64" | base64 -d > android.keystore
+          echo "$KEYSTORE_B64" | base64 -d > app/android.keystore
           echo "password=$KEYSTORE_PASS" >> "$GITHUB_OUTPUT"
-          keytool -list -v -keystore android.keystore -storepass "$KEYSTORE_PASS" | grep -i "SHA256" | head -1
+          keytool -list -v -keystore app/android.keystore -storepass "$KEYSTORE_PASS" | grep -i "SHA256" | head -1
 
       - name: Build APK release
         env:
