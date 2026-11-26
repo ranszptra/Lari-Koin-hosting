@@ -103,7 +103,7 @@ cek('(i4) app.js: mulaiGame memanggil /api/run-start (gerbang nyawa)', app.inclu
 cek('(i5) app.js: level 60 tidak auto-lanjut (tamat)', app.includes('const tamat = lvSelesai >= 60;') && app.includes('if (tamat) return;'));
 cek('(i6) app.js: simpan gagal -> ulang level yang sama, bukan loncat', app.includes('if (!tersimpan)') && app.includes("bUlang.textContent = '▶ Main Lagi (Level ' + lvSelesai + ')'"));
 cek('(i7) app.js: autoLanjutTimer dibatalkan saat keluar layar penuh', app.includes('keluarModeLayarPenuh') && /function keluarModeLayarPenuh\(\) \{[\s\S]*?clearInterval\(autoLanjutTimer\)/.test(app));
-cek('(i8) sw.js CACHE = lari-koin-v21', sw.includes("const CACHE = 'lari-koin-v21';"));
+cek('(i8) sw.js CACHE = lari-koin-v24', sw.includes("const CACHE = 'lari-koin-v24';"));
 
 console.log(`\nHasil: ${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);
