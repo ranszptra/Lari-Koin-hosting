@@ -39,12 +39,10 @@ function renderAman(fn) { try { fn(); } catch (e) { console.warn('[render] gagal
 
 /* ---------- Tabel data (di-hoist ke atas: dibaca pemakaian top-level) ---------- */
 const KATALOG = {
-  character: [
-    { id: 'jolly', nama: 'Xbot', harga: 0, ikon: '🤖', desc: 'Robot lincah kesayangan — sudah dimiliki.' },
-    { id: 'kiko', nama: 'Xbot Hijau', harga: 50000, ikon: '🤖', desc: 'Xbot hijau ceria.' },
-    { id: 'momo', nama: 'Xbot Pink', harga: 100000, ikon: '🤖', desc: 'Xbot pink manis, pita di kepala.' },
-    { id: 'rex', nama: 'Xbot Api', harga: 200000, ikon: '🤖', desc: 'Xbot oranye garang, mata laser.' }
-  ],
+  // v25: toko karakter lama (Xbot/kiko/momo/rex) DIHAPUS — sejak pivot hewan
+  // v21 karakter lari adalah hewan level (char-01..12); beli Xbot tidak
+  // berpengaruh (karakterAktif() null -> fallback rubah). Karakter level
+  // tetap dipilih lewat grid #tokoKarakterLevel (/api/character/select).
   // v24: skin toko (emas/ninja/astronot/pelangi/shadow) DIHAPUS — tidak nempel
   // ke hewan, jadi fitur tidak kepakai; diganti tangga hadiah undang teman.
   powerup: [
@@ -669,7 +667,10 @@ function namaKarakterSkinAktif() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
   const skin = (profile && profile.equipped && profile.equipped.skin) || '';
   const k = karakterLevel(char);
-  const cn = k ? k.nama : ((KATALOG.character.find((c) => c.id === char) || {}).nama || 'Xbot');
+  // v25: nama karakter toko lama (jolly/kiko/momo/rex) — toko sudah dihapus,
+  // hanya dipakai sebagai label kalau pemain masih memakai karakter lama.
+  const NAMA_KARAKTER_LAMA = { jolly: 'Xbot', kiko: 'Xbot Hijau', momo: 'Xbot Pink', rex: 'Xbot Api' };
+  const cn = k ? k.nama : (NAMA_KARAKTER_LAMA[char] || 'Xbot');
   if (!skin) return cn;
   const sk = LEVEL_SKINS.find((x) => x.id === skin); // v24: skin toko dihapus, hanya skin level
   return cn + ' • Skin ' + (sk ? sk.nama : skin);
@@ -686,7 +687,7 @@ function terpakai(kind, id) {
   return profile.equipped[kind] === id;
 }
 function renderToko() {
-  renderTokoBagian('character', 'tokoKarakter');
+  // v25: toko karakter lama dihapus — hanya grid karakter level + power-up.
   renderKarakterLevel();
   // v24: bagian skin toko dihapus — #tokoSkin kini hanya diisi skin level (renderSkinLevel).
   renderSkinLevel();
