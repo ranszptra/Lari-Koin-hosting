@@ -1,14 +1,14 @@
 /* Runner Coin — tampilan lari 3D (Three.js r170, WebGL).
  *
- * Karakter MANUSIA (Polyfork "Traveller", rangka humanoid Mixamo, gratis) +
- * animasi Mixamo (run bawaan karakter; jump / slide / stumble / dance dari
- * berkas xbot@*.fbx yang di-retarget dengan ganti nama track) dan model koin
- * dari repo Cave Runner (tope-olajide/cave-runner, lisensi MIT):
- * https://github.com/tope-olajide/cave-runner
+ * Karakter HEWAN (Quaternius "Ultimate Animated Animal Pack", CC0, gratis
+ * komersial) — 12 hewan .gltf rigged di public/models-animals/, tiap hewan
+ * memakai klip animasi ASLINYA (Gallop = lari, Gallop_Jump = lompat,
+ * Idle / Idle_2 = diam/dansa, Attack = tersandung). Tidak ada retarget
+ * manusia. Koin dari repo Cave Runner (tope-olajide/cave-runner, MIT).
  * Diadaptasi, BUKAN di-port mentah: tidak ada kode PlanetScale / leaderboard
  * Cave Runner di sini — semua itu sudah ditangani server game ini.
- * Skin roster (12 karakter) ditempel per bagian baju (shirt/coat/denim/boot)
- * lewat applySkin().
+ * Hanya hewan yang dipakai yang dimuat (lazy, ~3 MB) — tidak precache 12
+ * hewan di SW (36 MB terlalu besar).
  *
  * Modul ini HANYA menggambar. Semua logika game (koin, level, nyawa, skill,
  * validasi server) tetap di app.js; modul ini membaca state game tiap frame
@@ -17,6 +17,7 @@
  */
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
 
 /* ---------- Pemetaan koordinat game (2D) -> dunia 3D ---------- */
@@ -29,8 +30,12 @@ export function worldZ(gameZ) { return -40 * gameZ; }
  * karakter, dan kamera — semua mengikuti kurva yang sama, jadi konsisten. */
 export function belokJalan(z) { return Math.sin(z * 0.045 + 0.7) * 1.4; }
 
-const CHAR_FILE = 'traveller.fbx'; // manusia (Polyfork "Traveller", rangka Mixamo, gratis)
-const CHAR_SCALE = 0.01; // Traveller ~175 cm -> ~1,75 unit dunia
+const HEWAN_SKALA = { // skala supaya tinggi hewan ~1,5 unit dunia (diukur tests/inspect/probe-hewan.mjs)
+  Fox: 0.512, Wolf: 0.52, Husky: 0.478, ShibaInu: 0.541,
+  Horse: 0.36, Horse_White: 0.36, Stag: 0.284, Deer: 0.391,
+  Donkey: 0.445, Cow: 0.31, Bull: 0.31, Alpaca: 0.31,
+};
+const MODEL_BASE_HEWAN = '/models-animals/';
 const COIN_SCALE = 0.004; // koin FBX 157 cm -> diameter ~0,63 unit
 const MODEL_BASE = '/models/';
 const CAM_POS = { x: 0, y: 3.0, z: 5.6 }; // lebih dekat: pelari tampak lebih besar di layar
@@ -48,14 +53,13 @@ const R = {
   renderer: null, scene: null, camera: null, clock: null,
   char: null, mixer: null, actions: {}, current: null, currentName: null,
   coinTemplate: null, obsTemplates: {},
-  clips: {}, charMats: {}, skinWarna: null, skinHex: null, _preloadPromise: null, _phase2Ditunda: false,
+  clips: {}, _preloadPromise: null, _gantiPromise: null, charModelFile: null, charSkala: 0.5,
   coinSlots: [], coinMap: new Map(), coinFree: [],
   obsSlots: [], obsMap: new Map(), obsFree: [],
   decor: [], decorMats: {},
   groundMat: null, roadMat: null, roadTex: null, _roadTanah: null, hemi: null, shieldRing: null,
   _pr: 1.5, _prEMA: null, _prHitung: 0, // pixel ratio adaptif (HD): mulai 1,5, naik ke 2 bila stabil
   ready: false, loading: false, failed: false,
-  _phase2Promise: null, phase2Done: false, // fase 2 (animasi tambahan) jalan di latar belakang
   worldIdx: -1, world: null,
   mode: null, // null | 'idle' | 'crash'
   crashT: 0, idleT: 0, idleCoins: [],
@@ -426,24 +430,12 @@ function setWorld(idx, d) {
   if (changed) rebuildDecor(idx);
 }
 
-/* ---------- Model: Xbot + animasi + koin ---------- */
-function stripRootMotion(clip) {
-  // Hapus track posisi pinggul (root motion) — gerakan Y/X dikendalikan fisika game.
-  // Sama seperti Cave Runner (tracks.shift pada klip slide).
-  clip.tracks = clip.tracks.filter((t) => t.name !== 'mixamorigHips.position' && t.name !== 'Hips.position');
-  return clip;
-}
-/* Klip animasi Xbot memakai nama tulang 'mixamorigHips' dst; karakter manusia
- * (Traveller) memakai nama tulang tanpa awalan ('Hips', 'Spine', ...).
- * Rangkanya sama (humanoid Mixamo 31 tulang), jadi cukup ganti nama track —
- * retarget tanpa alat lain. Tulang jari tidak ada di Traveller; track jari
- * diabaikan mixer (tidak throw), tangan tetap bergerak dari pergelangan. */
-function remapClipMixamo(clip) {
-  for (const t of clip.tracks) {
-    if (t.name.startsWith('mixamorig')) t.name = t.name.slice('mixamorig'.length);
-  }
-  return clip;
-}
+/* ---------- Model hewan: Quaternius glTF + koin ---------- */
+/* 12 hewan Quaternius "Ultimate Animated Animal Pack" (CC0, gratis komersial),
+ * tiap model .gltf di public/models-animals/ — rigged (1 skin), buffer
+ * tertanam (tanpa file luar), klip animasi ASLI per model. TIDAK ada retarget
+ * manusia — klip dipakai apa adanya. Hanya hewan yang dipakai yang dimuat
+ * (lazy, ~3 MB per hewan). Koin tetap dari coin.fbx (Cave Runner). */
 function makeAction(clip, loop, timeScale) {
   const a = R.mixer.clipAction(clip);
   a.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, Infinity);
@@ -458,62 +450,67 @@ function play(name) {
   R.current = a; R.currentName = name;
   a.reset().fadeIn(0.18).play();
 }
-/* Muat satu animasi FBX jadi aksi mixer (dipakai fase 1 & 2). */
-async function muatAnimasi(loader, name, file, loop, ts) {
-  const g = await loader.loadAsync(MODEL_BASE + file);
-  if (!g.animations || !g.animations[0]) return false;
-  const clip = g.animations[0];
-  clip.name = name;
-  remapClipMixamo(clip); // Xbot -> tulang Traveller
-  if (name === 'jump' || name === 'slide') stripRootMotion(clip);
-  R.actions[name] = makeAction(clip, loop, ts);
-  R.clips[name] = clip;
-  return true;
-}
-/* Muat satu berkas dengan batas waktu (fase 2 tidak boleh macet selamanya). */
-function muatDenganTimeout(loader, file, ms) {
-  return Promise.race([
-    loader.loadAsync(MODEL_BASE + file),
-    new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout ' + file)), ms || 20000)),
-  ]);
-}
-
-/* ---------- Fase 1 (blokir, ~2,3 MB): karakter + animasi lari + koin ----------
- * Hanya ini yang harus selesai sebelum mode 3D bisa dipakai. Total model
- * ~5,5 MB: kalau semua dimuat sekaligus, koneksi lambat tidak pernah selesai
- * sebelum timeout 15 detik dan game jatuh ke 2D. */
-async function loadModelsPhase1() {
-  const loader = new FBXLoader();
-  // Karakter manusia (wajib — kalau gagal, mode 3D dimatikan total)
-  const charGroup = await loader.loadAsync(MODEL_BASE + CHAR_FILE);
-  charGroup.scale.setScalar(CHAR_SCALE);
-  charGroup.rotation.y = Math.PI; // membelakangi kamera (lari menjauh)
-  charGroup.traverse((o) => {
-    if (o.isMesh || o.isSkinnedMesh) {
-      o.castShadow = false; o.receiveShadow = false;
-      // koper di tangan kiri disembunyikan — pelari tidak bawa koper
-      if (o.name === 'attach-lefthand-mesh_case') o.visible = false;
-      // kumpulkan material per nama untuk tint skin (baju nempel)
-      if (o.material && o.material.name && !R.charMats[o.material.name]) R.charMats[o.material.name] = o.material;
+/* Petakan klip asli hewan ke nama aksi game. */
+const PETA_KLIP_HEWAN = { run: 'Gallop', jump: 'Gallop_Jump', idle: 'Idle', dance: 'Idle_2', stumble: 'Attack' };
+function muatHewan(namaModel, skala) {
+  const loader = new GLTFLoader();
+  return loader.loadAsync(MODEL_BASE_HEWAN + namaModel + '.gltf').then((gltf) => {
+    const group = gltf.scene;
+    group.scale.setScalar(skala);
+    group.rotation.y = Math.PI; // hewan menghadap +Z -> putar membelakangi kamera (lari menjauh)
+    group.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) { o.castShadow = false; o.receiveShadow = false; } });
+    const clips = {};
+    for (const clip of (gltf.animations || [])) {
+      const nm = String(clip.name || '');
+      for (const [aksi, namaKlip] of Object.entries(PETA_KLIP_HEWAN)) {
+        if (nm === namaKlip) clips[aksi] = clip;
+      }
+      if (nm === 'Attack_Headbutt' && !clips.stumble) clips.stumble = clip; // kuda/dkk: Attack_Headbutt
     }
+    return { group, clips };
   });
-  R.char = charGroup;
-  R.scene.add(charGroup);
-  R.mixer = new THREE.AnimationMixer(charGroup);
+}
+/* Buat mixer + aksi untuk hewan yang baru dimuat. */
+function pasangHewan(group, clips) {
+  R.mixer = new THREE.AnimationMixer(group);
   R.mixer.addEventListener('finished', () => {
     // klip sekali jalan selesai -> kembali ke animasi lari (kecuali saat crash)
     if (R.mode !== 'crash') play('run');
   });
-  // Klip bawaan karakter (Idle / Walk / Run) — Run jadi animasi lari utama.
-  for (const clip of (charGroup.animations || [])) {
-    const nm = String(clip.name || '').toLowerCase();
-    if (nm === 'run' || nm === 'idle' || nm === 'walk') {
-      clip.name = nm;
-      R.clips[nm] = clip;
+  R.clips = clips;
+  R.actions = {};
+  if (clips.run) R.actions.run = makeAction(clips.run, true, 1);
+  if (clips.jump) R.actions.jump = makeAction(clips.jump, false, 1.7);
+  if (clips.idle) R.actions.idle = makeAction(clips.idle, true, 1);
+  if (clips.dance) R.actions.dance = makeAction(clips.dance, true, 1);
+  if (clips.stumble) R.actions.stumble = makeAction(clips.stumble, false, 1.5);
+  if (R.actions.run) play('run');
+}
+function buangGrup(root) {
+  root.traverse((o) => {
+    if (o.isMesh || o.isSkinnedMesh) {
+      if (o.geometry) o.geometry.dispose();
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) if (m && m.dispose) m.dispose();
     }
-  }
-  if (R.clips.run) R.actions.run = makeAction(R.clips.run, true, 1);
+  });
+}
+
+/* ---------- Fase 1 (blokir, ~3 MB): hewan + koin ----------
+ * Hanya ini yang harus selesai sebelum mode 3D bisa dipakai. Semua klip
+ * (lari/lompat/diam/dansa) sudah ada di berkas .gltf yang sama — TIDAK ada
+ * fase 2 lagi. Kalau fase 1 lewat 15 detik, game tetap jalan 2D. */
+async function loadModelsPhase1(modelFile, skala) {
+  const f = modelFile || 'Fox';
+  const s = skala || HEWAN_SKALA[f] || 0.5;
+  const { group, clips } = await muatHewan(f, s);
+  R.char = group;
+  R.charModelFile = f;
+  R.charSkala = s;
+  R.scene.add(group);
+  pasangHewan(group, clips);
   // Koin — kalau gagal, pakai torus emas.
+  const loader = new FBXLoader();
   try {
     const coin = await loader.loadAsync(MODEL_BASE + 'coin.fbx');
     coin.traverse((o) => { if (o.isMesh) { o.material = MAT.coinGold; } });
@@ -534,57 +531,69 @@ async function loadModelsPhase1() {
     slot.group.add(pivot);
     slot.pivot = pivot;
   }
-  if (R.actions.run) play('run');
 }
 
-/* ---------- Fase 2 (latar belakang): lompat / guling / tersandung / dansa ----------
- * Dimuat setelah fase 1 berhasil, tanpa memblokir main. Sebelum berkasnya
- * tiba, play() mengabaikan animasi yang belum ada — karakter tetap berlari
- * dengan animasi run (degradasi aman, tidak pernah throw). */
-const ANIMASI_FASE2 = [
-  ['jump', 'xbot@jumping.fbx', false, 1.7],
-  ['slide', 'xbot@sliding.fbx', false, 2.2],
-  ['stumble', 'xbot@stumbling.fbx', false, 1.5],
-  ['dance', 'xbot@dancing.fbx', true, 1],
-];
-/* Fase 2 HANYA dimuat saat idle (menu/lobi, bukan saat lari) — parsing FBX di
- * thread utama saat lari adalah penyebab grafik nge-freeze di HP. Kalau lari
- * dimulai di tengah jalan, sisa berkas ditunda dan dilanjutkan saat idle lagi
- * lewat lanjutkanPhase2() (dipanggil app.js saat arena idle). */
-function bolehMuatFase2() {
-  return !document.hidden && !window.__rcGameRunning;
-}
-function lanjutkanPhase2() {
-  if (R.phase2Done || R.failed || !R.ready) return;
-  if (!bolehMuatFase2()) return;
-  loadModelsPhase2().catch(() => {});
-}
-async function loadModelsPhase2() {
-  if (R._phase2Promise && !R._phase2Ditunda) return R._phase2Promise;
-  R._phase2Ditunda = false;
-  R._phase2Promise = (async () => {
-    if (R.failed) return false;
-    const loader = new FBXLoader();
-    for (const [name, file, loop, ts] of ANIMASI_FASE2) {
-      if (R.failed) break; // fase 1 gagal belakangan — hentikan
-      if (R.actions[name]) continue; // sudah dimuat di percobaan sebelumnya
-      if (!bolehMuatFase2()) { R._phase2Ditunda = true; break; } // lagi lari / tab sembunyi — tunda sisanya
-      try {
-        const g = await muatDenganTimeout(loader, file, 20000);
-        if (!g.animations || !g.animations[0]) continue;
-        const clip = g.animations[0];
-        clip.name = name;
-        remapClipMixamo(clip);
-        if (name === 'jump' || name === 'slide') stripRootMotion(clip);
-        R.actions[name] = makeAction(clip, loop, ts);
-        R.clips[name] = clip;
-      } catch (e) { console.warn('[run3d] animasi ' + name + ' gagal dimuat:', e.message); }
-    }
-    if (!R._phase2Ditunda) { R.phase2Done = true; gantiShowcaseKeDansa(); }
-    return !R._phase2Ditunda;
+/* ---------- Ganti hewan pelari (dipanggil app.js saat ganti karakter di Toko) ----------
+ * No-op kalau hewan yang sama sudah dimuat. Showcase Beranda ikut dibangun
+ * ulang supaya klonnya jadi hewan baru. */
+async function gantiKarakter(modelFile, skala) {
+  const f = modelFile || 'Fox';
+  const s = skala || HEWAN_SKALA[f] || 0.5;
+  if (R.ready && R.charModelFile === f) return true;
+  if (!R.ready) return preload(f, s);
+  if (R._gantiPromise) return R._gantiPromise;
+  R._gantiPromise = (async () => {
+    try {
+      const { group, clips } = await muatHewan(f, s);
+      if (R.char) { R.scene.remove(R.char); buangGrup(R.char); }
+      R.char = group;
+      R.charModelFile = f;
+      R.charSkala = s;
+      R.scene.add(group);
+      pasangHewan(group, clips);
+      await restartShowcases();
+      return true;
+    } catch (e) {
+      console.warn('[run3d] ganti karakter gagal:', e.message);
+      return false;
+    } finally { R._gantiPromise = null; }
   })();
-  return R._phase2Promise;
+  return R._gantiPromise;
 }
+
+/* ---------- Preload (dipanggil setelah login; idempotent) ---------- */
+async function preload(modelFile, skala) {
+  const f = modelFile || 'Fox';
+  const s = skala || HEWAN_SKALA[f] || 0.5;
+  if (R.ready) {
+    if (R.charModelFile === f) return true;
+    return gantiKarakter(f, s);
+  }
+  if (R.failed) return false;
+  if (R._preloadPromise) return R._preloadPromise;
+  R.loading = true;
+  const gen = (R._gen = (R._gen || 0) + 1);
+  R._preloadPromise = (async () => {
+    try {
+      if (!webglOK()) throw new Error('WebGL tidak tersedia di perangkat ini');
+      initRenderer();
+      await Promise.race([
+        loadModelsPhase1(f, s),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout memuat model 3D (15 detik)')), 15000)),
+      ]);
+      if (gen !== R._gen) return false; // sudah gagal/timeout duluan
+      R.ready = true;
+    } catch (e) {
+      R.failed = true;
+      console.warn('[run3d] Mode 3D tidak aktif, pakai 2D:', e.message);
+    } finally {
+      R.loading = false;
+    }
+    return R.ready;
+  })();
+  return R._preloadPromise;
+}
+
 
 /* ---------- Sinkronisasi objek game -> mesh 3D ---------- */
 function syncPool(map, free, slots, objects, place) {
@@ -669,12 +678,16 @@ function aturPixelRatioAdaptif(dtMs, st) {
 }
 function render(st) {
   if (!R.ready) return false;
+  if (!R.char) return true; // hewan sedang diganti — biarkan frame lama tampil
   ensureSize();
   const dt = Math.min(R.clock.getDelta(), 0.05);
   aturPixelRatioAdaptif(dt * 1000, st);
   if (R.mixer) R.mixer.update(dt);
-  // karakter mengikuti lanePos + lompatan; miring saat pindah jalur.
-  // Semua x ditambah belokJalan(0): karakter berdiri di tengah jalan yang membelok.
+  // hewan mengikuti lanePos + lompatan; miring saat pindah jalur.
+  // Semua x ditambah belokJalan(0): hewan berdiri di tengah jalan yang membelok.
+  // Guling (slide): hewan merunduk (skala Y 0,55) — hewan tidak punya klip slide.
+  const sk = R.charSkala || 1;
+  R.char.scale.set(sk, st.sliding ? sk * 0.55 : sk, sk);
   const cx = laneToX(st.lanePos == null ? 1 : st.lanePos) + belokJalan(0);
   R.char.position.set(cx, st.jumpY || 0, 0);
   R.char.rotation.z = -((st.lane == null ? 1 : st.lane) - (st.lanePos == null ? 1 : st.lanePos)) * 0.3;
@@ -695,6 +708,7 @@ function render(st) {
 /* ---------- Loop internal: idle (karakter lari di tempat) & crash ---------- */
 function tick() {
   if (!R.mode) { R._raf = 0; return; }
+  if (!R.char) { R._raf = requestAnimationFrame(tick); return; } // hewan sedang diganti
   const dt = Math.min(R.clock.getDelta(), 0.05);
   if (R.mode === 'crash') {
     R.crashT += dt;
@@ -704,8 +718,9 @@ function tick() {
     R._raf = requestAnimationFrame(tick);
     return;
   }
-  // idle: karakter lari di tempat, koin melintas, dekor bergerak pelan
+  // idle: hewan lari di tempat, koin melintas, dekor bergerak pelan
   R.idleT++;
+  R.char.scale.setScalar(R.charSkala || 1); // lepas dari squash guling
   if (R.mixer) R.mixer.update(dt);
   const sway = 1 + Math.sin(R.idleT / 40) * 0.12;
   R.char.position.set(laneToX(sway) + belokJalan(0), 0, 0);
@@ -750,78 +765,24 @@ function playStumble() {
   startTick();
 }
 
-/* ---------- Preload (dipanggil setelah login; idempotent) ---------- */
-async function preload() {
-  if (R.ready) return true;
-  if (R.failed) return false;
-  if (R._preloadPromise) return R._preloadPromise;
-  R.loading = true;
-  const gen = (R._gen = (R._gen || 0) + 1);
-  R._preloadPromise = (async () => {
-    try {
-      if (!webglOK()) throw new Error('WebGL tidak tersedia di perangkat ini');
-      initRenderer();
-      // Fase 1 saja yang diblokir (~2,3 MB: xbot + lari + koin). Animasi lain
-      // (lompat/guling/tersandung/dansa, ~3,2 MB) menyusul di latar belakang —
-      // di koneksi lambat, 15 detik tidak cukup untuk semua model (~5,5 MB),
-      // jadi game 3D bisa mulai lebih cepat; kalau fase 1 lewat, tetap 2D.
-      await Promise.race([
-        loadModelsPhase1(),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('Timeout memuat model 3D (15 detik)')), 15000)),
-      ]);
-      if (gen !== R._gen) return false; // sudah gagal/timeout duluan
-      R.ready = true;
-      loadModelsPhase2().catch(() => {}); // latar belakang, jangan blokir main
-    } catch (e) {
-      R.failed = true;
-      console.warn('[run3d] Mode 3D tidak aktif, pakai 2D:', e.message);
-    } finally {
-      R.loading = false;
-    }
-    return R.ready;
-  })();
-  return R._preloadPromise;
-}
-
-
-/* ---------- Skin: warna baju karakter mengikuti skin aktif ----------
- * Traveller punya mesh terpisah per bagian (shirt, coat, denim, boot, ...),
- * jadi warna roster [utama, garis, perut] ditempel per bagian: baju/mantel =
- * utama, celana denim = garis, sepatu boot = perut. Rambut/kulit/aksesoris
- * tetap. Terima array 3 warna atau satu hex (kompatibel pemanggil lama). */
-const WARNA_BAGIAN = [
-  [/shirt|coat/, 0], // baju & mantel -> warna utama
-  [/denim/, 1],      // celana -> warna garis
-  [/boot/, 2],       // sepatu -> warna perut
-];
-function warnaUntukMaterial(namaMat, warna) {
-  for (const [re, idx] of WARNA_BAGIAN) if (re.test(namaMat)) return warna[idx];
-  return null;
-}
+/* ---------- Skin: TIDAK di-tint untuk hewan ----------
+ * Warna hewan adalah identitas spesies (rubah oranye, serigala abu, ...) —
+ * mewarnai ulang model akan merusak kemiripan dengan fotonya. Skin tetap
+ * tercatat (toko + tukar set lengkap jalan di server), cuma tidak mengubah
+ * model 3D. Fungsi dipertahankan sebagai no-op supaya pemanggil lama tidak
+ * pecah. */
 function applySkin(warna) {
-  const w = Array.isArray(warna) ? warna : [warna, warna, warna];
-  if (!w[0]) return false;
-  R.skinWarna = w;
-  R.skinHex = w[0];
-  let kena = false;
-  for (const [nama, mat] of Object.entries(R.charMats)) {
-    const target = warnaUntukMaterial(nama, w);
-    if (!target || !mat || !mat.color) continue;
-    try { mat.color.set(hexNum(target)); kena = true; } catch (e) {}
-  }
-  return kena;
+  return false;
 }
 
-/* ---------- Showcase karakter (login + Beranda) ----------
- * Satu panggung 3D per canvas: klon karakter manusia (SkeletonUtils.clone —
- * model FBX TIDAK diunduh ulang).
- * - mode baris (login): 5 klon berjejer, tiap klon diwarnai warna roster
- *   berbeda (baju nempel), animasi idle/dansa, grup berputar pelan + geser.
- * - mode tunggal (Beranda): 1 klon yang memakai material yang SAMA dengan
- *   pelari (jadi tint skin aktif ikut otomatis saat ganti karakter di Toko).
- * Render dilewati saat canvas tersembunyi; saat tersembunyi, RAF diganti
- * polling 500 ms supaya tidak membebani CPU/HP (salah satu penyebab freeze).
- */
+/* ---------- Showcase hewan (Beranda) ----------
+ * Satu panggung 3D untuk canvas Beranda: klon hewan aktif (SkeletonUtils.clone
+ * — model glTF TIDAK diunduh ulang), animasi Idle_2 (dansa) kalau ada, kalau
+ * tidak Idle. Hewan menghadap kamera (model menghadap +Z). Render dilewati
+ * saat canvas tersembunyi; saat tersembunyi, RAF diganti polling 500 ms
+ * supaya tidak membebani CPU/HP (salah satu penyebab freeze).
+ * opts: { model, skala } — hewan yang ditampilkan (default Fox).
+ * opts disimpan di S supaya gantiKarakter bisa membangun ulang showcase. */
 const SHOWCASES = new Map();
 function buatAksiShowcase(S, clip) {
   for (let i = 0; i < S.clones.length; i++) {
@@ -831,47 +792,17 @@ function buatAksiShowcase(S, clip) {
       const a = mixer.clipAction(clip, c);
       a.setLoop(THREE.LoopRepeat, Infinity);
       a.play();
-      // Fase dansa diacak per klon — 5 klon tidak bergerak serempak (kaku/robotik).
-      try { a.time = (i * clip.duration) / S.clones.length; } catch (e) {}
     }
     S.mixers.push(mixer);
   }
-}
-/* Setelah fase 2 selesai (dansa tersedia), semua showcase yang sedang jalan
- * pindah ke animasi dansa. */
-function gantiShowcaseKeDansa() {
-  const clip = R.clips.dance;
-  if (!clip) return;
-  for (const S of SHOWCASES.values()) {
-    if (S.aksi === 'dance') continue;
-    for (const m of S.mixers) m.stopAllAction();
-    S.mixers = [];
-    buatAksiShowcase(S, clip);
-    for (const c of S.clones) c.position.y = 0; // reset bob darurat
-    S.aksi = 'dance';
-  }
-}
-/* Tint satu klon showcase dengan warna roster (material di-klon supaya
- * tidak mengubah pelari utama / klon lain). */
-function tintKlon(clone, warna) {
-  clone.traverse((o) => {
-    if ((o.isMesh || o.isSkinnedMesh) && o.material && o.material.name) {
-      const target = warnaUntukMaterial(o.material.name, warna);
-      if (!target) return;
-      o.material = o.material.clone();
-      try { o.material.color.set(hexNum(target)); } catch (e) {}
-    }
-  });
 }
 async function showcase(canvasId, opts) {
   opts = opts || {};
   if (SHOWCASES.has(canvasId)) return SHOWCASES.get(canvasId).ok;
   const canvas = document.getElementById(canvasId);
   if (!canvas) return false;
-  const ok = await preload();
+  const ok = await preload(opts.model, opts.skala);
   if (!ok || !R.char) return false;
-  const row = !!opts.row;
-  const colors = row ? (opts.colors || []) : null;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); // panggung ringan: DPR penuh aman
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -879,29 +810,29 @@ async function showcase(canvasId, opts) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x352a5e); // panggung lebih terang (dulu 0x1a1033, nyaris hitam)
   const camera = new THREE.PerspectiveCamera(45, 420 / 300, 0.1, 100);
-  camera.position.set(0, 1.9, row ? 7.6 : 3.9); // lebih dekat: karakter lebih besar
-  camera.lookAt(0, 1.0, 0);
+  camera.position.set(0, 1.9, 4.6); // hewan lebih panjang dari manusia — kamera agak mundur
+  camera.lookAt(0, 0.9, 0);
   scene.add(new THREE.HemisphereLight(0xffffff, 0x9a8a6a, 2.2));
   const dir = new THREE.DirectionalLight(0xffffff, 2.4);
   dir.position.set(4, 8, 5);
   scene.add(dir);
-  // Lampu isi dari arah kamera + rim ungu dari belakang: baju gelap (mis. Rex
-  // hitam) tetap terbaca, tidak jadi siluet di latar gelap.
+  // Lampu isi dari arah kamera + rim ungu dari belakang: hewan gelap tetap
+  // terbaca, tidak jadi siluet di latar gelap.
   const isi = new THREE.DirectionalLight(0xffe9c4, 1.1);
   isi.position.set(-3, 3, 8);
   scene.add(isi);
   const rim = new THREE.DirectionalLight(0x9d7bff, 0.9);
   rim.position.set(0, 4, -6);
   scene.add(rim);
-  // panggung emas (lebih lebar kalau baris)
+  // panggung emas
   const platform = new THREE.Mesh(
-    new THREE.CylinderGeometry(row ? 3.4 : 1.25, row ? 3.5 : 1.35, 0.14, 40),
+    new THREE.CylinderGeometry(1.6, 1.7, 0.14, 40),
     new THREE.MeshStandardMaterial({ color: 0x4a3670, roughness: 0.7, metalness: 0.2 })
   );
   platform.position.y = -0.07;
   scene.add(platform);
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(row ? 3.4 : 1.25, 0.035, 10, 48),
+    new THREE.TorusGeometry(1.6, 0.035, 10, 48),
     new THREE.MeshBasicMaterial({ color: 0xf5b301 })
   );
   ring.rotation.x = Math.PI / 2; ring.position.y = 0.01;
@@ -909,25 +840,16 @@ async function showcase(canvasId, opts) {
   const group = new THREE.Group();
   scene.add(group);
   const clones = [];
-  const n = row ? 5 : 1;
-  const accs = row ? (opts.accs || []) : null;
-  for (let i = 0; i < n; i++) {
-    const clone = cloneSkinned(R.char);
-    clone.rotation.y = 0; // menghadap kamera (model menghadap +Z — TERBUKTI dari mesh wajah)
-    clone.position.set(row ? (i - 2) * 1.35 : 0, 0, 0);
-    if (row && colors && colors[i]) tintKlon(clone, colors[i]);
-    // Topi + kacamata sesuai foto karakter (Rex: cap hitam + kacamata merah, dst).
-    // Klon mewarisi aksesori pelari — pasangAksesoris menghapusnya dulu.
-    if (row) { if (accs[i]) pasangAksesoris(clone, accs[i]); }
-    else if (opts.acc) { pasangAksesoris(clone, opts.acc); }
-    group.add(clone);
-    clones.push(clone);
-  }
+  const clone = cloneSkinned(R.char);
+  clone.rotation.y = 0; // menghadap kamera (model menghadap +Z)
+  clone.position.set(0, 0, 0);
+  group.add(clone);
+  clones.push(clone);
   const clip = R.clips.dance || R.clips.idle || R.clips.run;
   const S = {
     canvas, renderer, scene, camera, group, clones, mixers: [],
     ok: true, rotY: 0, dragging: false, lastX: 0, lastDragAt: 0, raf: 0, timer: 0,
-    clock: new THREE.Clock(), w: 0, h: 0,
+    clock: new THREE.Clock(), w: 0, h: 0, opts,
     aksi: R.clips.dance ? 'dance' : (R.clips.idle ? 'idle' : 'run'),
   };
   buatAksiShowcase(S, clip);
@@ -965,8 +887,8 @@ async function showcase(canvasId, opts) {
     }
     group.rotation.y = S.rotY + Math.sin(now / 1400) * 0.35; // goyang ±20°
     group.position.y = Math.sin(now / 500) * 0.02; // bob halus
-    // Kalau dansa belum ada (fase 2 belum tiba), tiap klon tetap hidup dengan
-    // lompatan kecil berfase beda — tidak kaku diam di tempat.
+    // Kalau dansa belum ada, klon tetap hidup dengan lompatan kecil —
+    // tidak kaku diam di tempat.
     if (S.aksi !== 'dance') {
       for (let i = 0; i < S.clones.length; i++) {
         S.clones[i].position.y = Math.abs(Math.sin(now / 450 + i * 1.3)) * 0.05;
@@ -987,108 +909,37 @@ function showcaseStop(canvasId) {
   try { S.renderer.dispose(); } catch (e) {}
   SHOWCASES.delete(canvasId);
 }
+/* Bangun ulang semua showcase yang sedang jalan (dipanggil gantiKarakter) —
+ * klon lama dibuang, klon baru dibuat dari hewan yang baru dimuat. */
+async function restartShowcases() {
+  const daftar = [...SHOWCASES.keys()];
+  for (const id of daftar) {
+    const S = SHOWCASES.get(id);
+    if (!S) continue;
+    const opts = S.opts || {};
+    showcaseStop(id);
+    try { await showcase(id, opts); } catch (e) { console.warn('[run3d] showcase ulang gagal:', e.message); }
+  }
+}
 
-/* ---------- Aksesoris kepala (topi & kacamata, sesuai foto karakter) ----------
- * Foto roster: 11 dari 12 karakter pakai topi (cap/beanie) + kacamata; Frost
- * tidak pakai keduanya (rambut putih, tanpa kacamata). Geometri baju Traveller
- * (mantel/denim/boot) tidak bisa diubah tanpa model baru — tapi topi +
- * kacamata + tint warna membuat model 3D terbaca sebagai karakter fotonya.
- * Arah hadap TERBUKTI (tests/inspect/probe-facing.mjs): fitur wajah
- * (mata/alis) ada di sisi +Z model dan sumbu +Z lokal tulang Head -> dunia
- * +Z, jadi aksesori ditaruh di +Z lokal kepala (depan wajah). Dipasang
- * sebagai anak tulang Head supaya ikut gerakan dansa/lari. */
-function cariKepala(root) {
-  let kepala = null;
-  root.traverse((o) => { if (o.isBone && o.name === 'Head') kepala = o; });
-  return kepala;
-}
-function buatTopi(jenis, warnaHex) {
-  const g = new THREE.Group();
-  g.userData.aksesoris = true;
-  const mat = new THREE.MeshStandardMaterial({ color: hexNum(warnaHex || '#222222'), roughness: 0.85 });
-  if (jenis === 'beanie') {
-    const kubah = new THREE.Mesh(new THREE.SphereGeometry(0.155, 20, 12, 0, Math.PI * 2, 0, 1.85), mat);
-    kubah.scale.y = 0.85; kubah.position.set(0, 0.10, -0.005);
-    g.add(kubah);
-    const lipat = new THREE.Mesh(new THREE.CylinderGeometry(0.156, 0.158, 0.045, 20), mat);
-    lipat.position.set(0, 0.035, 0);
-    g.add(lipat);
-  } else { // cap
-    const mahkota = new THREE.Mesh(new THREE.CylinderGeometry(0.145, 0.155, 0.09, 20), mat);
-    mahkota.position.set(0, 0.15, -0.005);
-    g.add(mahkota);
-    const lidah = new THREE.Mesh(new THREE.BoxGeometry(0.23, 0.015, 0.12), mat);
-    lidah.position.set(0, 0.115, 0.11);
-    lidah.rotation.x = 0.15;
-    g.add(lidah);
-  }
-  return g;
-}
-function buatKacamata(warnaHex) {
-  const g = new THREE.Group();
-  g.userData.aksesoris = true;
-  const mat = new THREE.MeshStandardMaterial({ color: hexNum(warnaHex || '#111111'), roughness: 0.15, metalness: 0.4 });
-  for (const s of [-1, 1]) {
-    const lensa = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.04, 0.018), mat);
-    lensa.position.set(s * 0.048, 0.09, 0.115); // di depan permukaan wajah (z maks ~0.108)
-    g.add(lensa);
-  }
-  const jembatan = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.012, 0.015), mat);
-  jembatan.position.set(0, 0.09, 0.115);
-  g.add(jembatan);
-  return g;
-}
-function hapusAksesoris(root) {
-  const kepala = cariKepala(root);
-  if (!kepala) return;
-  for (const ch of [...kepala.children]) {
-    if (ch.userData && ch.userData.aksesoris) kepala.remove(ch);
-  }
-}
-/* spec: { topi: 'cap'|'beanie'|null, kacamata: hex|null, warna: [utama,..] }.
- * Warna topi = warna utama karakter (warna[0]) bila tidak disebut khusus. */
-function pasangAksesoris(root, spec) {
-  if (!root) return false;
-  hapusAksesoris(root);
-  const kepala = cariKepala(root);
-  if (!kepala || !spec) return false;
-  let kena = false;
-  if (spec.topi) {
-    kepala.add(buatTopi(spec.topi, (spec.warna && spec.warna[0]) || '#222222'));
-    kena = true;
-  }
-  if (spec.kacamata) {
-    kepala.add(buatKacamata(spec.kacamata));
-    kena = true;
-  }
-  return kena;
-}
-/* Pakai aksesori karakter aktif ke pelari utama (dipanggil app.js bareng applySkin3D). */
-function applyAksesoris(spec) {
-  if (!R.char) return false;
-  return pasangAksesoris(R.char, spec);
-}
-/* Ganti aksesori klon showcase yang sudah jalan (mis. pemain ganti karakter di Toko). */
-function setShowcaseAcc(canvasId, spec) {
-  const S = SHOWCASES.get(canvasId);
-  if (!S) return false;
-  let kena = false;
-  for (const c of S.clones) if (pasangAksesoris(c, spec)) kena = true;
-  return kena;
-}
+/* ---------- Aksesoris kepala: MATI untuk hewan ----------
+ * Topi + kacamata adalah aksesori manusia — tidak cocok di kepala hewan dan
+ * akan menutupi wajahnya. Fungsi dipertahankan sebagai no-op supaya pemanggil
+ * lama (app.js) tidak pecah. */
+function applyAksesoris(spec) { return false; }
+function setShowcaseAcc(canvasId, spec) { return false; }
 
 /* ---------- Jembatan ke app.js (classic script) ---------- */
 if (typeof window !== 'undefined') {
   window.Run3D = {
     laneToX, worldZ, belokJalan, preload, setWorld, render, setIdle, playStumble,
-    showcase, showcaseStop, applySkin, applyAksesoris, setShowcaseAcc, lanjutkanPhase2,
-    get phase2Done() { return R.phase2Done; },
-    playJump() { play('jump'); },
-    playSlide() { play('slide'); },
-    playRun() { play('run'); },
+    showcase, showcaseStop, applySkin, applyAksesoris, setShowcaseAcc, gantiKarakter,
     get ready() { return R.ready; },
     get loading() { return R.loading; },
     get failed() { return R.failed; },
+    playJump() { play('jump'); },
+    playSlide() { /* hewan tidak punya klip slide — merunduk ditangani render() */ },
+    playRun() { play('run'); },
   };
   if (typeof window.dispatchEvent === 'function' && typeof Event !== 'undefined') {
     window.dispatchEvent(new Event('run3d-ready'));

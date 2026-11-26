@@ -58,18 +58,18 @@ const KATALOG = {
   ]
 };
 const LEVEL_CHARACTERS = [
-  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: ['#1a1a1a', '#000000', '#424242'] , gradasi: ['#2b2b2b', '#c62828', '#ff5252'], topi: 'cap', kacamata: '#e53935' },
-  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: ['#d32f2f', '#9a0007', '#ffcdd2'] , gradasi: ['#ff1744', '#c62828', '#7f0000'], topi: 'beanie', kacamata: '#e53935' },
-  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: ['#4fc3f7', '#0288d1', '#e1f5fe'] , gradasi: ['#b3e5fc', '#4fc3f7', '#01579b'], topi: 'beanie', kacamata: '#1565c0' },
-  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: ['#90caf9', '#42a5f5', '#e3f2fd'] , gradasi: ['#e3f2fd', '#90caf9', '#1565c0'], topi: null, kacamata: null },
-  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: ['#66bb6a', '#388e3c', '#e8f5e9'] , gradasi: ['#a5d6a7', '#43a047', '#1b5e20'], topi: 'cap', kacamata: '#111111' },
-  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: ['#ab47bc', '#6a1b9a', '#f3e5f5'] , gradasi: ['#ce93d8', '#8e24aa', '#4a148c'], topi: 'beanie', kacamata: '#111111' },
-  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: ['#fb8c00', '#e65100', '#fff3e0'] , gradasi: ['#ffcc80', '#fb8c00', '#bf360c'], topi: 'cap', kacamata: '#111111' },
-  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: ['#f06292', '#c2185b', '#fce4ec'] , gradasi: ['#f8bbd0', '#ec407a', '#880e4f'], topi: 'beanie', kacamata: '#111111' },
-  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: ['#fdd835', '#f9a825', '#fffde7'] , gradasi: ['#fff176', '#fdd835', '#f57f17'], topi: 'cap', kacamata: '#111111' },
-  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: ['#26a69a', '#00695c', '#e0f2f1'] , gradasi: ['#80cbc4', '#26a69a', '#004d40'], topi: 'beanie', kacamata: '#111111' },
-  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: ['#546e7a', '#263238', '#eceff1'] , gradasi: ['#90a4ae', '#546e7a', '#11171c'], topi: 'cap', kacamata: '#111111' },
-  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: ['#ffd700', '#b8860b', '#fffde7'] , gradasi: ['#ffe082', '#ffd700', '#8d6e00'], topi: 'cap', kacamata: '#111111' },
+  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/animal-01.jpg', warna: ['#e67e22', '#bf5e0a', '#ffe0b3'] , gradasi: ['#ffb74d', '#e67e22', '#bf360c'], topi: null, kacamata: null, model: 'Fox', skala: 0.512 },
+  { id: 'char-02', level: 10, nama: 'Fang', img: '/characters/animal-02.jpg', warna: ['#7f8c8d', '#4d5656', '#e5e8e8'] , gradasi: ['#bdc3c7', '#7f8c8d', '#2c3e50'], topi: null, kacamata: null, model: 'Wolf', skala: 0.52 },
+  { id: 'char-03', level: 15, nama: 'Snow', img: '/characters/animal-03.jpg', warna: ['#90caf9', '#42a5f5', '#e3f2fd'] , gradasi: ['#e3f2fd', '#90caf9', '#1565c0'], topi: null, kacamata: null, model: 'Husky', skala: 0.478 },
+  { id: 'char-04', level: 20, nama: 'Mochi', img: '/characters/animal-04.jpg', warna: ['#d9a066', '#a4713a', '#ffedd6'] , gradasi: ['#ffcc80', '#d9a066', '#8d5a2b'], topi: null, kacamata: null, model: 'ShibaInu', skala: 0.541 },
+  { id: 'char-05', level: 25, nama: 'Spirit', img: '/characters/animal-05.jpg', warna: ['#8d6e63', '#5d4037', '#d7ccc8'] , gradasi: ['#bcaaa4', '#8d6e63', '#4e342e'], topi: null, kacamata: null, model: 'Horse', skala: 0.36 },
+  { id: 'char-06', level: 30, nama: 'Blanco', img: '/characters/animal-06.jpg', warna: ['#eceff1', '#90a4ae', '#ffffff'] , gradasi: ['#ffffff', '#cfd8dc', '#78909c'], topi: null, kacamata: null, model: 'Horse_White', skala: 0.36 },
+  { id: 'char-07', level: 35, nama: 'Ranger', img: '/characters/animal-07.jpg', warna: ['#6d4c41', '#4e342e', '#a1887f'] , gradasi: ['#a1887f', '#6d4c41', '#3e2723'], topi: null, kacamata: null, model: 'Stag', skala: 0.284 },
+  { id: 'char-08', level: 40, nama: 'Fawn', img: '/characters/animal-08.jpg', warna: ['#a1887f', '#795548', '#efebe9'] , gradasi: ['#d7ccc8', '#a1887f', '#5d4037'], topi: null, kacamata: null, model: 'Deer', skala: 0.391 },
+  { id: 'char-09', level: 45, nama: 'Dunky', img: '/characters/animal-09.jpg', warna: ['#9e9e9e', '#616161', '#e0e0e0'] , gradasi: ['#e0e0e0', '#9e9e9e', '#424242'], topi: null, kacamata: null, model: 'Donkey', skala: 0.445 },
+  { id: 'char-10', level: 50, nama: 'Moo', img: '/characters/animal-10.jpg', warna: ['#616161', '#212121', '#f5f5f5'] , gradasi: ['#e0e0e0', '#9e9e9e', '#212121'], topi: null, kacamata: null, model: 'Cow', skala: 0.31 },
+  { id: 'char-11', level: 55, nama: 'Toro', img: '/characters/animal-11.jpg', warna: ['#5d4037', '#3e2723', '#8d6e63'] , gradasi: ['#8d6e63', '#5d4037', '#3e2723'], topi: null, kacamata: null, model: 'Bull', skala: 0.31 },
+  { id: 'char-12', level: 60, nama: 'Paca', img: '/characters/animal-12.jpg', warna: ['#d7ccc8', '#8d6e63', '#fff8e1'] , gradasi: ['#fff8e1', '#d7ccc8', '#8d6e63'], topi: null, kacamata: null, model: 'Alpaca', skala: 0.31 },
 ];
 const GRADASI_DEFAULT = ['#4a2d7a', '#2d1b4d', '#8a6d00'];
 const LEVEL_SKINS = [
@@ -174,6 +174,11 @@ function mulaiShowcase(canvasId, fallbackId, opts) {
     const cv = $(canvasId); if (cv) cv.classList.add('hidden');
   };
   R3.showcase(canvasId, opts).then((ok) => { if (!ok) gagal(); }).catch(gagal);
+}
+/* Opsi showcase Beranda: model + skala hewan aktif (default Rex si rubah). */
+function hewanShowcaseOpts() {
+  const k = karakterAktif();
+  return { model: k ? k.model : 'Fox', skala: k ? k.skala : 0.512 };
 }
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
@@ -290,7 +295,7 @@ async function sesudahLogin(pesan) {
   perbaruiStatusTapjoy();
   await muatNetworks();
   cobaPreload3D(); // muat model 3D di waktu luang (setelah login)
-  onRun3DReady(() => mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback', { acc: karakterAktif() }));
+  onRun3DReady(() => mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback', hewanShowcaseOpts()));
   let tourDone = false;
   try { tourDone = localStorage.getItem('nr_tour_done') === '1'; } catch (e) {}
   if (!tourDone) tampilTour(0);
@@ -304,7 +309,7 @@ function pindahTab(nama) {
   if (nama !== 'beranda' && typeof game !== 'undefined' && game.running && !game.paused) {
     jedaGame(); // pindah tab = jeda
   }
-  if (nama === 'beranda') { if (token) mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback', { acc: karakterAktif() }); }
+  if (nama === 'beranda') { if (token) mulaiShowcase('berandaShowcase', 'berandaShowcaseFallback', hewanShowcaseOpts()); }
   else if (window.Run3D && window.Run3D.showcaseStop) window.Run3D.showcaseStop('berandaShowcase');
   if (nama !== 'beranda' && window.Run3D) window.Run3D.setIdle(false); // matikan loop idle 3D di tab lain
   window.scrollTo(0, 0);
@@ -429,9 +434,10 @@ function renderProfil() {
   // Kartu + judul karakter aktif (Beranda + hero login).
   const kAktif = karakterAktif();
   const nB = $('berandaCharNama'); if (nB) nB.textContent = kAktif ? (kAktif.nama + ' • Lv ' + kAktif.level) : 'Rex';
-  const hB = $('karakterJudul'); if (hB) hB.textContent = '🎭 Karakterku — ' + (kAktif ? kAktif.nama : 'Xbot');
+  const hB = $('karakterJudul'); if (hB) hB.textContent = '🎭 Karakterku — ' + (kAktif ? kAktif.nama : 'Rex');
   applySkin3D();
   applyAksesoris3D();
+  gantiModel3D(); // hewan 3D ikut karakter aktif (no-op kalau sama)
   const persen = Math.min(100, Math.round(koinKeRp(coins) / 1000 * 100));
   $('progressTarik').style.width = persen + '%';
   $('progressTarikText').textContent = persen + '% menuju penarikan Rp1.000 (' + rupiah(koinKeRp(coins)) + ' dari Rp1.000)';
@@ -557,9 +563,10 @@ $('btnRefreshBoard').addEventListener('click', muatLeaderboard);
 
 /* ---------- Toko ---------- */
 /* Skin level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 skin). Set lengkap bisa ditukar Rp100.000. */
-/* Karakter level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 karakter).
-   Kartu gambar di /characters/. Warna [utama, garis, perut] dipakai tint 3D + 2D.
-   Cermin dari LEVEL_CHARACTERS di db.js — jaga agar id/level/nama/img sama. */
+/* Karakter level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 hewan).
+   Kartu gambar di /characters/animal-XX.jpg. Warna [utama, garis, perut]
+   dipakai tampilan 2D fallback; `model` + `skala` dipakai model 3D hewan.
+   Cermin dari LEVEL_CHARACTERS di db.js — jaga agar id/level/nama/img/model/skala sama. */
 function karakterLevel(id) { return LEVEL_CHARACTERS.find((c) => c.id === id) || null; }
 /* Gradasi latar kartu per karakter (Batch 7.1) — dipakai kartu grid, hero login,
    dan kartu Beranda supaya latarnya menarik, bukan putih polos.
@@ -576,14 +583,15 @@ function karakterAktif() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'char-01';
   return karakterLevel(char);
 }
-/* Gambar kartu karakter aktif — char-01 "Rex" jadi flagship kalau belum login
+/* Gambar kartu karakter aktif — char-01 "Rex" (rubah) jadi flagship kalau belum login
    atau kalau pemain pakai karakter toko lama (jolly/kiko/momo/rex). */
 function gambarKarakterAktif() {
   const k = karakterAktif();
-  return k ? k.img : '/characters/char-01.jpg';
+  return k ? k.img : '/characters/animal-01.jpg';
 }
-/* Warna skin untuk model 3D (Xbot) — [warna utama, garis, perut].
-   Disalin dari logika warnaKarakter() (tampilan 2D) supaya 2D & 3D konsisten. */
+/* Warna karakter untuk model 3D — [warna utama, garis, perut].
+   v21: hewan TIDAK di-tint (warnanya identitas spesies) — Run3D.applySkin
+   mengabaikannya; fungsi ini dipertahankan supaya pemanggil lama tidak pecah. */
 function warnaSkin3D() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
   const k = karakterLevel(char);
@@ -592,19 +600,29 @@ function warnaSkin3D() {
   if (skin && SKIN3D_WARNA[skin]) return SKIN3D_WARNA[skin];
   return SKIN3D_WARNA[char] || SKIN3D_WARNA.jolly;
 }
-/* Terapkan warna skin aktif ke badan Xbot 3D (run view + showcase). */
+/* Terapkan warna skin aktif ke model 3D.
+   v21: hewan TIDAK di-tint (applySkin di run3d.js no-op) supaya warna spesies
+   tetap sama dengan fotonya. */
 function applySkin3D() {
   if (!window.Run3D || typeof window.Run3D.applySkin !== 'function') return false;
-  return window.Run3D.applySkin(warnaSkin3D()); // array [utama, garis, perut] -> tint per bagian baju
+  return window.Run3D.applySkin(warnaSkin3D()); // array [utama, garis, perut] — diabaikan hewan
 }
-/* Terapkan topi + kacamata karakter aktif ke pelari 3D + kartu Beranda.
-   Dipanggil bareng applySkin3D (renderProfil + setelah preload) supaya
-   ganti karakter di Toko langsung kelihatan di model 3D. */
+/* v21: hewan TIDAK pakai topi/kacamata (aksesori manusia dihapus).
+   Pemanggilan dipertahankan (no-op di run3d.js) supaya ganti karakter di Toko
+   tetap memanggil jalur yang sama. */
 function applyAksesoris3D() {
   const k = karakterAktif();
   if (window.Run3D && typeof window.Run3D.applyAksesoris === 'function') window.Run3D.applyAksesoris(k);
   if (window.Run3D && typeof window.Run3D.setShowcaseAcc === 'function') window.Run3D.setShowcaseAcc('berandaShowcase', k);
   return true;
+}
+/* Ganti model 3D hewan kalau karakter aktif berubah (mis. pilih di Toko).
+   No-op kalau model yang sama sudah dimuat — dipanggil tiap renderProfil. */
+function gantiModel3D() {
+  const R3 = window.Run3D;
+  if (!R3 || typeof R3.gantiKarakter !== 'function') return;
+  const k = karakterAktif();
+  R3.gantiKarakter(k ? k.model : 'Fox', k ? k.skala : 0.512).catch(() => {});
 }
 function namaKarakterSkinAktif() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
@@ -860,7 +878,8 @@ let r3PreloadDimulai = false, mode3dAktif = false, mode3dToasted = false;
 function cobaPreload3D() {
   if (r3PreloadDimulai || !window.Run3D) return;
   r3PreloadDimulai = true;
-  window.Run3D.preload().then((ok) => { if (ok) { applySkin3D(); applyAksesoris3D(); } });
+  const k = karakterAktif();
+  window.Run3D.preload(k ? k.model : 'Fox', k ? k.skala : 0.512).then((ok) => { if (ok) { applySkin3D(); applyAksesoris3D(); } });
 }
 function aktifkanMode3D() {
   const tm = $('tekanMulai');
@@ -879,99 +898,6 @@ function renderLari3D() {
   return true;
 }
 
-function drawNailong(x, y, r, skinId, charId) {
-  const char = charId || (profile && profile.equipped && profile.equipped.character) || 'jolly';
-  const skin = skinId || (profile && profile.equipped && profile.equipped.skin) || '';
-  let warna = '#ffd93b', garis = '#d9a400', perut = '#fff3c4';
-  if (char === 'kiko') { warna = '#a8e6a3'; garis = '#6fbf6a'; perut = '#e4f7e2'; }
-  if (char === 'momo') { warna = '#ffc0cb'; garis = '#e88aa0'; perut = '#ffe3ea'; }
-  if (char === 'rex') { warna = '#ffb74d'; garis = '#e08a1e'; perut = '#ffe0b3'; }
-  if (skin === 'emas') { warna = '#ffd54a'; garis = '#c79a00'; perut = '#ffef9e'; }
-  if (skin === 'ninja') { warna = '#2b2b2b'; garis = '#111'; perut = '#444444'; }
-  if (skin === 'astronot') { warna = '#ffffff'; garis = '#b0bec5'; perut = '#eef6fb'; }
-  if (skin === 'shadow') { warna = '#5a5a7a'; garis = '#33334d'; perut = '#7a7a9a'; }
-  if (skin === 'pelangi') { warna = '#ffe082'; garis = '#ff8a65'; perut = '#fff3c4'; }
-  // warna skin level (12 skin gratis per 5 level)
-  const WARNA_SKIN_LEVEL = {
-    es: ['#b3e5fc', '#4fc3f7', '#e1f5fe'], sakura: ['#f8bbd0', '#f06292', '#fce4ec'],
-    laut: ['#4fc3f7', '#0288d1', '#e1f5fe'], hutan: ['#81c784', '#43a047', '#e8f5e9'],
-    senja: ['#ce93d8', '#8e24aa', '#f3e5f5'], salju: ['#eceff1', '#90a4ae', '#ffffff'],
-    lava: ['#ff7043', '#d84315', '#ffccbc'], galaksi: ['#7e57c2', '#512da8', '#ede7f6'],
-    madu: ['#ffca28', '#ff8f00', '#fff8e1'], mint: ['#80cbc4', '#00897b', '#e0f2f1'],
-    komet: ['#ff9800', '#e65100', '#fff3e0'], legenda: ['#ffd700', '#b8860b', '#fffde7']
-  };
-  if (WARNA_SKIN_LEVEL[skin]) { warna = WARNA_SKIN_LEVEL[skin][0]; garis = WARNA_SKIN_LEVEL[skin][1]; perut = WARNA_SKIN_LEVEL[skin][2]; }
-  const f = game.frame || 0;
-  const lari = Math.sin(f / 4); // ayunan kaki saat lari
-  const goyang = Math.sin(f / 6) * 0.12; // ekor bergoyang
-  // squash & stretch biar tidak kaku
-  const sy = 1 + Math.sin(f / 4) * 0.05, sx = 1 - Math.sin(f / 4) * 0.04;
-  ctx.save();
-  ctx.translate(x, y); ctx.scale(sx, sy); ctx.translate(-x, -y);
-  // ekor naga (bergoyang)
-  ctx.fillStyle = warna; ctx.strokeStyle = garis; ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.moveTo(x - r * 0.7, y + r * 0.55);
-  ctx.quadraticCurveTo(x - r * 1.5, y + r * (0.7 + goyang), x - r * 1.35, y + r * 0.1);
-  ctx.quadraticCurveTo(x - r * 1.1, y + r * 0.35, x - r * 0.6, y + r * 0.3);
-  ctx.closePath(); ctx.fill(); ctx.stroke();
-  // kaki lari (bergantian naik-turun) + telapak pink (sesuai foto referensi)
-  const kakiY1 = y + r * 0.95 + Math.max(0, lari) * r * 0.25;
-  const kakiY2 = y + r * 0.95 + Math.max(0, -lari) * r * 0.25;
-  ctx.beginPath(); ctx.ellipse(x - r * 0.35, kakiY1, r * 0.28, r * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.ellipse(x + r * 0.35, kakiY2, r * 0.28, r * 0.16, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#ffb6c1';
-  ctx.beginPath(); ctx.ellipse(x - r * 0.35, kakiY1 + r * 0.07, r * 0.17, r * 0.07, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(x + r * 0.35, kakiY2 + r * 0.07, r * 0.17, r * 0.07, 0, 0, Math.PI * 2); ctx.fill();
-  // lengan kecil (mengayun)
-  ctx.beginPath(); ctx.ellipse(x - r * 0.95, y + r * (0.1 - lari * 0.15), r * 0.16, r * 0.3, -0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.ellipse(x + r * 0.95, y + r * (0.1 + lari * 0.15), r * 0.16, r * 0.3, 0.4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  // tanduk naga kecil (krem)
-  ctx.fillStyle = '#fff3c4'; ctx.strokeStyle = garis; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.ellipse(x - r * 0.45, y - r * 1.05, r * 0.14, r * 0.3, -0.35, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.ellipse(x + r * 0.45, y - r * 1.05, r * 0.14, r * 0.3, 0.35, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-  if (char === 'rex') { ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(x, y - r * 1.15); ctx.lineTo(x - r * 0.25, y - r * 0.7); ctx.lineTo(x + r * 0.25, y - r * 0.7); ctx.closePath(); ctx.fill(); }
-  if (char === 'momo') { ctx.fillStyle = '#ff5c8a'; ctx.beginPath(); ctx.arc(x + r * 0.45, y - r * 0.9, r * 0.18, 0, Math.PI * 2); ctx.fill(); }
-  // badan naga gembul
-  ctx.fillStyle = warna;
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = garis; ctx.lineWidth = 3; ctx.stroke();
-  // perut krem
-  ctx.fillStyle = perut;
-  ctx.beginPath(); ctx.ellipse(x, y + r * 0.45, r * 0.55, r * 0.42, 0, 0, Math.PI * 2); ctx.fill();
-  if (skin === 'astronot') { ctx.strokeStyle = 'rgba(120,180,220,.9)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(x, y, r + 6, 0, Math.PI * 2); ctx.stroke(); }
-  if (skin === 'ninja') { ctx.fillStyle = '#c62828'; ctx.fillRect(x - r, y - r * 0.55, r * 2, r * 0.22); }
-  if (skin === 'pelangi') { ctx.strokeStyle = '#ff5252'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r * 0.75, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); ctx.strokeStyle = '#448aff'; ctx.beginPath(); ctx.arc(x, y, r * 0.6, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
-  // bintik hijau di punggung (sesuai foto referensi, hanya Nailong kuning polos)
-  if (char === 'jolly' && !skin) {
-    ctx.fillStyle = '#8bc34a';
-    ctx.beginPath(); ctx.arc(x - r * 0.28, y - r * 0.62, r * 0.09, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(x, y - r * 0.78, r * 0.09, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(x + r * 0.28, y - r * 0.62, r * 0.09, 0, Math.PI * 2); ctx.fill();
-  }
-  // pipi pink
-  ctx.fillStyle = 'rgba(255,182,193,.9)';
-  ctx.beginPath(); ctx.arc(x - r * 0.55, y + r * 0.25, r * 0.2, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(x + r * 0.55, y + r * 0.25, r * 0.2, 0, Math.PI * 2); ctx.fill();
-  // mata hijau mengkilap (sesuai foto referensi)
-  const mata = skin === 'ninja' ? '#fff' : '#43a047';
-  ctx.fillStyle = mata;
-  ctx.beginPath(); ctx.ellipse(x - r * 0.32, y - r * 0.1, r * 0.16, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.ellipse(x + r * 0.32, y - r * 0.1, r * 0.16, r * 0.22, 0, 0, Math.PI * 2); ctx.fill();
-  if (skin !== 'ninja') {
-    ctx.fillStyle = '#1b5e20';
-    ctx.beginPath(); ctx.ellipse(x - r * 0.32, y - r * 0.08, r * 0.07, r * 0.11, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(x + r * 0.32, y - r * 0.08, r * 0.07, r * 0.11, 0, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.fillStyle = '#fff';
-  ctx.beginPath(); ctx.arc(x - r * 0.27, y - r * 0.2, r * 0.06, 0, Math.PI * 2); ctx.fill();
-  ctx.beginPath(); ctx.arc(x + r * 0.37, y - r * 0.2, r * 0.06, 0, Math.PI * 2); ctx.fill();
-  // senyum kecil
-  ctx.strokeStyle = skin === 'ninja' ? '#fff' : '#5d3a1a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.arc(x, y + r * 0.25, r * 0.3, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
-  if (game.shield) { ctx.strokeStyle = 'rgba(68,138,255,.8)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(x, y, r + 10, 0, Math.PI * 2); ctx.stroke(); }
-  ctx.restore();
-}
 function drawCoin(c, x, y, r) {
   c.fillStyle = '#f5b301'; c.strokeStyle = '#b8860b'; c.lineWidth = Math.max(1, 3 * (r / 15));
   c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.stroke();
@@ -1017,72 +943,34 @@ function proyeksi(lanePos, z) {
   const s = 0.12 + 0.88 * k;
   return { x: P3.vx + (lanePos - 1) * 150 * s, y: P3.hy + (P3.bawah - P3.hy) * k, s };
 }
-function warnaKarakter() {
-  const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
-  const skin = (profile && profile.equipped && profile.equipped.skin) || '';
-  let warna = '#ffd93b', garis = '#d9a400', perut = '#fff3c4';
-  if (char === 'kiko') { warna = '#a8e6a3'; garis = '#6fbf6a'; perut = '#e4f7e2'; }
-  if (char === 'momo') { warna = '#ffc0cb'; garis = '#e88aa0'; perut = '#ffe3ea'; }
-  if (char === 'rex') { warna = '#ffb74d'; garis = '#e08a1e'; perut = '#ffe0b3'; }
-  if (skin === 'emas') { warna = '#ffd54a'; garis = '#c79a00'; perut = '#ffef9e'; }
-  if (skin === 'ninja') { warna = '#2b2b2b'; garis = '#111'; perut = '#444444'; }
-  if (skin === 'astronot') { warna = '#ffffff'; garis = '#b0bec5'; perut = '#eef6fb'; }
-  if (skin === 'shadow') { warna = '#5a5a7a'; garis = '#33334d'; perut = '#7a7a9a'; }
-  if (skin === 'pelangi') { warna = '#ffe082'; garis = '#ff8a65'; perut = '#fff3c4'; }
-  const WARNA_SKIN_LEVEL = {
-    es: ['#b3e5fc', '#4fc3f7', '#e1f5fe'], sakura: ['#f8bbd0', '#f06292', '#fce4ec'],
-    laut: ['#4fc3f7', '#0288d1', '#e1f5fe'], hutan: ['#81c784', '#43a047', '#e8f5e9'],
-    senja: ['#ce93d8', '#8e24aa', '#f3e5f5'], salju: ['#eceff1', '#90a4ae', '#ffffff'],
-    lava: ['#ff7043', '#d84315', '#ffccbc'], galaksi: ['#7e57c2', '#512da8', '#ede7f6'],
-    madu: ['#ffca28', '#ff8f00', '#fff8e1'], mint: ['#80cbc4', '#00897b', '#e0f2f1'],
-    komet: ['#ff9800', '#e65100', '#fff3e0'], legenda: ['#ffd700', '#b8860b', '#fffde7']
-  };
-  if (WARNA_SKIN_LEVEL[skin]) { warna = WARNA_SKIN_LEVEL[skin][0]; garis = WARNA_SKIN_LEVEL[skin][1]; perut = WARNA_SKIN_LEVEL[skin][2]; }
-  const k = karakterLevel(char);
-  if (k) { warna = k.warna[0]; garis = k.warna[1]; perut = k.warna[2]; }
-  return { warna, garis, perut, skin, char };
+/* Foto 2D hewan (fallback kalau mode 3D gagal): gambar hewan aktif digambar
+ * di dalam lingkaran berbingkai emas (seperti kartu karakter), bukan figur
+ * manusia. Foto dipotong band tengah (15%-65% tinggi) supaya hewannya utuh
+ * di dalam lingkaran — semua 12 foto hewan menaruh hewan di band itu. */
+let _fotoHewan = null, _fotoHewanSrc = '';
+function fotoHewanAktif() {
+  if (typeof Image === 'undefined') return null; // Node/test: tanpa DOM
+  const src = gambarKarakterAktif();
+  if (_fotoHewan && _fotoHewanSrc === src) return _fotoHewan;
+  const im = new Image();
+  im.src = src;
+  _fotoHewan = im; _fotoHewanSrc = src;
+  return im;
 }
-function drawNailongBelakang(c, x, y, r, lean, frame, shield) {
-  const { warna, garis, skin, char } = warnaKarakter();
-  const f = frame || 0;
-  const lari = Math.sin(f / 4);
-  const goyang = Math.sin(f / 6) * 0.12;
-  const sy = 1 + Math.sin(f / 4) * 0.05, sx = 1 - Math.sin(f / 4) * 0.04;
+function drawHewanBelakang(c, x, y, r, lean, frame, shield) {
+  const im = fotoHewanAktif();
   c.save();
-  c.translate(x, y); c.rotate(lean || 0); c.scale(sx, sy); c.translate(-x, -y);
-  c.fillStyle = warna; c.strokeStyle = garis; c.lineWidth = 3;
-  c.beginPath();
-  c.moveTo(x - r * 0.5, y + r * 0.5);
-  c.quadraticCurveTo(x - r * 1.3, y + r * (0.7 + goyang), x - r * 1.2, y + r * 0.05);
-  c.quadraticCurveTo(x - r * 0.9, y + r * 0.3, x - r * 0.45, y + r * 0.3);
-  c.closePath(); c.fill(); c.stroke();
-  const kakiY1 = y + r * 0.95 + Math.max(0, lari) * r * 0.25;
-  const kakiY2 = y + r * 0.95 + Math.max(0, -lari) * r * 0.25;
-  c.beginPath(); c.ellipse(x - r * 0.35, kakiY1, r * 0.28, r * 0.16, 0, 0, Math.PI * 2); c.fill(); c.stroke();
-  c.beginPath(); c.ellipse(x + r * 0.35, kakiY2, r * 0.28, r * 0.16, 0, 0, Math.PI * 2); c.fill(); c.stroke();
-  c.fillStyle = '#ffb6c1';
-  c.beginPath(); c.ellipse(x - r * 0.35, kakiY1 + r * 0.07, r * 0.17, r * 0.07, 0, 0, Math.PI * 2); c.fill();
-  c.beginPath(); c.ellipse(x + r * 0.35, kakiY2 + r * 0.07, r * 0.17, r * 0.07, 0, 0, Math.PI * 2); c.fill();
-  c.fillStyle = warna;
-  c.beginPath(); c.ellipse(x - r * 0.95, y + r * (0.1 - lari * 0.15), r * 0.16, r * 0.3, -0.4, 0, Math.PI * 2); c.fill(); c.stroke();
-  c.beginPath(); c.ellipse(x + r * 0.95, y + r * (0.1 + lari * 0.15), r * 0.16, r * 0.3, 0.4, 0, Math.PI * 2); c.fill(); c.stroke();
-  c.fillStyle = '#fff3c4';
-  c.beginPath(); c.ellipse(x - r * 0.45, y - r * 1.05, r * 0.14, r * 0.3, -0.35, 0, Math.PI * 2); c.fill(); c.stroke();
-  c.beginPath(); c.ellipse(x + r * 0.45, y - r * 1.05, r * 0.14, r * 0.3, 0.35, 0, Math.PI * 2); c.fill(); c.stroke();
-  if (char === 'rex') { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(x, y - r * 1.15); c.lineTo(x - r * 0.25, y - r * 0.7); c.lineTo(x + r * 0.25, y - r * 0.7); c.closePath(); c.fill(); }
-  if (char === 'momo') { c.fillStyle = '#ff5c8a'; c.beginPath(); c.arc(x + r * 0.45, y - r * 0.9, r * 0.18, 0, Math.PI * 2); c.fill(); }
-  c.fillStyle = warna;
-  c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
-  c.strokeStyle = garis; c.lineWidth = 3; c.stroke();
-  if (skin === 'astronot') { c.strokeStyle = 'rgba(120,180,220,.9)'; c.lineWidth = 5; c.beginPath(); c.arc(x, y, r + 6, 0, Math.PI * 2); c.stroke(); }
-  if (skin === 'ninja') { c.fillStyle = '#c62828'; c.fillRect(x - r, y - r * 0.55, r * 2, r * 0.22); }
-  if (skin === 'pelangi') { c.strokeStyle = '#ff5252'; c.lineWidth = 4; c.beginPath(); c.arc(x, y, r * 0.75, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); c.strokeStyle = '#448aff'; c.beginPath(); c.arc(x, y, r * 0.6, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); }
-  if (char === 'jolly' && !skin) {
-    c.fillStyle = '#8bc34a';
-    c.beginPath(); c.arc(x - r * 0.28, y - r * 0.62, r * 0.09, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.arc(x, y - r * 0.78, r * 0.09, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.arc(x + r * 0.28, y - r * 0.62, r * 0.09, 0, Math.PI * 2); c.fill();
+  c.translate(x, y); c.rotate(lean || 0); c.translate(-x, -y);
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2);
+  if (im && im.complete && im.naturalWidth) {
+    c.save(); c.clip();
+    const sw = im.naturalWidth, sh = im.naturalHeight * 0.5, sy = im.naturalHeight * 0.15;
+    c.drawImage(im, 0, sy, sw, sh, x - r, y - r, r * 2, r * 2);
+    c.restore();
+  } else {
+    c.fillStyle = '#2d1b4d'; c.fill();
   }
+  c.strokeStyle = '#f5b301'; c.lineWidth = 3; c.stroke();
   if (shield) { c.strokeStyle = 'rgba(68,138,255,.8)'; c.lineWidth = 4; c.beginPath(); c.arc(x, y, r + 10, 0, Math.PI * 2); c.stroke(); }
   c.restore();
 }
@@ -1146,7 +1034,7 @@ function renderScene(c, st) {
   c.beginPath(); c.ellipse(pp.x, 478, 26, 8, 0, 0, Math.PI * 2); c.fill();
   const lean = ((st.lane || 1) - st.lanePos) * 0.25;
   const rKarakter = st.sliding ? 26 : 34; // guling: karakter merunduk
-  drawNailongBelakang(c, pp.x, 448 - lompat + (st.sliding ? 10 : 0), rKarakter, lean, st.frame, st.shield);
+  drawHewanBelakang(c, pp.x, 448 - lompat + (st.sliding ? 10 : 0), rKarakter, lean, st.frame, st.shield);
   c.restore();
 }
 
@@ -1603,7 +1491,7 @@ function gambarAwal() {
   if (game.running) return;
   if (Date.now() < (game.noIdleUntil || 0)) return; // beri waktu animasi akhir (tersandung 3D)
   const R3 = window.Run3D;
-  if (token) { cobaPreload3D(); if (window.Run3D && window.Run3D.lanjutkanPhase2) window.Run3D.lanjutkanPhase2(); } // fase 2 hanya saat idle
+  if (token) cobaPreload3D();
   if (R3 && R3.ready && document.querySelector('#tab-beranda').classList.contains('aktif')) {
     aktifkanMode3D(); R3.setIdle(true); return; // idle 3D: karakter lari di tempat
   }
