@@ -78,7 +78,7 @@ body.mode-lari .tekan-mulai{display:none}
 .banner-iklan small{display:block;color:#fff;font-weight:400;font-size:12px;margin-top:4px}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
 .modal.show{display:flex}
-.modal-box{background:#fff;border-radius:16px;padding:20px;max-width:360px;width:100%;text-align:center}
+.modal-box{background:#fff;border-radius:16px;padding:20px;max-width:360px;width:100%;text-align:center;max-height:88vh;overflow-y:auto}
 .modal-box h3{margin-top:0}
 #toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#3b2410;color:#fff;padding:11px 16px;border-radius:12px;font-size:14px;z-index:99;display:none;max-width:90vw;text-align:center}
 #toast.show{display:block}
@@ -205,6 +205,6 @@ body.mode-fullscreen #gameCanvas3d{width:100%;height:100%;max-width:none;margin:
 body.mode-fullscreen .fs-bar{display:flex;position:absolute;left:10px;right:10px;bottom:10px;z-index:6;align-items:center;justify-content:space-between;gap:8px;pointer-events:none}
 body.mode-fullscreen .fs-bar button{pointer-events:auto}
 body.mode-fullscreen .fs-title{color:#fff;font-weight:800;font-size:13px;text-shadow:0 1px 4px rgba(0,0,0,.6)}
-body.mode-fullscreen #gameResult.show{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,380px);z-index:7;margin:0;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+body.mode-fullscreen #gameResult.show{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,380px);z-index:7;margin:0;box-shadow:0 8px 30px rgba(0,0,0,.5);max-height:80vh;overflow-y:auto}
 body.mode-fullscreen .modal{z-index:80}
 body.mode-fullscreen .pause-overlay{border-radius:0}

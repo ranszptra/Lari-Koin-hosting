@@ -6,6 +6,7 @@ let profile = null;
 let networks = [];
 let networkIdx = 0;
 let lastAdAt = 0;
+let autoLanjutTimer = null; // hitung-mundur lanjut level otomatis (modalFinish); dideklarasi di ATAS agar pindahTab() boleh mematikannya tanpa TDZ (pelajaran v12)
 let audioCtx = null;
 let suaraNyala = true, musikNyala = true;
 try { suaraNyala = localStorage.getItem('nr_suara') !== '0'; musikNyala = localStorage.getItem('nr_musik') !== '0'; } catch (e) {}
@@ -304,6 +305,15 @@ async function sesudahLogin(pesan) {
 
 /* Navigasi tab bawah: Beranda / Wallet / Tugas / Undang Teman */
 function pindahTab(nama) {
+  // PERBAIKAN v23 (laporan Rans 2026-11-26, video 09:55): habis main, halaman
+  // tidak bisa di-scroll. Penyebab: body masih `mode-fullscreen`
+  // (overflow:hidden) saat pindah tab lewat jalur yang tidak memanggil
+  // keluarModeLayarPenuh(). Pindah tab SELALU membersihkan layar penuh +
+  // layar finish, jadi halaman kembali bisa di-scroll apa pun yang terjadi.
+  if (autoLanjutTimer) { clearInterval(autoLanjutTimer); autoLanjutTimer = null; }
+  const mf0 = $('modalFinish'); if (mf0) mf0.classList.remove('show');
+  const gr0 = $('gameResult'); if (gr0) gr0.classList.remove('show');
+  document.body.classList.remove('mode-fullscreen', 'mode-lari');
   document.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('aktif', p.id === 'tab-' + nama));
   document.querySelectorAll('.tab-nav button').forEach((b) => b.classList.toggle('aktif', b.dataset.tab === nama));
   if (nama !== 'beranda' && typeof game !== 'undefined' && game.running && !game.paused) {
@@ -1228,7 +1238,6 @@ function loop() {
   }
   requestAnimationFrame(loop);
 }
-let autoLanjutTimer = null;
 function gameOver() {
   game.running = false;
   window.__rcGameRunning = false; // fase 2 boleh lanjut dimuat lagi
@@ -1240,8 +1249,9 @@ function gameOver() {
   const po0 = $('pauseOverlay'); if (po0) po0.classList.add('hidden');
   resetSkillIklan();
   const el = $('gameResult');
-  el.innerHTML = '<h3>💥 Kena Halangan!</h3><p>Lari selesai di level ' + game.level + '. Koin terkumpul: <b>' + game.coins + '</b> (jarak ' + Math.floor(game.distance) + ' m).</p><p class="muted">Koin tetap dihitung — tekan Main Lagi untuk mencoba lagi.</p>';
+  el.innerHTML = '<h3>💥 Kena Halangan!</h3><p>Lari selesai di level ' + game.level + '. Koin terkumpul: <b>' + game.coins + '</b> (jarak ' + Math.floor(game.distance) + ' m).</p><p class="muted">Koin tetap dihitung — tekan Main Lagi untuk mencoba lagi.</p><button class="btn-putih" id="btnResultBeranda" style="width:100%;margin-top:8px">🏠 Beranda</button>';
   el.classList.add('show');
+  const bBeranda = $('btnResultBeranda'); if (bBeranda) bBeranda.onclick = keluarKeBeranda;
   const pillOver = $('tekanMulai'); if (pillOver) { pillOver.textContent = '▶ Main Lagi — ketuk untuk coba lagi'; pillOver.hidden = false; }
   if (game.coins > 0) { const durBank = Date.now() - (game.mulaiAt || Date.now()); api('/api/bank-run-coins', 'POST', { coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: durBank, level: game.level }).then(() => muatProfil()).catch(() => {}); } else { muatProfil(); }
 }
@@ -1465,6 +1475,20 @@ function bukaModeLayarPenuh() {
   document.body.classList.add('mode-fullscreen');
   samakanUkuranCanvasLayarPenuh(); // canvas 2D: backing store = ukuran layar (tajam)
 }
+/* Keluar dari layar game ke Beranda — tombol 🏠 di layar finish (modalFinish)
+   dan di panel "Kena Halangan!" (gameResult). Beda dengan keluarModeLayarPenuh:
+   menutup juga modal/panel finish, mematikan hitung-mundur lanjut otomatis,
+   dan pindah ke tab Beranda. Dipakai v23 (laporan Rans 2026-11-26: setelah
+   main tidak ada tombol keluar ke Beranda). */
+function keluarKeBeranda() {
+  if (autoLanjutTimer) { clearInterval(autoLanjutTimer); autoLanjutTimer = null; }
+  const mf = $('modalFinish'); if (mf) mf.classList.remove('show');
+  const gr = $('gameResult'); if (gr) gr.classList.remove('show');
+  const pill = $('tekanMulai'); if (pill) { pill.textContent = 'Tekan ▶ Mulai Lari'; pill.hidden = true; }
+  document.body.classList.remove('mode-fullscreen', 'mode-lari');
+  try { samakanUkuranCanvasNormal(); renderScene(ctx, game); } catch (e) {}
+  pindahTab('beranda');
+}
 function keluarModeLayarPenuh() {
   if (!document.body.classList.contains('mode-fullscreen')) return;
   if (autoLanjutTimer) { clearInterval(autoLanjutTimer); autoLanjutTimer = null; }
@@ -1486,6 +1510,7 @@ function pindah(arah) {
 }
 $('btnLanjut').addEventListener('click', toggleJeda);
 $('btnAkhiri').addEventListener('click', () => { if (game.running) gameOver(); });
+const _bfb = $('btnFinishBeranda'); if (_bfb) _bfb.addEventListener('click', keluarKeBeranda); // v23: keluar ke Beranda dari modal finish
 function tulisTombolSuara() {
   const bm = $('btnMusik'); if (bm) { bm.textContent = musikNyala ? '🎵' : '🔇'; bm.title = musikNyala ? 'Musik: Nyala' : 'Musik: Mati'; }
   const bs = $('btnSuara'); if (bs) { bs.textContent = suaraNyala ? '🔊' : '🔇'; bs.title = suaraNyala ? 'Suara: Nyala' : 'Suara: Mati'; }
