@@ -1,5 +1,5 @@
-// Tes statis: mode layar penuh + 3D ringan (fase 1/2) + Three.js lokal + SW v14.
-// v14: karakter manusia Traveller (Run bawaan), fase 2 di-retarget.
+// Tes statis: mode layar penuh + 3D ringan (satu hewan + koin) + Three.js lokal + SW v21.
+// v21: karakter hewan Quaternius (Gallop bawaan .gltf), TIDAK ADA lagi fase 2.
 // Jalankan: node tests/test-fullscreen-3d.mjs  (exit 0 = semua lolos)
 import { readFileSync, existsSync } from 'fs';
 
@@ -15,28 +15,26 @@ const app = readFileSync(ROOT + '/app.js', 'utf8');
 const html = readFileSync(ROOT + '/index.html', 'utf8');
 const sw = readFileSync(ROOT + '/sw.js', 'utf8');
 
-// (a) Fase 1 hanya memuat karakter manusia + koin: traveller.fbx + coin.fbx
-// (Run bawaan karakter, tanpa xbot@running.fbx terpisah)
-const f1mulai = run3d.indexOf('async function loadModelsPhase1()');
+// (a) Fase 1 hanya memuat hewan aktif + koin: Fox.gltf (dsb) + coin.fbx
+// (Gallop bawaan hewan, tanpa xbot@running.fbx terpisah)
+const f1mulai = run3d.indexOf('async function loadModelsPhase1(');
 const f1akhir = run3d.indexOf('\n}\n', f1mulai) + 3;
 const f1 = run3d.slice(f1mulai, f1akhir);
-cek('(a1) fase 1 memuat traveller.fbx', f1.includes("MODEL_BASE + CHAR_FILE") && run3d.includes("CHAR_FILE = 'traveller.fbx'"));
+cek('(a1) fase 1 memuat hewan aktif (muatHewan)', f1.includes('muatHewan(f, s)') && run3d.includes("MODEL_BASE_HEWAN = '/models-animals/'"));
 cek('(a2) fase 1 memuat coin.fbx', f1.includes("MODEL_BASE + 'coin.fbx'"));
 cek('(a3) fase 1 TIDAK memuat xbot@running.fbx', !f1.includes('xbot@running.fbx'));
 cek('(a4) fase 1 TIDAK memuat xbot@jumping.fbx', !f1.includes('xbot@jumping.fbx'));
 cek('(a5) fase 1 TIDAK memuat xbot@sliding.fbx', !f1.includes('xbot@sliding.fbx'));
 cek('(a6) fase 1 TIDAK memuat xbot@stumbling.fbx', !f1.includes('xbot@stumbling.fbx'));
 cek('(a7) fase 1 TIDAK memuat xbot@dancing.fbx', !f1.includes('xbot@dancing.fbx'));
-cek('(a8) fase 1 memakai klip Run bawaan karakter', f1.includes("R.clips.run = makeAction(R.clips.run, true, 1)") || f1.includes("R.clips.run") && f1.includes("R.actions.run = makeAction"));
-const f2 = run3d.slice(run3d.indexOf('const ANIMASI_FASE2'), run3d.indexOf('async function loadModelsPhase2()'));
-cek('(a9) fase 2 berisi jump+slide+stumble+dance',
-  ['xbot@jumping.fbx', 'xbot@sliding.fbx', 'xbot@stumbling.fbx', 'xbot@dancing.fbx'].every((m) => f2.includes(m)));
+cek('(a8) fase 1 memakai klip Gallop bawaan hewan', run3d.includes("run: 'Gallop'") && run3d.includes('R.clips.run'));
+cek('(a9) TIDAK ADA lagi fase 2 (tanpa ANIMASI_FASE2 / loadModelsPhase2)', !run3d.includes('ANIMASI_FASE2') && !run3d.includes('loadModelsPhase2'));
 cek('(a10) fungsi loadModels lama sudah tidak ada', !/async function loadModels\(\)/.test(run3d));
 
 // (b) Timeout fase 1 tetap 15 detik + fallback 2D tetap ada
 cek('(b1) preload memakai timeout 15000 ms', /setTimeout\(\(\) => rej\(new Error\('Timeout memuat model 3D \(15 detik\)'\)\), 15000\)/.test(run3d));
-cek('(b2) preload memanggil loadModelsPhase1', run3d.includes('loadModelsPhase1(),'));
-cek('(b3) fase 2 dipanggil di latar belakang setelah fase 1', run3d.includes('loadModelsPhase2().catch(() => {})'));
+cek('(b2) preload memanggil loadModelsPhase1(modelFile, skala)', run3d.includes('loadModelsPhase1(modelFile, skala)'));
+cek('(b3) TIDAK ada lagi pemanggilan fase 2 di latar belakang', !run3d.includes('loadModelsPhase2().catch'));
 cek('(b4) fallback 2D tetap ada (renderLari3D false -> renderScene)', app.includes("if (!renderLari3D()) renderScene(ctx, game);"));
 
 // (c) Importmap menunjuk ke vendor lokal (bukan unpkg)
@@ -44,7 +42,7 @@ const im = html.slice(html.indexOf('<script type="importmap">'), html.indexOf('<
 cek('(c1) importmap three -> /vendor/three/three.module.js', im.includes('"/vendor/three/three.module.js"'));
 cek('(c2) importmap addons -> /vendor/three/addons/', im.includes('"/vendor/three/addons/"'));
 cek('(c3) importmap TIDAK lagi memakai unpkg', !im.includes('unpkg.com'));
-for (const v of ['vendor/three/three.module.js', 'vendor/three/addons/loaders/FBXLoader.js', 'vendor/three/addons/utils/BufferGeometryUtils.js', 'vendor/three/addons/utils/SkeletonUtils.js', 'vendor/three/addons/libs/fflate.module.js', 'vendor/three/addons/curves/NURBSCurve.js', 'vendor/three/addons/curves/NURBSUtils.js']) {
+for (const v of ['vendor/three/three.module.js', 'vendor/three/addons/loaders/FBXLoader.js', 'vendor/three/addons/loaders/GLTFLoader.js', 'vendor/three/addons/utils/BufferGeometryUtils.js', 'vendor/three/addons/utils/SkeletonUtils.js', 'vendor/three/addons/libs/fflate.module.js', 'vendor/three/addons/curves/NURBSCurve.js', 'vendor/three/addons/curves/NURBSUtils.js']) {
   cek('(c4) berkas vendor ada: ' + v, existsSync(ROOT + '/' + v));
 }
 
@@ -61,9 +59,9 @@ cek('(d8) CSS mode-fullscreen ada (#gameSection fixed)', css.includes('body.mode
 cek('(d9) CSS hasil lari jadi overlay di layar penuh', css.includes('body.mode-fullscreen #gameResult.show{position:absolute;'));
 cek('(d10) CSS modal tetap di atas layar penuh', css.includes('body.mode-fullscreen .modal{z-index:80}'));
 
-// (e) sw.js CACHE v13
-cek('(e1) sw.js CACHE = lari-koin-v20', sw.includes("const CACHE = 'lari-koin-v20';"));
-cek('(e2) sw.js TIDAK lagi v14', !sw.includes('lari-koin-v14'));
+// (e) sw.js CACHE v21
+cek('(e1) sw.js CACHE = lari-koin-v21', sw.includes("const CACHE = 'lari-koin-v21';"));
+cek('(e2) sw.js TIDAK lagi v20', !sw.includes('lari-koin-v20'));
 
 console.log(`\nHasil: ${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

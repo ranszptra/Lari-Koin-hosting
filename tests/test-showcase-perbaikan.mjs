@@ -1,16 +1,20 @@
-// Perbaikan showcase + layar lari 3D (tindak lanjut screenshot Rans 2026-11-26):
-// 1. Login: 5 karakter membelakangi kamera, gelap, kaku.
-// 2. Beranda Rex: baju model 3D tidak sama dengan foto karakter.
-// 3. Layar lari Lv 8 Kota Senja: karakter gelap kecil, kota kotak abu-abu polos.
+// Showcase hewan + layar lari 3D — versi v21 (hewan Quaternius, bukan manusia).
+// Dulu (v17): Traveller membelakangi kamera, gelap, kaku + topi/kacamata.
+// Sekarang: rubah Rex (Fox.gltf) menghadap kamera, Idle_2 hidup (telinga
+// berkedip, badan bernapas), TANPA aksesori manusia.
 //
-// Bagian A = verifikasi NYATA dengan Three.js + FBXLoader di Node.
-// Bagian B = cek statis (grep) run3d.js / app.js / db.js / sw.js.
+// Bagian A = verifikasi NYATA dengan Three.js + GLTFLoader di Node.
+// Bagian B-F = cek statis (grep) run3d.js / app.js / db.js / sw.js.
 // Jalankan: node tests/test-showcase-perbaikan.mjs
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import * as THREE from './inspect/three.module.mjs';
-import { FBXLoader } from './inspect/addons/FBXLoader.mjs';
+import { GLTFLoader } from './inspect/addons/GLTFLoader.mjs';
+
+if (typeof globalThis.ProgressEvent === 'undefined') {
+  globalThis.ProgressEvent = class ProgressEvent { constructor(t, i) { this.type = t; if (i) Object.assign(this, i); } };
+}
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const PUB = join(ROOT, 'public');
@@ -20,90 +24,48 @@ function cek(nama, ok, info = '') {
   else { gagal++; console.log('  GAGAL', nama, info); }
 }
 function baca(p) { return readFileSync(join(ROOT, p), 'utf8'); }
-function muatFBX(nama) {
-  const buf = readFileSync(join(PUB, 'models', nama));
-  const loader = new FBXLoader();
-  return loader.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength), join(PUB, 'models', nama));
-}
-function remapClipMixamo(clip) {
-  const tracks = clip.tracks.filter((t) => !t.name.includes('Hips.position'));
-  for (const t of tracks) {
-    const p = t.name.split('.');
-    if (p[0].startsWith('mixamorig')) p[0] = p[0].slice('mixamorig'.length);
-    t.name = p.join('.');
-  }
-  return new THREE.AnimationClip(clip.name, clip.duration, tracks);
-}
-function pusatDunia(obj, namaMesh) {
-  let out = null;
-  obj.traverse((o) => {
-    if ((o.isMesh || o.isSkinnedMesh) && o.name === namaMesh) {
-      const g = o.geometry; if (!g.boundingBox) g.computeBoundingBox();
-      const c = new THREE.Vector3(); g.boundingBox.getCenter(c); o.localToWorld(c); out = c;
-    }
-  });
-  return out;
-}
-function maksXZ(obj, namaMesh, y0, y1) {
-  let mx = 0, mz = 0, n = 0;
-  obj.traverse((o) => {
-    if ((o.isMesh || o.isSkinnedMesh) && o.name === namaMesh) {
-      const pos = o.geometry.attributes.position;
-      const v = new THREE.Vector3();
-      for (let i = 0; i < pos.count; i++) {
-        v.fromBufferAttribute(pos, i); o.localToWorld(v);
-        if (v.y >= y0 && v.y <= y1) { mx = Math.max(mx, Math.abs(v.x)); mz = Math.max(mz, Math.abs(v.z)); n++; }
-      }
-    }
-  });
-  return { mx, mz, n };
+async function muatGLTF(nama) {
+  const text = readFileSync(join(PUB, 'models-animals', nama), 'utf8');
+  const loader = new GLTFLoader();
+  return new Promise((res, rej) => loader.parse(text, '', res, rej));
 }
 
-console.log('== A. Model Traveller: arah hadap + ukuran kepala (untuk topi/kacamata) ==');
-const trav = muatFBX('traveller.fbx');
-trav.updateMatrixWorld(true);
-// Wajah di +Z (TERBUKTI): fitur wajah (mata/alis) + saku mantel + ujung sepatu di z>0
-for (const m of ['body_Mat_2A1E18', 'body_Mat_3D3734', 'body_case_dark']) {
-  const c = pusatDunia(trav, m);
-  cek(`mesh wajah "${m}" ada di sisi +Z (pusat z=${c ? c.z.toFixed(1) : '?'})`, !!c && c.z > 0);
-}
-const pSaku = pusatDunia(trav, 'attach-coat-mesh_pouch');
-cek('saku mantel di depan (z>0)', !!pSaku && pSaku.z > 0, pSaku ? `z=${pSaku.z.toFixed(1)}` : '');
-// Tulang Head: sumbu +Z lokal -> dunia +Z (arah hadap)
+console.log('== A. Model Fox: arah hadap + Idle_2 hidup ==');
+const fox = await muatGLTF('Fox.gltf');
+fox.scene.updateMatrixWorld(true);
+// Hewan menghadap +Z (TERBUKTI probe-hewan.mjs): tulang Head ada di z>0
 let kepala = null;
-trav.traverse((o) => { if (o.isBone && o.name === 'Head') kepala = o; });
+fox.scene.traverse((o) => { if (o.isBone && o.name === 'Head') kepala = o; });
 cek('tulang Head ada', !!kepala);
 if (kepala) {
-  const depan = new THREE.Vector3(0, 0, 1).applyQuaternion(kepala.getWorldQuaternion(new THREE.Quaternion()));
-  cek('Head +Z lokal mengarah ke dunia +Z (depan kamera saat rotation.y=0)', depan.z > 0.9, `depan=(${depan.x.toFixed(2)},${depan.y.toFixed(2)},${depan.z.toFixed(2)})`);
+  const hp = new THREE.Vector3();
+  kepala.getWorldPosition(hp);
+  cek('Head ada di sisi +Z (depan kamera saat rotation.y=0)', hp.z > 0, `Head z=${hp.z.toFixed(2)}`);
 }
-// Ukuran kepala untuk dimensi aksesori (mahkota cap r=0.15, lensa z=0.115)
-const rambut = maksXZ(trav, 'attach-hair-mesh', 157, 167);
-cek('rambut di tinggi topi muat dalam mahkota r=0.155 (|x|<=15.5cm)', rambut.mx <= 15.5 && rambut.n > 0, `|x| maks=${rambut.mx.toFixed(1)}cm`);
-const wajah = maksXZ(trav, 'body_skin', 159, 164);
-cek('permukaan wajah di tinggi mata tidak menembus lensa (z<=11.5cm)', wajah.mz <= 11.5 && wajah.n > 0, `|z| maks=${wajah.mz}cm`);
-const mata = maksXZ(trav, 'body_Mat_2A1E18', 0, 300);
-cek('mata di dalam rentang lensa (|x|<=7.5cm, lensa 2.05–7.55cm)', mata.mx <= 7.5 && mata.n > 0, `|x| maks=${mata.mx.toFixed(1)}cm`);
-
-// Dansa: klip Xbot di-remap, terikat ke Traveller, dan BENAR-BENAR menggerakkan pinggul
-const dance = muatFBX('xbot@dancing.fbx');
-const klipDansa = dance.animations && dance.animations[0];
-cek('xbot@dancing.fbx punya 1 klip', !!klipDansa, klipDansa ? `(${klipDansa.duration.toFixed(2)}s, ${klipDansa.tracks.length} track)` : '');
+// Kaki depan di +Z, kaki belakang di -Z, ekor di -Z -> hewan menghadap +Z
+const posTulang = (nm) => { const b = fox.scene.getObjectByName(nm); const p = new THREE.Vector3(); b.getWorldPosition(p); return p; };
+const kakiDepan = posTulang('FrontLowerLegL');
+const kakiBelakang = posTulang('BackLowerLegL');
+const ekor = posTulang('Tail1');
+cek('kaki depan di +Z, kaki belakang di -Z (hewan menghadap +Z)', kakiDepan.z > 0 && kakiBelakang.z < 0, `depan z=${kakiDepan.z.toFixed(2)}, belakang z=${kakiBelakang.z.toFixed(2)}`);
+cek('ekor di belakang (-Z)', ekor.z < 0, `ekor z=${ekor.z.toFixed(2)}`);
+// Idle_2 (dansa showcase): BENAR-BENAR menggerakkan hewan (telinga + napas)
+const klipDansa = fox.animations.find((c) => c.name === 'Idle_2');
+cek('Fox.gltf punya klip Idle_2', !!klipDansa, klipDansa ? `(${klipDansa.duration.toFixed(2)}s, ${klipDansa.tracks.length} track)` : '');
 if (klipDansa) {
-  const remapped = remapClipMixamo(klipDansa);
-  const mixer = new THREE.AnimationMixer(trav);
-  const aksi = mixer.clipAction(remapped, trav);
+  const mixer = new THREE.AnimationMixer(fox.scene);
+  const aksi = mixer.clipAction(klipDansa, fox.scene);
   aksi.setLoop(THREE.LoopRepeat, Infinity); aksi.play();
-  // fase diacak per klon (buatAksiShowcase): a.time = i * duration / n
-  const nKlon = 5;
-  const fase = [];
-  for (let i = 0; i < nKlon; i++) fase.push((i * remapped.duration) / nKlon);
-  cek('fase dansa per klon berbeda (tidak serempak)', new Set(fase.map((f) => f.toFixed(2))).size === nKlon, `fase=${fase.map((f) => f.toFixed(1)).join(',')}`);
-  const pinggul = trav.getObjectByName('Hips');
-  const q0 = pinggul.quaternion.clone();
-  mixer.update(0.5);
-  const dq = q0.angleTo(pinggul.quaternion);
-  cek('dans a menggerakkan pinggul Traveller (bukan diam/kaku)', dq > 0.05, `Δrot=${dq.toFixed(3)} rad / 0.5 detik`);
+  const tulang = [];
+  fox.scene.traverse((o) => { if (o.isBone) tulang.push(o); });
+  const q0 = tulang.map((b) => b.quaternion.clone());
+  let maks = 0, namaMaks = '';
+  for (let k = 0; k < 20; k++) {
+    mixer.update(klipDansa.duration / 20);
+    tulang.forEach((b, i) => { const d = q0[i].angleTo(b.quaternion); if (d > maks) { maks = d; namaMaks = b.name; } });
+  }
+  cek('Idle_2 menggerakkan hewan (bukan diam/kaku)', maks > 0.1, `${namaMaks} Δrot=${maks.toFixed(3)} rad / 1 siklus`);
+  cek('Idle_2 berstatus running di mixer', aksi.isRunning());
 }
 
 console.log('== B. run3d.js: showcase tidak lagi berputar 360° / gelap / kaku ==');
@@ -111,22 +73,22 @@ const r3 = baca('public/run3d.js');
 cek('putaran 360° kontinu dihapus (tidak ada "S.rotY += 0.004")', !r3.includes('S.rotY += 0.004'));
 cek('goyang pelan menghadap kamera (±20°)', r3.includes('Math.sin(now / 1400) * 0.35'));
 cek('kembali pelan menghadap depan saat didiamkan', r3.includes('Math.round(S.rotY / (Math.PI * 2))'));
-cek('fase dansa diacak per klon', r3.includes('a.time = (i * clip.duration) / S.clones.length'));
 cek('lompatan kecil saat dansa belum ada (fallback anti-kaku)', r3.includes("S.aksi !== 'dance'") && r3.includes('Math.abs(Math.sin(now / 450 + i * 1.3)) * 0.05'));
 cek('panggung showcase lebih terang (bg 0x352a5e)', r3.includes('0x352a5e'));
 cek('lampu showcase diperkuat (hemi 2.2 + isi 0xffe9c4 + rim 0x9d7bff)', r3.includes('0xffe9c4') && r3.includes('0x9d7bff') && /HemisphereLight\(0xffffff, 0x9a8a6a, 2\.2\)/.test(r3));
-cek('kamera showcase lebih dekat (baris 7.6 / tunggal 3.9)', r3.includes('row ? 7.6 : 3.9'));
+cek('kamera showcase tunggal lebih jauh (4.6 — hewan lebih panjang)', r3.includes('camera.position.set(0, 1.9, 4.6)'));
 cek('klon tetap menghadap kamera (rotation.y = 0)', r3.includes('clone.rotation.y = 0;'));
+cek('showcase SATU klon hewan (mode baris dihapus)', r3.includes('const clone = cloneSkinned(R.char);') && !r3.includes('const n = row ? 5 : 1'));
+cek('showcase memakai klip dansa hewan (Idle_2)', r3.includes('R.clips.dance || R.clips.idle || R.clips.run'));
 
-console.log('== C. run3d.js: aksesori topi + kacamata ==');
-for (const fn of ['function buatTopi', 'function buatKacamata', 'function hapusAksesoris', 'function pasangAksesoris', 'function applyAksesoris', 'function setShowcaseAcc']) {
-  cek(`ada ${fn}`, r3.includes(fn));
+console.log('== C. run3d.js: aksesori manusia MATI untuk hewan ==');
+for (const fn of ['function buatTopi', 'function buatKacamata', 'function hapusAksesoris', 'function pasangAksesoris', 'function cariKepala']) {
+  cek(`TIDAK ada ${fn}`, !r3.includes(fn));
 }
-cek('aksesori dipasang sebagai anak tulang Head', r3.includes('kepala.add(buatTopi') && r3.includes('kepala.add(buatKacamata'));
-cek('aksesori dipasang ke klon showcase (baris + tunggal)', r3.includes('pasangAksesoris(clone, accs[i])') && r3.includes('pasangAksesoris(clone, opts.acc)'));
-cek('bridge mengekspor applyAksesoris + setShowcaseAcc', r3.includes('applyAksesoris, setShowcaseAcc'));
-cek('mahkota cap r=0.155 di atas mata (y=0.15) — tidak menelan wajah', r3.includes('CylinderGeometry(0.145, 0.155, 0.09, 20)') && r3.includes('mahkota.position.set(0, 0.15, -0.005)'));
-cek('lensa kacamata di depan wajah (z=0.115)', r3.includes('0.09, 0.115'));
+cek('applyAksesoris + setShowcaseAcc ada sebagai no-op (return false)', /function applyAksesoris\(spec\) \{ return false; \}/.test(r3) && /function setShowcaseAcc\(canvasId, spec\) \{ return false; \}/.test(r3));
+cek('bridge tetap mengekspor applyAksesoris + setShowcaseAcc', r3.includes('applyAksesoris, setShowcaseAcc'));
+cek('TIDAK ada tintKlon (hewan tidak di-tint)', !r3.includes('tintKlon'));
+cek('applySkin no-op (hewan tidak di-tint)', /function applySkin\(warna\) \{\s*return false;\s*\}/.test(r3));
 
 console.log('== D. run3d.js: layar lari lebih terang + kota berjendela ==');
 cek('kamera lari lebih dekat (CAM_POS z 5.6)', r3.includes('z: 5.6'));
@@ -135,22 +97,26 @@ cek('jalan lebih terang (pengali 0.65)', r3.includes('multiplyScalar(0.65)'));
 cek('tekstur jendela kota ada (jendelaTex + emissiveMap)', r3.includes('function jendelaTex') && r3.includes('emissiveMap'));
 cek('gedung Kota Senja warna slate (0x7a7f9e, bukan abu polos)', r3.includes('0x7a7f9e'));
 
-console.log('== E. app.js + db.js: wiring aksesori per karakter ==');
+console.log('== E. app.js + db.js: wiring hewan per karakter ==');
 const app = baca('public/app.js');
 const db = baca('db.js');
-const topiApp = (app.match(/topi: '(cap|beanie)'/g) || []).length;
-cek(`LEVEL_CHARACTERS app.js: 11 karakter bertopi (ketemu ${topiApp})`, topiApp === 11);
-cek('Rex: cap + kacamata merah', app.includes("topi: 'cap', kacamata: '#e53935'"));
-cek('Frost: tanpa topi/kacamata', app.includes("topi: null, kacamata: null"));
+const modelApp = (app.match(/model: '[A-Za-z_]+'/g) || []).length;
+cek(`LEVEL_CHARACTERS app.js: 12 hewan punya model (ketemu ${modelApp})`, modelApp === 12);
+cek('Rex = Fox (rubah)', app.includes("nama: 'Rex'") && app.includes("model: 'Fox'"));
+const topiNullApp = (app.match(/topi: null, kacamata: null/g) || []).length;
+cek(`LEVEL_CHARACTERS app.js: 12 hewan tanpa topi/kacamata (ketemu ${topiNullApp})`, topiNullApp === 12);
 cek('showcase login dihapus (tidak ada lagi loginShowcase/mulaiShowcaseLogin)', !app.includes('loginShowcase') && !app.includes('mulaiShowcaseLogin'));
-cek('showcase Beranda menerima acc karakter aktif (2 tempat)', (app.match(/\{ acc: karakterAktif\(\) \}/g) || []).length === 2);
+cek('showcase Beranda menerima opts hewan (2 tempat)', (app.match(/hewanShowcaseOpts\(\)/g) || []).length >= 2);
 cek('applyAksesoris3D ada + dipanggil di renderProfil dan setelah preload', app.includes('function applyAksesoris3D()') && (app.match(/applyAksesoris3D\(\);/g) || []).length >= 2);
-const topiDb = (db.match(/topi: '(cap|beanie)'/g) || []).length;
-cek(`LEVEL_CHARACTERS db.js cermin: 11 bertopi (ketemu ${topiDb})`, topiDb === 11);
-cek('db.js Frost null/null', db.includes('topi: null, kacamata: null'));
+cek('gantiModel3D ada + dipanggil di renderProfil', app.includes('function gantiModel3D()') && app.includes('gantiModel3D(); // hewan 3D ikut karakter aktif'));
+const modelDb = (db.match(/model: '[A-Za-z_]+'/g) || []).length;
+cek(`LEVEL_CHARACTERS db.js cermin: 12 model (ketemu ${modelDb})`, modelDb === 12);
+const topiNullDb = (db.match(/topi: null, kacamata: null/g) || []).length;
+cek(`LEVEL_CHARACTERS db.js cermin: 12 tanpa topi/kacamata (ketemu ${topiNullDb})`, topiNullDb === 12);
+cek('db.js Rex = Fox', db.includes("nama: 'Rex'") && db.includes("model: 'Fox'"));
 
 console.log('== F. sw.js ==');
-cek('CACHE v20 (showcase login dihapus)', baca('public/sw.js').includes("lari-koin-v20"));
+cek('CACHE v21', baca('public/sw.js').includes("lari-koin-v21"));
 
 console.log(`\n${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

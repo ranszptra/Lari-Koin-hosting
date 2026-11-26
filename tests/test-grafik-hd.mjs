@@ -81,7 +81,7 @@ cek('(g33) animasi latar login dihapus (tidak ada lagi bgCanvas/loopLogin/samaka
 cek('(g34) index.html: tidak ada lagi #bgCanvas', !baca('public/index.html').includes('bgCanvas'));
 
 console.log('== SW cache ==');
-cek('(g35) sw.js CACHE = lari-koin-v20', sw.includes("const CACHE = 'lari-koin-v20';"));
+cek('(g35) sw.js CACHE = lari-koin-v21', sw.includes("const CACHE = 'lari-koin-v21';"));
 
 console.log(`\nHasil: ${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);

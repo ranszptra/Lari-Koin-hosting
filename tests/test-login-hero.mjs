@@ -74,7 +74,7 @@ cek('(h10) index.html: logo hero tetap ada, tidak ada lagi loginShowcase/bgCanva
   iLogo > 0 && !html.includes('id="loginShowcase"') && !html.includes('id="bgCanvas"') && !html.includes('loginShowcaseFallback'));
 
 // h11: SW cache naik ke v20 (perubahan ikut terkirim ke HP).
-cek('(h11) sw.js CACHE v19', sw.includes("const CACHE = 'lari-koin-v20';"));
+cek('(h11) sw.js CACHE v21', sw.includes("const CACHE = 'lari-koin-v21';"));
 
 console.log(`\nLogin hero: ${lolos} lolos, ${gagal} gagal`);
 process.exitCode = gagal ? 1 : 0;

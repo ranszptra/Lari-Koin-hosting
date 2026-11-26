@@ -1,8 +1,9 @@
-// Tes statis "9 perbaikan" (v14).
-// Memastikan: fase 2 tidak jalan saat lari, iklan menjeda game, tidak ada
-// pilih level / tombol kontrol lama, suara di header, skill HUD di dalam
-// layar game, showcase login berjejer 5 klon, model manusia ada, dan
-// auto-lanjut level tetap lewat run-start (gerbang nyawa).
+// Tes statis "9 perbaikan" (v14, diperbarui v21: hewan).
+// Memastikan: TIDAK ADA lagi fase 2 (semua klip hewan di satu .gltf),
+// iklan menjeda game, tidak ada pilih level / tombol kontrol lama, suara
+// di header, skill HUD di dalam layar game, showcase Beranda satu hewan,
+// model hewan ada, dan auto-lanjut level tetap lewat run-start (gerbang
+// nyawa).
 // Jalankan: node tests/test-perbaikan-9.mjs
 import { readFileSync, existsSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -22,14 +23,14 @@ function cek(nama, ok) {
   else { gagal++; console.log('  GAGAL', nama); }
 }
 
-// (a) Fase 2 TIDAK PERNAH mulai saat game sedang berjalan
-cek('(a1) run3d: bolehMuatFase2 menolak saat __rcGameRunning', /function bolehMuatFase2\(\) \{\s*return !document\.hidden && !window\.__rcGameRunning;/.test(run3d));
-cek('(a2) run3d: loadModelsPhase2 berhenti jika lari mulai di tengah muat', run3d.includes('if (!bolehMuatFase2()) { R._phase2Ditunda = true; break; }'));
-cek('(a3) run3d: lanjutkanPhase2 tidak jalan saat lari', /function lanjutkanPhase2\(\) \{[\s\S]{0,120}if \(!bolehMuatFase2\(\)\) return;/.test(run3d));
-cek('(a4) run3d: lanjutkanPhase2 diekspor ke window.Run3D', /lanjutkanPhase2,/.test(run3d));
+// (a) TIDAK ADA lagi fase 2 — semua klip hewan ada di satu berkas .gltf
+cek('(a1) run3d: tidak ada loadModelsPhase2', !run3d.includes('loadModelsPhase2'));
+cek('(a2) run3d: tidak ada ANIMASI_FASE2', !run3d.includes('ANIMASI_FASE2'));
+cek('(a3) run3d: tidak ada lanjutkanPhase2', !run3d.includes('lanjutkanPhase2'));
+cek('(a4) run3d: tidak ada bolehMuatFase2', !run3d.includes('bolehMuatFase2'));
 cek('(a5) app.js: mulaiGame menandai __rcGameRunning = true', app.includes('window.__rcGameRunning = true'));
 cek('(a6) app.js: gameOver/selesaiLevel mematikan __rcGameRunning', (app.match(/window\.__rcGameRunning = false/g) || []).length >= 2);
-cek('(a7) run3d: showcase beralih ke dansa hanya setelah fase 2 selesai', run3d.includes('function gantiShowcaseKeDansa') && run3d.includes('if (!R._phase2Ditunda) { R.phase2Done = true; gantiShowcaseKeDansa(); }'));
+cek('(a7) run3d: klip dansa hewan langsung tersedia (tanpa gantiShowcaseKeDansa)', !run3d.includes('gantiShowcaseKeDansa') && run3d.includes('R.clips.dance || R.clips.idle || R.clips.run'));
 
 // (b) Iklan buka -> jeda; iklan tutup -> lanjut HANYA jika tadi lagi lari
 cek('(b1) app.js: tampilIklanSelingan mendeteksi sedangLari', app.includes("const sedangLari = game.running && !game.paused;"));
@@ -69,11 +70,11 @@ cek('(f3) index.html: skillHud punya 3 tombol data-skill', (html.split('id="skil
 cek('(f4) app.js: binding skill memakai semua [data-skill]', app.includes("document.querySelectorAll('[data-skill]')"));
 cek('(f5) style.css: .skill-hud hanya tampil di mode-fullscreen', css.includes('body.mode-fullscreen .skill-hud{display:flex'));
 
-// (g) Showcase login DIHAPUS 2026-11-26 (Rans: kepanjangan) — mode baris tetap ada di run3d.js
-cek('(g1) run3d: showcase punya mode baris (row)', run3d.includes('const row = !!opts.row'));
-cek('(g2) run3d: mode baris membuat 5 klon', run3d.includes('const n = row ? 5 : 1'));
+// (g) Showcase login DIHAPUS 2026-11-26 (Rans: kepanjangan) — Beranda SATU hewan (mode baris dihapus v21)
+cek('(g1) run3d: showcase TIDAK punya mode baris (row)', !run3d.includes('opts.row') && !run3d.includes('const row ='));
+cek('(g2) run3d: showcase membuat 1 klon hewan', run3d.includes('const clone = cloneSkinned(R.char);'));
 cek('(g3) run3d: klon memakai SkeletonUtils.clone', run3d.includes('cloneSkinned(R.char)'));
-cek('(g4) run3d: klon baris diwarnai warna roster berbeda', run3d.includes('tintKlon(clone, colors[i])'));
+cek('(g4) run3d: TIDAK ada tintKlon (hewan tidak di-tint)', !run3d.includes('tintKlon'));
 cek('(g5) app.js: showcase login dihapus (login lebih pendek, tanpa canvas 3D)', !app.includes('loginShowcase') && !app.includes('mulaiShowcaseLogin'));
 cek('(g6) index.html: tidak ada lagi kartu gambar login (#loginCharCard)', !html.includes('loginCharCard'));
 cek('(g7) index.html: tidak ada lagi kartu gambar Beranda (#berandaCharCard)', !html.includes('berandaCharCard'));
@@ -81,18 +82,18 @@ cek('(g8) index.html: strip nama Beranda tetap ada (#berandaCharNama)', html.inc
 cek('(g9) run3d: showcase berhenti memakai RAF saat canvas tersembunyi', run3d.includes('S.timer = setTimeout(tickShow, 500)'));
 cek('(g10) run3d: showcaseStop membersihkan timer juga', run3d.includes('clearTimeout(S.timer)'));
 
-// (h) Model manusia ada + fase 1 ringan
-const trav = join(ROOT, 'public/models/traveller.fbx');
+// (h) Model hewan ada + fase 1 ringan (satu hewan + koin)
+const fox = join(ROOT, 'public/models-animals/Fox.gltf');
 const coin = join(ROOT, 'public/models/coin.fbx');
-cek('(h1) public/models/traveller.fbx ada', existsSync(trav));
-cek('(h2) traveller.fbx > 1 MB (model manusia lengkap)', existsSync(trav) && statSync(trav).size > 1_000_000);
+cek('(h1) public/models-animals/Fox.gltf ada', existsSync(fox));
+cek('(h2) Fox.gltf > 1 MB (model hewan lengkap)', existsSync(fox) && statSync(fox).size > 1_000_000);
 cek('(h3) public/models/coin.fbx ada', existsSync(coin));
-const fase1 = (existsSync(trav) ? statSync(trav).size : 0) + (existsSync(coin) ? statSync(coin).size : 0);
-cek(`(h4) fase 1 total ${(fase1 / 1e6).toFixed(2)} MB (traveller + coin) < 3 MB`, fase1 < 3_000_000);
-cek('(h5) animasi fase 2 (xbot@jumping/sliding/stumbling/dancing) masih ada', ['xbot@jumping.fbx', 'xbot@sliding.fbx', 'xbot@stumbling.fbx', 'xbot@dancing.fbx'].every((f) => existsSync(join(ROOT, 'public/models', f))));
-cek('(h6) run3d: karakter manusia dipakai (CHAR_FILE traveller)', run3d.includes("CHAR_FILE = 'traveller.fbx'"));
-cek('(h7) run3d: koper tangan kiri disembunyikan', run3d.includes('attach-lefthand-mesh_case'));
-cek('(h8) run3d: skin tint per bagian (baju/celana/sepatu)', run3d.includes('WARNA_BAGIAN') && run3d.includes("shirt|coat") && run3d.includes('denim') && run3d.includes('boot'));
+const fase1 = (existsSync(fox) ? statSync(fox).size : 0) + (existsSync(coin) ? statSync(coin).size : 0);
+cek(`(h4) fase 1 total ${(fase1 / 1e6).toFixed(2)} MB (Fox + coin) < 4 MB`, fase1 < 4_000_000);
+cek('(h5) run3d: TIDAK memuat berkas xbot@*.fbx', !run3d.includes('xbot@'));
+cek('(h6) run3d: hewan dimuat lewat MODEL_BASE_HEWAN + HEWAN_SKALA', run3d.includes("MODEL_BASE_HEWAN = '/models-animals/'") && run3d.includes('HEWAN_SKALA'));
+cek('(h7) run3d: TIDAK ada koper Traveller', !run3d.includes('attach-lefthand-mesh_case'));
+cek('(h8) run3d: skin tint MATI (applySkin no-op, tanpa WARNA_BAGIAN)', /function applySkin\(warna\) \{\s*return false;\s*\}/.test(run3d) && !run3d.includes('WARNA_BAGIAN'));
 
 // (i) Auto-lanjut level tetap lewat run-start
 cek('(i1) app.js: selesaiLevel menangkap lvSelesai', app.includes('const lvSelesai = game.level;'));
@@ -102,7 +103,7 @@ cek('(i4) app.js: mulaiGame memanggil /api/run-start (gerbang nyawa)', app.inclu
 cek('(i5) app.js: level 60 tidak auto-lanjut (tamat)', app.includes('const tamat = lvSelesai >= 60;') && app.includes('if (tamat) return;'));
 cek('(i6) app.js: simpan gagal -> ulang level yang sama, bukan loncat', app.includes('if (!tersimpan)') && app.includes("bUlang.textContent = '▶ Main Lagi (Level ' + lvSelesai + ')'"));
 cek('(i7) app.js: autoLanjutTimer dibatalkan saat keluar layar penuh', app.includes('keluarModeLayarPenuh') && /function keluarModeLayarPenuh\(\) \{[\s\S]*?clearInterval\(autoLanjutTimer\)/.test(app));
-cek('(i8) sw.js CACHE = lari-koin-v20', sw.includes("const CACHE = 'lari-koin-v20';"));
+cek('(i8) sw.js CACHE = lari-koin-v21', sw.includes("const CACHE = 'lari-koin-v21';"));
 
 console.log(`\nHasil: ${lolos} lolos, ${gagal} gagal`);
 process.exit(gagal ? 1 : 0);
