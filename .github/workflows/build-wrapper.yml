@@ -1,0 +1,72 @@
+name: Build Wrapper APK (Runner Coin WebView + AdMob)
+
+# Build APK wrapper WebView + AdMob SDK (tahap 2, v1.4.0) gratis di GitHub.
+# Dijalankan manual dari tab Actions, atau otomatis saat file di wrapper/ berubah.
+# Keystore penanda tangan = keystore v2 yang SAMA seperti TWA, dari GitHub
+# Secrets repo (ANDROID_KEYSTORE_BASE64 + ANDROID_KEYSTORE_PASSWORD) — JANGAN
+# pernah menaruh keystore/password di artifact atau commit. Update APK HARUS
+# ditandatangani keystore yang sama, kalau tidak pengguna lama tidak bisa update.
+# Build lokal di VM TIDAK bisa (Java TCP diblokir) — sama seperti TWA.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'wrapper/**'
+      - '.github/workflows/build-wrapper.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: wrapper
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # Runner GitHub (ubuntu-latest) SUDAH punya Android SDK bawaan
+      # (/usr/local/lib/android/sdk) — jangan pakai android-actions/setup-android,
+      # karena action itu gagal: ia mencoba memasang paket "tools" yang sudah
+      # tidak didistribusikan Google lagi (sdkmanager exit 1).
+      # Symlink ini mengikuti pola workflow TWA yang sudah terbukti jalan.
+      - name: Pakai Android SDK bawaan runner
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          ln -sfn "$ANDROID_HOME/cmdline-tools/latest" "$ANDROID_HOME/tools"
+          ls "$ANDROID_HOME/cmdline-tools" "$ANDROID_HOME/build-tools" "$ANDROID_HOME/platforms" | head -20
+
+      # Keystore diambil dari GitHub Secrets (bukan generate baru tiap run),
+      # supaya update APK selalu ditandatangani kunci yang sama.
+      - name: Pulihkan keystore dari Secrets
+        id: keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_B64" | base64 -d > android.keystore
+          echo "password=$KEYSTORE_PASS" >> "$GITHUB_OUTPUT"
+          keytool -list -v -keystore android.keystore -storepass "$KEYSTORE_PASS" | grep -i "SHA256" | head -1
+
+      - name: Build APK release
+        env:
+          KEYSTORE_PASSWORD: ${{ steps.keystore.outputs.password }}
+          KEY_PASSWORD: ${{ steps.keystore.outputs.password }}
+        run: |
+          # gradlew kehilangan bit executable saat di-upload via web GitHub
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-coin-wrapper-apk
+          path: wrapper/app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
