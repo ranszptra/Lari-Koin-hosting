@@ -76,7 +76,18 @@ const WITHDRAW_METHODS = ['DANA', 'GoPay', 'OVO', 'ShopeePay'];
 
 const GIFT_CODES = { NAILONG: 1000, NAILONGGAS: 2500, RANSGACOR: 5000, HOKI777: 7777 };
 
-const REFERRAL_REWARD_COINS = rpToCoins(5000); // 333.333 koin
+// Tangga hadiah undang teman (v24, diputuskan Rans 2026-11-26 — MENGGANTIKAN
+// bonus lama Rp5.000/teman): bonus sekali-klaim per tingkat, syarat teman
+// terkualifikasi = nonton >=10 iklan DAN mencapai level 5 (lihat referralReady).
+// coins dihitung dari Rp via rpToCoins (1.000 koin = Rp15).
+const INVITE_TIERS = [
+  { tier: 3, rp: 5000, coins: rpToCoins(5000) }, // 333.333 koin
+  { tier: 5, rp: 10000, coins: rpToCoins(10000) }, // 666.667 koin
+  { tier: 10, rp: 30000, coins: rpToCoins(30000) }, // 2.000.000 koin
+  { tier: 20, rp: 50000, coins: rpToCoins(50000) }, // 3.333.333 koin
+  { tier: 50, rp: 150000, coins: rpToCoins(150000) }, // 10.000.000 koin
+  { tier: 100, rp: 250000, coins: rpToCoins(250000) }, // 16.666.667 koin
+];
 
 const NETWORKS = [
   { name: 'AdMob', ecpm: 19.44 },
@@ -98,7 +109,11 @@ const estRevenueRp = (impressions, ecpm) => Math.round((impressions * ecpm) / 10
 
 // Katalog toko (harga dalam koin)
 const CHARACTERS = { jolly: 0, kiko: 50000, momo: 100000, rex: 200000 };
-const SKINS = { emas: 25000, ninja: 50000, astronot: 75000, pelangi: 100000, shadow: 150000 };
+// v24: toko skin DIHAPUS (diputuskan Rans 2026-11-26 — skin tidak nempel ke
+// hewan, jadi fitur tidak kepakai; diganti tangga hadiah invite). Katalog
+// dikosongkan supaya tidak ada lagi skin toko yang bisa dibeli/dipakai;
+// skin level gratis (LEVEL_SKINS) TIDAK disentuh dan tetap lewat /api/equip.
+const SKINS = {};
 const POWERUPS = { magnet: 2000, perisai: 2000, koinx2: 3000 };
 
 // Karakter level — GRATIS, terbuka otomatis tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 hewan).
@@ -287,6 +302,13 @@ CREATE TABLE IF NOT EXISTS referrals (
   status TEXT NOT NULL DEFAULT 'pending',
   createdAt TEXT NOT NULL,
   UNIQUE(referrerId, friendId)
+);
+CREATE TABLE IF NOT EXISTS invite_tier_claims (
+  playerId INTEGER NOT NULL REFERENCES players(id),
+  tier INTEGER NOT NULL,
+  coins INTEGER NOT NULL,
+  createdAt TEXT NOT NULL,
+  PRIMARY KEY (playerId, tier)
 );
 CREATE TABLE IF NOT EXISTS gift_redemptions (
   playerId INTEGER NOT NULL REFERENCES players(id),
@@ -562,8 +584,10 @@ async function achievementUnlocked(a, player) {
   }
 }
 function referralReady(friend) {
-  // Syarat cair: teman sudah nonton >=1 iklan DAN menyelesaikan level 3 (maxLevel >= 4).
-  return friend.totalAds >= 1 && friend.maxLevel >= 4;
+  // v24 (diputuskan Rans 2026-11-26): teman TERKUALIFIKASI kalau sudah nonton
+  // >=10 iklan DAN mencapai level 5 (maxLevel >= 5). Dipakai untuk status
+  // referral di profil dan hitungan tingkat hadiah invite.
+  return friend.totalAds >= 10 && friend.maxLevel >= 5;
 }
 
 module.exports = {
@@ -572,7 +596,7 @@ module.exports = {
   rpToCoins, coinsToRp,
   AD_REWARD_COINS, AD_COOLDOWN_MS, AD_MAX_PER_DAY,
   CHECKIN_RP, WITHDRAW_AMOUNTS, WITHDRAW_METHODS,
-  GIFT_CODES, REFERRAL_REWARD_COINS,
+  GIFT_CODES, INVITE_TIERS,
   NETWORKS, estRevenueRp,
   CHARACTERS, SKINS, POWERUPS,
   LEVEL_CHARACTERS, levelCharactersBaru, LEVEL_SKINS, FULLSET_COINS,

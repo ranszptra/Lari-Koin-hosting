@@ -149,6 +149,14 @@ CREATE TABLE IF NOT EXISTS referrals (
   UNIQUE (referrerId, friendId)
 );
 
+CREATE TABLE IF NOT EXISTS invite_tier_claims (
+  playerId bigint NOT NULL REFERENCES players(id),
+  tier integer NOT NULL,
+  coins bigint NOT NULL,
+  createdAt text NOT NULL,
+  PRIMARY KEY (playerId, tier)
+);
+
 CREATE TABLE IF NOT EXISTS gift_redemptions (
   playerId bigint NOT NULL REFERENCES players(id),
   code text NOT NULL,

@@ -17,7 +17,7 @@ const {
   rpToCoins, coinsToRp,
   AD_REWARD_COINS, AD_COOLDOWN_MS, AD_MAX_PER_DAY,
   CHECKIN_RP, WITHDRAW_AMOUNTS, WITHDRAW_METHODS,
-  GIFT_CODES, REFERRAL_REWARD_COINS,
+  GIFT_CODES, INVITE_TIERS,
   NETWORKS, estRevenueRp,
   CHARACTERS, SKINS, POWERUPS,
   LEVEL_CHARACTERS, levelCharactersBaru, LEVEL_SKINS, FULLSET_COINS,
@@ -249,6 +249,11 @@ app.get('/api/profile', ah(requirePlayer), ah(async (req, res) => {
     friendName: r.friendName,
     status: r.status === 'claimed' ? 'claimed' : (referralReady({ totalAds: r.totalAds, maxLevel: r.maxLevel }) ? 'ready' : 'pending'),
   }));
+  // Tangga invite v24: teman terkualifikasi = status 'ready' (syarat 10 iklan +
+  // level 5 terpenuhi) atau 'claimed' (diklaim di sistem lama — keputusan
+  // disengaja: teman lama yang sudah diklaim tetap dihitung ke jumlah ini).
+  const qualifiedReferrals = refs.filter((r) => r.status === 'ready' || r.status === 'claimed').length;
+  const claimedInviteTiers = (await db.prepare('SELECT tier FROM invite_tier_claims WHERE playerId=?').all(p.id)).map((r) => r.tier);
   const withdrawals = await db.prepare('SELECT id,amountRp,method,number,status,createdAt FROM withdrawals WHERE playerId=? ORDER BY createdAt DESC LIMIT 20').all(p.id);
   res.json({
     ok: true,
@@ -262,6 +267,7 @@ app.get('/api/profile', ah(requirePlayer), ah(async (req, res) => {
       chestLeft: daily.chestLeft,
       adsToday: daily.adsToday,
       referrals: refs,
+      inviteTiers: { qualified: qualifiedReferrals, claimed: claimedInviteTiers, tiers: INVITE_TIERS },
       withdrawals,
     },
   });
@@ -502,20 +508,37 @@ app.post('/api/redeem', ah(requirePlayer), ah(async (req, res) => {
   res.json({ ok: true, coins: GIFT_CODES[code], totalCoins: (await freshPlayer(req.player.id)).coins });
 }));
 
-// --- Referral ---------------------------------------------------------------
+// --- Referral (sistem lama DINONAKTIFKAN v24) ---------------------------------
+// Bonus per teman Rp5.000 diganti tangga hadiah invite (milestone sekali-klaim).
+// Rute ini dipertahankan supaya klien lama dapat pesan yang jelas, bukan 404.
 app.post('/api/referral/claim', ah(requirePlayer), ah(async (req, res) => {
-  const friendId = Number(req.body?.friendId);
-  if (!Number.isInteger(friendId)) return fail(res, 'friendId tidak valid');
-  const row = await db.prepare('SELECT * FROM referrals WHERE referrerId=? AND friendId=?').get(req.player.id, friendId);
-  if (!row) return fail(res, 'Teman tidak ditemukan di daftar referral kamu');
-  if (row.status === 'claimed') return fail(res, 'Bonus teman ini sudah diklaim');
-  const friend = await db.prepare('SELECT * FROM players WHERE id=?').get(friendId);
-  if (!friend || !referralReady(friend)) {
-    return fail(res, 'Belum memenuhi syarat: teman harus sudah nonton ≥1 iklan DAN menyelesaikan level 3');
-  }
-  await db.prepare("UPDATE referrals SET status='claimed' WHERE id=?").run(row.id);
-  await touchCoins(req.player.id, REFERRAL_REWARD_COINS);
-  res.json({ ok: true, coins: REFERRAL_REWARD_COINS, totalCoins: (await freshPlayer(req.player.id)).coins });
+  return fail(res, 'Bonus per teman sudah diganti sistem tingkat invite — klaim hadiah milestone di tab Undang Teman (3/5/10/20/50/100 teman terkualifikasi; teman dihitung kalau sudah nonton 10 iklan dan mencapai level 5)');
+}));
+
+// --- Tangga hadiah invite (v24) ----------------------------------------------
+// Teman terkualifikasi = teman referral yang memenuhi referralReady (10 iklan +
+// level 5) ATAU sudah pernah diklaim di sistem lama (status 'claimed') —
+// keputusan disengaja: teman lama yang sudah diklaim tetap dihitung.
+async function hitungTemanTerkualifikasi(referrerId) {
+  const row = await db.prepare(
+    `SELECT COUNT(*) AS c FROM referrals r JOIN players f ON f.id=r.friendId
+     WHERE r.referrerId=? AND (r.status='claimed' OR (f.totalAds>=10 AND f.maxLevel>=5))`
+  ).get(referrerId);
+  return row ? row.c : 0;
+}
+app.post('/api/referral/tier-claim', ah(requirePlayer), ah(async (req, res) => {
+  const tier = Number(req.body?.tier);
+  const def = INVITE_TIERS.find((t) => t.tier === tier);
+  if (!def) return fail(res, 'Tingkat tidak dikenal — pilih 3, 5, 10, 20, 50, atau 100 teman');
+  const qualified = await hitungTemanTerkualifikasi(req.player.id);
+  if (qualified < tier) return fail(res, `Belum mencapai ${tier} teman terkualifikasi (baru ${qualified}) — teman dihitung kalau sudah nonton 10 iklan dan mencapai level 5`);
+  // Dedup atomik via PRIMARY KEY: INSERT OR IGNORE — changes=0 berarti tingkat
+  // ini sudah diklaim (pola yang sama seperti dedup Tapjoy/admob).
+  const ins = await db.prepare('INSERT OR IGNORE INTO invite_tier_claims(playerId,tier,coins,createdAt) VALUES(?,?,?,?)')
+    .run(req.player.id, tier, def.coins, nowIso());
+  if (!ins.changes) return fail(res, `Hadiah tingkat ${tier} teman sudah diklaim`);
+  await touchCoins(req.player.id, def.coins);
+  res.json({ ok: true, tier, coins: def.coins, rupiah: def.rp, totalCoins: (await freshPlayer(req.player.id)).coins });
 }));
 
 // --- Penarikan ---------------------------------------------------------------
@@ -573,6 +596,8 @@ function shopCatalog(kind) {
 app.post('/api/buy', ah(requirePlayer), ah(async (req, res) => {
   const kind = String(req.body?.kind || '');
   const id = String(req.body?.id || '');
+  // v24: toko skin dihapus — tidak ada lagi skin toko yang bisa dibeli.
+  if (kind === 'skin') return fail(res, 'Toko skin sudah dihapus — diganti tangga hadiah undang teman di tab Undang');
   const catalog = shopCatalog(kind);
   if (!catalog || catalog[id] === undefined) return fail(res, 'Item tidak dikenal');
   const price = catalog[id];
@@ -597,6 +622,8 @@ app.post('/api/equip', ah(requirePlayer), ah(async (req, res) => {
   const id = String(req.body?.id || '');
   const catalog = shopCatalog(kind);
   const isLevelSkin = kind === 'skin' && LEVEL_SKINS.some((s) => s.id === id);
+  // v24: toko skin dihapus — hanya skin level gratis yang masih bisa dipakai.
+  if (kind === 'skin' && !isLevelSkin) return fail(res, 'Toko skin sudah dihapus — diganti tangga hadiah undang teman di tab Undang');
   if (!catalog || (catalog[id] === undefined && !isLevelSkin)) return fail(res, 'Item tidak dikenal');
   const p = await freshPlayer(req.player.id);
   const equipped = parseJson(p.equipped, { character: 'jolly', skin: null });
