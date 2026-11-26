@@ -598,6 +598,8 @@ app.post('/api/buy', ah(requirePlayer), ah(async (req, res) => {
   const id = String(req.body?.id || '');
   // v24: toko skin dihapus — tidak ada lagi skin toko yang bisa dibeli.
   if (kind === 'skin') return fail(res, 'Toko skin sudah dihapus — diganti tangga hadiah undang teman di tab Undang');
+  // v25: toko karakter dihapus — tidak ada lagi karakter toko yang bisa dibeli.
+  if (kind === 'character') return fail(res, 'Toko karakter sudah dihapus — karakter sekarang hewan yang terbuka tiap naik 5 level');
   const catalog = shopCatalog(kind);
   if (!catalog || catalog[id] === undefined) return fail(res, 'Item tidak dikenal');
   const price = catalog[id];
@@ -624,6 +626,8 @@ app.post('/api/equip', ah(requirePlayer), ah(async (req, res) => {
   const isLevelSkin = kind === 'skin' && LEVEL_SKINS.some((s) => s.id === id);
   // v24: toko skin dihapus — hanya skin level gratis yang masih bisa dipakai.
   if (kind === 'skin' && !isLevelSkin) return fail(res, 'Toko skin sudah dihapus — diganti tangga hadiah undang teman di tab Undang');
+  // v25: toko karakter dihapus — karakter level tetap lewat /api/character/select.
+  if (kind === 'character') return fail(res, 'Toko karakter sudah dihapus — karakter sekarang hewan yang terbuka tiap naik 5 level');
   if (!catalog || (catalog[id] === undefined && !isLevelSkin)) return fail(res, 'Item tidak dikenal');
   const p = await freshPlayer(req.player.id);
   const equipped = parseJson(p.equipped, { character: 'jolly', skin: null });
@@ -643,7 +647,10 @@ app.post('/api/equip', ah(requirePlayer), ah(async (req, res) => {
 }));
 
 // --- Pilih karakter level (roster 12 karakter) --------------------------------
-// Karakter toko lama (jolly/kiko/momo/rex, beli pakai koin) tetap lewat /api/equip.
+// Karakter level (roster 12 hewan) dipilih lewat endpoint ini.
+// v25: karakter toko lama (jolly/kiko/momo/rex) SUDAH DIHAPUS — /api/equip
+// menolak kind 'character'; pemain lama yang masih memakai karakter toko
+// fallback ke rubah (gambarKarakterAktif di app.js).
 app.post('/api/character/select', ah(requirePlayer), ah(async (req, res) => {
   const id = String(req.body?.id || '');
   const def = LEVEL_CHARACTERS.find((c) => c.id === id);

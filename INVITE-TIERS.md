@@ -70,3 +70,24 @@ terkualifikasi, walau klaim lamanya memakai syarat lama.
 tingkat, klaim ganda ditolak, klaim sebelum ambang ditolak, endpoint lama
 menolak dengan pesan jelas, beli/pakai skin toko ditolak, `node --check` +
 `test-appjs-load` (app.js tidak TDZ).
+
+## v25 — Toko karakter Xbot dihapus (2026-11-26, perintah Rans "hps aja yg itu")
+
+Lanjutan penghapusan toko skin di v24: toko karakter lama (Xbot + Xbot Hijau/kiko
+50.000 koin + Xbot Pink/momo 100.000 + Xbot Api/rex 200.000) juga dihapus karena
+tidak kepakai — sejak pivot hewan v21 karakter lari adalah hewan level
+(char-01..12); `karakterAktif()` hanya mengenal LEVEL_CHARACTERS, jadi pemain
+yang membeli Xbot buang-buang koin (game fallback ke foto rubah).
+
+- Client: entri `KATALOG.character` + pemanggilan `renderTokoBagian('character')`
+  + wadah `#tokoKarakter` dihapus; nama karakter lama hanya tersisa sebagai
+  label fallback di `namaKarakterSkinAktif()` (pemain lama yang masih memakai
+  karakter toko tetap tampil namanya, tapi larinya tetap hewan).
+- Server: `CHARACTERS` di `db.js` dikosongkan; `POST /api/buy` dan
+  `POST /api/equip` menolak `kind: 'character'` dengan pesan jelas
+  ("Toko karakter sudah dihapus — karakter sekarang hewan yang terbuka tiap
+  naik 5 level").
+- TIDAK disentuh: grid karakter level 12 hewan (`#tokoKarakterLevel`,
+  `/api/character/select`), skin level gratis + klaim set lengkap Rp100.000,
+  tangga invite v24, Tapjoy, AdMob.
+- Tes: `tests/test-hapus-toko-karakter.mjs`; cache service worker naik ke v25.

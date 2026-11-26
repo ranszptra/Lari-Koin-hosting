@@ -108,7 +108,12 @@ const IDR_PER_USD = 16000;
 const estRevenueRp = (impressions, ecpm) => Math.round((impressions * ecpm) / 1000 * IDR_PER_USD);
 
 // Katalog toko (harga dalam koin)
-const CHARACTERS = { jolly: 0, kiko: 50000, momo: 100000, rex: 200000 };
+// v25: toko karakter DIHAPUS (diputuskan Rans 2026-11-26 — sejak pivot hewan v21
+// beli Xbot tidak berpengaruh, karakter lari adalah hewan level; lanjutan dari
+// penghapusan toko skin di v24). Katalog dikosongkan supaya tidak ada lagi
+// karakter toko yang bisa dibeli/dipakai; karakter level (LEVEL_CHARACTERS)
+// TIDAK disentuh dan tetap dipilih lewat /api/character/select.
+const CHARACTERS = {};
 // v24: toko skin DIHAPUS (diputuskan Rans 2026-11-26 — skin tidak nempel ke
 // hewan, jadi fitur tidak kepakai; diganti tangga hadiah invite). Katalog
 // dikosongkan supaya tidak ada lagi skin toko yang bisa dibeli/dipakai;
