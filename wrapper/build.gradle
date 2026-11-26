@@ -1,0 +1,10 @@
+// Runner Coin — WebView wrapper + AdMob (tahap 2, v1.4.0).
+// Proyek Android native (bukan TWA): WebView memuat game web yang sama
+// (https://lari-koin-hosting-production.up.railway.app/) + Google Mobile
+// Ads SDK + JS bridge ke app.js. Build di GitHub Actions
+// (.github/workflows/build-wrapper.yml) — build lokal di VM TIDAK bisa
+// (Java TCP diblokir), sama seperti TWA.
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+    id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+}
