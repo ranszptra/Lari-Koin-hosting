@@ -53,7 +53,7 @@ cek('(s14) app.js: bukaTapjoyOfferwall cek config dulu', app.includes("api('/api
 cek('(s15) app.js: refresh saldo saat kembali ke tab (visibilitychange)', app.includes("document.addEventListener('visibilitychange'"));
 cek('(s16) app.js: tombol demo-verify sudah dihapus', !app.includes('demo-verify'));
 cek('(s17) index.html: kartu Tapjoy + tombol #btnTapjoy ada', html.includes('id="tapjoyCard"') && html.includes('id="btnTapjoy"'));
-cek('(s18) sw.js: cache naik ke v24 (app.js berubah)', sw.includes("CACHE = 'lari-koin-v24'"));
+cek('(s18) sw.js: cache naik ke v25 (app.js berubah)', sw.includes("CACHE = 'lari-koin-v25'"));
 
 // ---------- (2) Rumus verifier: MD5 node vs vektor md5sum independen ----------
 const md5 = (s) => createHash('md5').update(s, 'utf8').digest('hex');

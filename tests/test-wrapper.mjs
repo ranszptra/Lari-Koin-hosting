@@ -114,7 +114,7 @@ cek('(a6) app.js: nyawa rewarded lewat /api/ads/rewarded-verify', app.includes("
 cek('(a7) app.js: reward gagal → TIDAK ada hadiah (tanpa fallback nyawa)', app.includes('TIDAK ADA hadiah'));
 cek('(a8) app.js: tombol koin TIDAK memakai rewarded AdMob', app.includes('TIDAK memakai jalur ini'));
 cek('(a9) app.js: Tapjoy tidak disentuh wiring ini', app.includes('bukaTapjoyOfferwall') && app.includes('btnTapjoy'));
-cek('(a10) sw.js CACHE = lari-koin-v24 (app.js berubah)', sw.includes("const CACHE = 'lari-koin-v24'"));
+cek('(a10) sw.js CACHE = lari-koin-v25 (app.js berubah)', sw.includes("const CACHE = 'lari-koin-v25'"));
 
 // ---------- (7) Workflow ----------
 cek('(c1) workflow: trigger workflow_dispatch + push wrapper/**', workflow.includes('workflow_dispatch') && workflow.includes("'wrapper/**'"));

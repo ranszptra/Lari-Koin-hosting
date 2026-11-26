@@ -53,7 +53,7 @@ cek('(s17) index.html: wadah #tanggaInvite ada', html.includes('id="tanggaInvite
 cek('(s18) index.html: judul Undang Teman baru (tanpa Bonus Rp5.000)', !html.includes('Undang Teman — Bonus Rp5.000') && html.includes('Hadiah sampai Rp250.000'));
 cek('(s19) index.html: notice beranda tanpa Rp5.000 per teman', !html.includes('Undang teman dapat Rp5.000 per teman'));
 cek('(s20) index.html: judul "Skin Karakter" dihapus, div #tokoSkin tetap (skin level)', !html.includes('<h3>Skin Karakter</h3>') && html.includes('id="tokoSkin"'));
-cek('(s21) sw.js: cache naik ke v24', sw.includes("CACHE = 'lari-koin-v24'"));
+cek('(s21) sw.js: cache naik ke v25', sw.includes("CACHE = 'lari-koin-v25'"));
 cek('(s22) app.js: skin level + fullset tetap ada (tidak ikut dihapus)', app.includes('function renderSkinLevel') && app.includes('/api/skins/fullset-claim'));
 
 // ---------- (2) Tes live: server lokal + klaim tingkat beneran ----------
