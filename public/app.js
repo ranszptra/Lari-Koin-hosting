@@ -1311,6 +1311,34 @@ async function selesaiLevel() {
   });
 }
 let jedaKarenaIklan = false;
+/* ---------- AdMob wrapper (WebView native, v1.4.0) ----------
+   APK wrapper menyuntikkan window.AdMobBridge (addJavascriptInterface)
+   + menandai user-agent "RunnerCoinWrapper/1.4.0". Kalau bridge ada,
+   iklan selingan + reward nyawa memakai iklan AdMob BENERAN; kalau tidak
+   ada (browser biasa / TWA lama), fallback ke simulasi seperti biasa.
+   KEBIJAKAN: rewarded AdMob TIDAK BOLEH memberi koin (koin = uang tunai
+   yang bisa dicairkan) — reward hanya +1 nyawa, diverifikasi server
+   lewat POST /api/ads/rewarded-verify (nonce unik, anti-replay). */
+const DI_WRAPPER = (() => {
+  try { return /RunnerCoinWrapper/i.test(navigator.userAgent) || !!window.AdMobBridge; }
+  catch (e) { return false; }
+})();
+function adaBridge() {
+  try { return DI_WRAPPER && window.AdMobBridge && typeof window.AdMobBridge.showInterstitial === 'function'; }
+  catch (e) { return false; }
+}
+let iklanBridgeCb = null; // done() interstitial yang menunggu native
+let iklanBridgeGagal = null; // fallback simulasi kalau native gagal
+let iklanBridgeTimer = null;
+// Dipanggil native via evaluateJavascript saat interstitial ditutup.
+window.__admobInterstitialClosed = function () { if (iklanBridgeCb) iklanBridgeCb(); };
+// Dipanggil native saat interstitial gagal dimuat / gagal tampil.
+window.__admobInterstitialFailed = function () { if (iklanBridgeGagal) iklanBridgeGagal(); };
+let nyawaRewardCb = null; // dipanggil native saat reward didapat (type, nonce)
+let nyawaRewardGagal = null; // dipanggil native saat reward gagal / ditutup tanpa reward
+let nyawaRewardTimer = null;
+window.__admobRewarded = function (rewardType, nonce) { if (nyawaRewardCb) nyawaRewardCb(String(rewardType || ''), String(nonce || '')); };
+window.__admobRewardedFailed = function () { if (nyawaRewardGagal) nyawaRewardGagal(); };
 /* Jeda game: loop berhenti maju (2D & 3D membeku di frame terakhir). */
 function jedaGame() {
   if (!game.running || game.paused) return;
@@ -1329,7 +1357,39 @@ function toggleJeda() {
   if (game.paused) lanjutGame();
   else jedaGame();
 }
+/* Satu-satunya choke point iklan interstitial/skill/nyawa/antar-level.
+   Di wrapper: iklan AdMob beneran lewat bridge; kalau bridge tidak ada
+   atau native gagal/tidak menjawab → modal simulasi (perilaku lama). */
 function tampilIklanSelingan(cb) {
+  if (adaBridge()) { tampilIklanAdMob(cb); return; }
+  tampilIklanSimulasi(cb);
+}
+function tampilIklanAdMob(cb) {
+  const sedangLari = game.running && !game.paused;
+  if (sedangLari) { jedaKarenaIklan = true; jedaGame(); } // iklan muncul -> game HARUS jeda
+  let selesai = false;
+  const done = () => {
+    if (selesai) return; selesai = true;
+    if (iklanBridgeTimer) { clearTimeout(iklanBridgeTimer); iklanBridgeTimer = null; }
+    iklanBridgeCb = null; iklanBridgeGagal = null;
+    if (jedaKarenaIklan) lanjutGame();
+    cb();
+  };
+  const fallbackSimulasi = () => {
+    if (selesai) return;
+    if (iklanBridgeTimer) { clearTimeout(iklanBridgeTimer); iklanBridgeTimer = null; }
+    iklanBridgeCb = null; iklanBridgeGagal = null;
+    tampilIklanSimulasi(done);
+  };
+  iklanBridgeCb = done;
+  iklanBridgeGagal = fallbackSimulasi;
+  iklanBridgeTimer = setTimeout(fallbackSimulasi, 60000); // native diam 60 dtk → simulasi
+  try {
+    window.AdMobBridge.showInterstitial();
+    api('/api/ads/impression', 'POST', { network: 'AdMob', format: 'interstitial' }).catch(() => {});
+  } catch (e) { fallbackSimulasi(); }
+}
+function tampilIklanSimulasi(cb) {
   const sedangLari = game.running && !game.paused;
   if (sedangLari) { jedaKarenaIklan = true; jedaGame(); } // iklan muncul -> game HARUS jeda
   const n = networks.length ? networks[networkIdx % networks.length].name : 'Simulasi';
@@ -1526,6 +1586,9 @@ function tickNyawa() {
   el.textContent = '⏳ Cooldown nyawa: ' + m + ':' + String(s).padStart(2, '0') + ' — atau nonton iklan buat +1 nyawa';
 }
 $('btnNyawaIklan').addEventListener('click', () => {
+  // Di wrapper: nyawa dari iklan REWARDED AdMob beneran (verifikasi server).
+  // Di web/TWA: perilaku lama (simulasi → /api/lives/ad).
+  if (adaBridge()) { mintaNyawaRewarded(); return; }
   tampilIklanSelingan(async () => {
     try {
       const d = await api('/api/lives/ad', 'POST', {});
@@ -1534,6 +1597,37 @@ $('btnNyawaIklan').addEventListener('click', () => {
     } catch (e) { toast(e.message); }
   });
 });
+/* Rewarded AdMob (wrapper): +1 nyawa HANYA setelah iklan reward selesai
+   ditonton — native memanggil window.__admobRewarded('life', nonce) dan
+   server memverifikasi nonce itu (anti-replay, maks 10/hari).
+   Kalau iklan reward gagal / ditutup tanpa reward: TIDAK ADA hadiah.
+   Sengaja TIDAK fallback ke nyawa gratis — itu sama saja memberi reward
+   tanpa iklan. Tombol koin (+1.000 koin) TIDAK memakai jalur ini:
+   rewarded Google dilarang memberi koin (lihat server.js). */
+function mintaNyawaRewarded() {
+  let selesai = false;
+  const gagal = (pesan) => {
+    if (selesai) return; selesai = true;
+    if (nyawaRewardTimer) { clearTimeout(nyawaRewardTimer); nyawaRewardTimer = null; }
+    nyawaRewardCb = null; nyawaRewardGagal = null;
+    toast(pesan || 'Iklan reward belum siap — coba lagi sebentar lagi.');
+  };
+  nyawaRewardCb = async (rewardType, nonce) => {
+    if (selesai) return; selesai = true;
+    if (nyawaRewardTimer) { clearTimeout(nyawaRewardTimer); nyawaRewardTimer = null; }
+    nyawaRewardCb = null; nyawaRewardGagal = null;
+    api('/api/ads/impression', 'POST', { network: 'AdMob', format: 'rewarded' }).catch(() => {});
+    try {
+      const d = await api('/api/ads/rewarded-verify', 'POST', { rewardType, nonce });
+      toast('+1 nyawa! Sekarang ' + d.lives + '/15 ❤️');
+      await muatProfil();
+    } catch (e) { toast(e.message); }
+  };
+  nyawaRewardGagal = () => gagal();
+  nyawaRewardTimer = setTimeout(() => gagal('Iklan reward tidak menjawab — coba lagi.'), 90000);
+  try { window.AdMobBridge.showRewarded('life'); }
+  catch (e) { gagal(); }
+}
 setInterval(tickNyawa, 1000);
 
 
