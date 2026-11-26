@@ -45,13 +45,8 @@ const KATALOG = {
     { id: 'momo', nama: 'Xbot Pink', harga: 100000, ikon: '🤖', desc: 'Xbot pink manis, pita di kepala.' },
     { id: 'rex', nama: 'Xbot Api', harga: 200000, ikon: '🤖', desc: 'Xbot oranye garang, mata laser.' }
   ],
-  skin: [
-    { id: 'emas', nama: 'Emas', harga: 25000, ikon: '✨', desc: 'Xbot kuning keemasan.' },
-    { id: 'ninja', nama: 'Ninja', harga: 50000, ikon: '🥷', desc: 'Hitam + ikat kepala.' },
-    { id: 'astronot', nama: 'Astronot', harga: 75000, ikon: '🧑‍🚀', desc: 'Putih + helm kaca.' },
-    { id: 'pelangi', nama: 'Pelangi', harga: 100000, ikon: '🌈', desc: 'Warna-warni ceria.' },
-    { id: 'shadow', nama: 'Shadow', harga: 150000, ikon: '🌑', desc: 'Gelap misterius.' }
-  ],
+  // v24: skin toko (emas/ninja/astronot/pelangi/shadow) DIHAPUS — tidak nempel
+  // ke hewan, jadi fitur tidak kepakai; diganti tangga hadiah undang teman.
   powerup: [
     { id: 'magnet', nama: 'Magnet Koin', harga: 2000, ikon: '🧲', desc: 'Menarik koin dari jalur sebelah.' },
     { id: 'perisai', nama: 'Perisai', harga: 2000, ikon: '🛡', desc: 'Menahan 1 tabrakan.' },
@@ -86,6 +81,17 @@ const LEVEL_SKINS = [
   { id: 'mint', level: 50, nama: 'Mint', ikon: '🍃', desc: 'Xbot hijau mint segar.' },
   { id: 'komet', level: 55, nama: 'Komet', ikon: '☄️', desc: 'Xbot oranye komet.' },
   { id: 'legenda', level: 60, nama: 'Legenda', ikon: '👑', desc: 'Xbot emas legenda — skin terakhir!' }
+];
+/* Tangga hadiah undang teman (v24) — cermin INVITE_TIERS di db.js.
+   Bonus sekali-klaim per tingkat; teman dihitung kalau sudah nonton >=10
+   iklan dan mencapai level 5. */
+const INVITE_TIERS = [
+  { tier: 3, rp: 5000, coins: 333333 },
+  { tier: 5, rp: 10000, coins: 666667 },
+  { tier: 10, rp: 30000, coins: 2000000 },
+  { tier: 20, rp: 50000, coins: 3333333 },
+  { tier: 50, rp: 150000, coins: 10000000 },
+  { tier: 100, rp: 250000, coins: 16666667 },
 ];
 const SKIN3D_WARNA = {
   // karakter dasar (tanpa skin)
@@ -332,7 +338,7 @@ const TOUR_STEPS = [
   { judul: '🎮 Cara Main', teks: 'Geser kiri / kanan atau ketuk tombol untuk pindah jalur. Hindari batu, kotak, pagar, tembok 2 jalur & gerbang geser — tembok dan gerbang tidak bisa dilompat, harus pindah jalur. Ambil koin — tiap koin +10 koin. Tema dunia berganti tiap level. Selesaikan level dengan lari sampai jarak target.' },
   { judul: '🏆 60 Level, 6 Dunia', teks: 'Level makin sulit sampai level 60. Tiap 10 level ada level BOS dengan hadiah 5x lipat. Dunia baru terbuka tiap 10 level: Kota Senja, Hutan Rimba, Gurun Pasir, Salju Abadi, Luar Angkasa, Lava Berapi.' },
   { judul: '🎯 Misi & Check-in', teks: 'Kerjakan misi harian dan check-in 7 hari berturut-turut untuk koin gratis. Jangan sampai putus — kalau bolos, streak kembali ke hari 1!' },
-  { judul: '👥 Undang Teman', teks: 'Bagikan link undanganmu. Tiap teman yang daftar, nonton iklan, dan menyelesaikan level, kamu dapat Rp5.000.' },
+  { judul: '👥 Undang Teman', teks: 'Bagikan link undanganmu. Tiap teman yang nonton 10 iklan dan mencapai level 5 dihitung ke hadiah tingkat: 3 teman Rp5.000, 5 teman Rp10.000, 10 teman Rp30.000, 20 teman Rp50.000, 50 teman Rp150.000, 100 teman Rp250.000.' },
   { judul: '💰 Tukar Koin Jadi Uang', teks: '1.000 koin = Rp15. Tarik mulai Rp1.000 ke DANA, GoPay, OVO, atau ShopeePay. Semakin sering main, semakin cepat cair!' }
 ];
 let tourIdx = 0;
@@ -512,18 +518,43 @@ $('btnCheckin').addEventListener('click', async () => {
   catch (e) { toast(e.message); }
 });
 function renderTeman() {
+  renderInviteTiers();
   const el = $('daftarTeman');
   const list = profile.referrals || [];
   if (!list.length) { el.innerHTML = '<p class="muted">Belum ada teman yang diundang.</p>'; return; }
   el.innerHTML = '';
   list.forEach((f) => {
     const d = document.createElement('div'); d.className = 'misi';
-    const statusLabel = { pending: 'Menunggu syarat (teman harus nonton 1 iklan + selesaikan level 3)', ready: 'Siap diklaim', claimed: 'Sudah diklaim' }[f.status] || f.status;
+    const statusLabel = {
+      pending: 'Menunggu syarat (teman harus nonton 10 iklan + mencapai level 5)',
+      ready: 'Terkualifikasi ✓ — dihitung ke hadiah tingkat',
+      claimed: 'Terkualifikasi ✓ — dihitung ke hadiah tingkat',
+    }[f.status] || f.status;
     d.innerHTML = '<div><b>' + esc(f.friendName) + '</b><br><span class="muted">Status: ' + esc(statusLabel) + '</span></div>';
+    el.appendChild(d);
+  });
+}
+/* Tangga hadiah undang teman (v24): bonus sekali-klaim per tingkat.
+   Teman dihitung kalau sudah nonton 10 iklan dan mencapai level 5. */
+function renderInviteTiers() {
+  const el = $('tanggaInvite'); if (!el) return;
+  const inv = profile.inviteTiers || { qualified: 0, claimed: [] };
+  const qualified = inv.qualified || 0;
+  const claimed = new Set(inv.claimed || []);
+  el.innerHTML = '';
+  const p = document.createElement('p');
+  p.className = 'muted';
+  p.innerHTML = 'Teman terkualifikasi: <b>' + qualified + '</b> — teman dihitung kalau sudah nonton <b>10 iklan</b> dan mencapai <b>level 5</b>.';
+  el.appendChild(p);
+  INVITE_TIERS.forEach((t) => {
+    const sudah = claimed.has(t.tier);
+    const tercapai = qualified >= t.tier;
+    const d = document.createElement('div'); d.className = 'misi';
+    d.innerHTML = '<div><b>👥 ' + t.tier + ' teman</b><br><span class="muted">Hadiah: Rp' + t.rp.toLocaleString('id-ID') + ' (' + t.coins.toLocaleString('id-ID') + ' koin)</span><br><span class="small">' + (sudah ? '✅ Sudah diklaim' : (tercapai ? 'Siap diklaim!' : 'Butuh ' + (t.tier - qualified) + ' teman lagi')) + '</span></div>';
     const b = document.createElement('button');
-    b.className = 'btn-hijau btn-kecil'; b.textContent = 'Klaim Rp5.000';
-    b.disabled = f.status !== 'ready';
-    b.addEventListener('click', async () => { try { await api('/api/referral/claim', 'POST', { friendId: f.friendId }); toast('Bonus teman diklaim!'); await muatProfil(); } catch (e) { toast(e.message); } });
+    b.className = 'btn-emas btn-kecil'; b.textContent = sudah ? 'Diklaim ✓' : 'Klaim Rp' + t.rp.toLocaleString('id-ID');
+    b.disabled = sudah || !tercapai;
+    b.addEventListener('click', async () => { try { const r = await api('/api/referral/tier-claim', 'POST', { tier: t.tier }); toast('Hadiah ' + t.tier + ' teman diklaim! +' + r.coins + ' koin 🎉'); await muatProfil(); } catch (e) { toast(e.message); } });
     d.appendChild(b); el.appendChild(d);
   });
 }
@@ -640,7 +671,7 @@ function namaKarakterSkinAktif() {
   const k = karakterLevel(char);
   const cn = k ? k.nama : ((KATALOG.character.find((c) => c.id === char) || {}).nama || 'Xbot');
   if (!skin) return cn;
-  const sk = LEVEL_SKINS.find((x) => x.id === skin) || KATALOG.skin.find((x) => x.id === skin);
+  const sk = LEVEL_SKINS.find((x) => x.id === skin); // v24: skin toko dihapus, hanya skin level
   return cn + ' • Skin ' + (sk ? sk.nama : skin);
 }
 function dimiliki(kind, id) {
@@ -657,7 +688,7 @@ function terpakai(kind, id) {
 function renderToko() {
   renderTokoBagian('character', 'tokoKarakter');
   renderKarakterLevel();
-  renderTokoBagian('skin', 'tokoSkin');
+  // v24: bagian skin toko dihapus — #tokoSkin kini hanya diisi skin level (renderSkinLevel).
   renderSkinLevel();
   renderTokoBagian('powerup', 'tokoPowerup');
   const ps = $('powerupSelect'); const cur = ps.value;

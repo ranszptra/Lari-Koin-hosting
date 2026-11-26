@@ -46,7 +46,7 @@
     <div class="hero-koin"><span>🪙</span><span>🪙</span><span>🪙</span><span>🪙</span></div>
   </div>
   <h2>Runner Coin! 🏃</h2>
-  <div class="notice">🎁 <b>Download &amp; main — tukar koin jadi uang sampai Rp50.000!</b><br>1.000 koin = Rp15 &bull; Penarikan mulai Rp1.000 &bull; Undang teman dapat Rp5.000 per teman.</div>
+  <div class="notice">🎁 <b>Download &amp; main — tukar koin jadi uang sampai Rp50.000!</b><br>1.000 koin = Rp15 &bull; Penarikan mulai Rp1.000 &bull; Undang teman dapat hadiah sampai Rp250.000 (tingkat 3/5/10/20/50/100 teman).</div>
   <p>Masuk sekali ketuk dengan akun Google kamu — akun langsung dibuat kalau belum ada.</p>
   <button id="btnGoogleManual" class="btn-putih" style="width:100%;padding:12px;font-size:16px;margin-top:8px" onclick="loginGoogleManual()">🔑 Login dengan Google</button>
   <label for="authReferrer">Kode undangan teman (opsional)</label>
@@ -166,7 +166,6 @@
         <h3>🎭 Karakter Level — Gratis tiap naik 5 level</h3>
         <p class="muted">Satu karakter baru terbuka tiap naik 5 level. Ketuk karakter yang sudah terbuka untuk memakainya.</p>
         <div id="tokoKarakterLevel" class="karakter-grid"></div>
-        <h3>Skin Karakter</h3>
         <div id="tokoSkin"></div>
         <h3>Power-up</h3>
         <div id="tokoPowerup"></div>
@@ -280,9 +279,11 @@
     <div class="tab-panel" id="tab-undang">
       <!-- UNDANG TEMAN -->
       <section class="card">
-        <h2>👥 Undang Teman — Bonus Rp5.000</h2>
+        <h2>👥 Undang Teman — Hadiah sampai Rp250.000</h2>
         <p>Kode undangan kamu (bagikan nama ini): <b id="kodeInvite">—</b></p>
-        <p class="muted">Teman daftar pakai kode kamu, lalu nonton iklan + selesaikan level — kamu dapat <b>Rp5.000</b> per teman.</p>
+        <p class="muted">Teman daftar pakai kode kamu, lalu nonton <b>10 iklan</b> dan mencapai <b>level 5</b> — temanmu dihitung ke hadiah tingkat di bawah.</p>
+        <h3>🎁 Hadiah Tingkat Invite</h3>
+        <div id="tanggaInvite"><p class="muted">Memuat…</p></div>
         <p style="margin-top:12px"><b>🔗 Link undangan kamu:</b></p>
         <div class="row">
           <input id="inviteLink" type="text" readonly value="" style="flex:2">
