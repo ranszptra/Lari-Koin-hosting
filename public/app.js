@@ -66,20 +66,9 @@ const LEVEL_CHARACTERS = [
   { id: 'char-12', level: 60, nama: 'Paca', img: '/characters/animal-12.jpg', warna: ['#d7ccc8', '#8d6e63', '#fff8e1'] , gradasi: ['#fff8e1', '#d7ccc8', '#8d6e63'], topi: null, kacamata: null, model: 'Alpaca', skala: 0.31 },
 ];
 const GRADASI_DEFAULT = ['#4a2d7a', '#2d1b4d', '#8a6d00'];
-const LEVEL_SKINS = [
-  { id: 'es', level: 5, nama: 'Es', ikon: '❄️', desc: 'Xbot biru es yang sejuk.' },
-  { id: 'sakura', level: 10, nama: 'Sakura', ikon: '🌸', desc: 'Xbot pink bunga sakura.' },
-  { id: 'laut', level: 15, nama: 'Laut', ikon: '🌊', desc: 'Xbot biru laut dalam.' },
-  { id: 'hutan', level: 20, nama: 'Hutan', ikon: '🌿', desc: 'Xbot hijau rimba.' },
-  { id: 'senja', level: 25, nama: 'Senja', ikon: '🌇', desc: 'Xbot ungu senja.' },
-  { id: 'salju', level: 30, nama: 'Salju', ikon: '⛄', desc: 'Xbot putih salju.' },
-  { id: 'lava', level: 35, nama: 'Lava', ikon: '🌋', desc: 'Xbot oranye lava panas.' },
-  { id: 'galaksi', level: 40, nama: 'Galaksi', ikon: '🌌', desc: 'Xbot ungu galaksi.' },
-  { id: 'madu', level: 45, nama: 'Madu', ikon: '🍯', desc: 'Xbot kuning madu.' },
-  { id: 'mint', level: 50, nama: 'Mint', ikon: '🍃', desc: 'Xbot hijau mint segar.' },
-  { id: 'komet', level: 55, nama: 'Komet', ikon: '☄️', desc: 'Xbot oranye komet.' },
-  { id: 'legenda', level: 60, nama: 'Legenda', ikon: '👑', desc: 'Xbot emas legenda — skin terakhir!' }
-];
+/* v26: Skin Level DIHAPUS (perintah Rans — skin karakter juga Xbot, sudah
+   tidak berguna). LEVEL_SKINS + renderSkinLevel + panel tukar set lengkap
+   Rp100.000 dihapus; yang tersisa hanya label karakter hewan. */
 /* Tangga hadiah undang teman (v24) — cermin INVITE_TIERS di db.js.
    Bonus sekali-klaim per tingkat; teman dihitung kalau sudah nonton >=10
    iklan dan mencapai level 5. */
@@ -219,26 +208,117 @@ function beep(freq, dur, type) {
   } catch (e) { /* suara opsional */ }
 }
 
-/* ---------- Musik latar (WebAudio, tanpa file) ---------- */
-let musikTimer = null, musikGain = null, musikLangkah = 0, musikWaktu = 0;
-const MELODI = [523, 659, 784, 659, 880, 784, 659, 523, 587, 659, 784, 880, 784, 659, 587, 523];
-const BAS = [131, 131, 175, 175, 196, 196, 175, 131];
-function nada(freq, mulai, dur, type, vol) {
+/* ---------- Musik latar DJ (WebAudio, 100% sintesis — tanpa file audio) ----------
+ * v27: sequencer gaya DJ remix Indo/TikTok — 130 BPM, kick four-on-the-floor
+ * (jedag-jedug), bass offbeat, hi-hat, clap di ketukan 2 & 4, lead synth
+ * catchy + riser. Semua bunyi dibuat dari oscillator/noise di kode — tidak
+ * ada lagu orang (bebas copyright, aman untuk game penghasil iklan).
+ * Struktur 8 bar yang berulang: 2 bar intro -> 2 bar build -> 4 bar drop.
+ * Scheduler lookahead (jadwalkan 0,5 dtk ke depan tiap 100 ms) supaya loop
+ * mulus tanpa jeda. Level >= 10: layer ekstra (hat 16th + lead lebih keras).
+ * Musik hanya mulai setelah interaksi pengguna (mulaiMusik dipanggil dari
+ * tombol mulai lari / toggle musik) — aturan autoplay browser. */
+let musikTimer = null, musikGain = null, musikLangkah = 0, musikWaktu = 0, djNoise = null;
+const DJ_BPM = 130;
+const DJ_BEAT = 60 / DJ_BPM; // ~0,4615 dtk per ketuk
+const DJ_STEP = DJ_BEAT / 4; // 1 ketuk = 4 langkah (16th)
+const DJ_BAR = 16; // langkah per bar
+const DJ_BARS = 8; // intro 2 + build 2 + drop 4
+const DJ_KICK = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]; // four-on-the-floor
+const DJ_BASS_LANGKAH = [2, 6, 10, 14]; // bass offbeat (funkot)
+const DJ_BASS_NADA = [55, 55, 65.41, 49]; // A1 A1 C2 G1 — satu bar berulang
+const DJ_CLAP = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0]; // ketuk 2 & 4
+const DJ_HAT = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]; // hat 8th
+// Lead orisinal (A minor), 0 = diam. Bar drop genap pakai A, ganjil pakai B.
+const DJ_LEAD_A = [440, 0, 523.25, 0, 659.25, 0, 523.25, 587.33, 440, 0, 523.25, 659.25, 783.99, 659.25, 523.25, 0];
+const DJ_LEAD_B = [440, 0, 523.25, 0, 587.33, 659.25, 587.33, 523.25, 440, 0, 392, 0, 440, 523.25, 587.33, 0];
+function djNoiseBuffer() {
+  if (!djNoise) {
+    djNoise = audioCtx.createBuffer(1, audioCtx.sampleRate, audioCtx.sampleRate);
+    const d = djNoise.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return djNoise;
+}
+function djKick(t, vol) {
   const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-  o.type = type; o.frequency.value = freq;
-  g.gain.setValueAtTime(0.0001, mulai);
-  g.gain.exponentialRampToValueAtTime(vol, mulai + 0.02);
-  g.gain.exponentialRampToValueAtTime(0.0001, mulai + dur);
-  o.connect(g); g.connect(musikGain); o.start(mulai); o.stop(mulai + dur + 0.05);
+  o.type = 'sine';
+  o.frequency.setValueAtTime(160, t);
+  o.frequency.exponentialRampToValueAtTime(42, t + 0.12);
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+  o.connect(g); g.connect(musikGain); o.start(t); o.stop(t + 0.25);
+}
+function djBass(t, freq, vol) {
+  const o = audioCtx.createOscillator(), f = audioCtx.createBiquadFilter(), g = audioCtx.createGain();
+  o.type = 'sawtooth'; o.frequency.value = freq;
+  f.type = 'lowpass'; f.frequency.value = 320; f.Q.value = 4;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+  o.connect(f); f.connect(g); g.connect(musikGain); o.start(t); o.stop(t + 0.25);
+}
+function djHat(t, vol, terbuka) {
+  const src = audioCtx.createBufferSource(); src.buffer = djNoiseBuffer();
+  const f = audioCtx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7500;
+  const g = audioCtx.createGain();
+  const dur = terbuka ? 0.18 : 0.05;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  src.connect(f); f.connect(g); g.connect(musikGain); src.start(t); src.stop(t + dur + 0.02);
+}
+function djClap(t) {
+  [0, 0.025].forEach((dt, i) => {
+    const src = audioCtx.createBufferSource(); src.buffer = djNoiseBuffer();
+    const f = audioCtx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 1.2;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(i ? 0.10 : 0.16, t + dt);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dt + 0.09);
+    src.connect(f); f.connect(g); g.connect(musikGain); src.start(t + dt); src.stop(t + dt + 0.12);
+  });
+}
+function djLead(t, freq, dur, vol) {
+  const o = audioCtx.createOscillator(), f = audioCtx.createBiquadFilter(), g = audioCtx.createGain();
+  o.type = 'square'; o.frequency.value = freq;
+  f.type = 'lowpass'; f.frequency.value = 2200;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(f); f.connect(g); g.connect(musikGain); o.start(t); o.stop(t + dur + 0.05);
+}
+function djRiser(t, dur) {
+  const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+  o.type = 'sawtooth';
+  o.frequency.setValueAtTime(180, t);
+  o.frequency.exponentialRampToValueAtTime(1400, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.10, t + dur);
+  o.connect(g); g.connect(musikGain); o.start(t); o.stop(t + dur + 0.05);
+}
+function djBagian(bar) { return bar < 2 ? 'intro' : bar < 4 ? 'build' : 'drop'; }
+function djIntens() {
+  try { return typeof game !== 'undefined' && game && (game.level || 1) >= 10; } catch (e) { return false; }
 }
 function jadwalMusik() {
   if (!musikNyala || !audioCtx) return;
-  const langkahDur = 0.22;
-  while (musikWaktu < audioCtx.currentTime + 0.6) {
-    const i = musikLangkah % 16;
-    nada(MELODI[i], musikWaktu, 0.2, 'triangle', 0.06);
-    if (i % 2 === 0) nada(BAS[(musikLangkah >> 1) % 8], musikWaktu, 0.4, 'sine', 0.05);
-    musikWaktu += langkahDur; musikLangkah++;
+  while (musikWaktu < audioCtx.currentTime + 0.5) {
+    const bar = Math.floor(musikLangkah / DJ_BAR) % DJ_BARS;
+    const s = musikLangkah % DJ_BAR;
+    const bagian = djBagian(bar);
+    const intens = djIntens();
+    const t = musikWaktu;
+    if (DJ_KICK[s]) djKick(t, bagian === 'intro' ? 0.45 : bagian === 'build' ? 0.7 : 0.9);
+    const idxBas = DJ_BASS_LANGKAH.indexOf(s);
+    if (idxBas >= 0) djBass(t, DJ_BASS_NADA[idxBas], bagian === 'intro' ? 0.10 : bagian === 'build' ? 0.16 : 0.22);
+    if (DJ_HAT[s]) djHat(t, bagian === 'intro' ? 0.03 : bagian === 'build' ? 0.05 : 0.06, s === 14);
+    if (bagian === 'drop' && intens && s % 2 === 1) djHat(t, 0.03, false); // hat 16th di level tinggi
+    if (bagian !== 'intro' && DJ_CLAP[s]) djClap(t);
+    if (bagian === 'drop') {
+      const pola = bar % 2 === 0 ? DJ_LEAD_A : DJ_LEAD_B;
+      if (pola[s]) djLead(t, pola[s], DJ_STEP * 1.8, intens ? 0.09 : 0.07);
+    }
+    if (bagian === 'build' && bar === 3 && s === 0) djRiser(t, DJ_BAR * DJ_STEP);
+    musikWaktu += DJ_STEP; musikLangkah++;
   }
 }
 function mulaiMusik() {
@@ -246,8 +326,8 @@ function mulaiMusik() {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    if (!musikGain) { musikGain = audioCtx.createGain(); musikGain.gain.value = 1; musikGain.connect(audioCtx.destination); }
-    if (!musikTimer) { musikWaktu = audioCtx.currentTime + 0.1; musikTimer = setInterval(jadwalMusik, 200); }
+    if (!musikGain) { musikGain = audioCtx.createGain(); musikGain.gain.value = 0.9; musikGain.connect(audioCtx.destination); }
+    if (!musikTimer) { musikWaktu = audioCtx.currentTime + 0.1; musikTimer = setInterval(jadwalMusik, 100); }
   } catch (e) { /* musik opsional */ }
 }
 function stopMusik() { if (musikTimer) { clearInterval(musikTimer); musikTimer = null; } }
@@ -444,7 +524,7 @@ function renderProfil() {
   const namaInvite = profile.name || (player && player.name) || '';
   const linkEl = $('inviteLink'); if (linkEl) linkEl.value = inviteUrlFor(namaInvite);
   const waEl = $('btnWaInvite'); if (waEl) waEl.href = waInviteUrl(namaInvite);
-  const skinEl = $('skinAktifNama'); if (skinEl) skinEl.textContent = 'Skin aktif: ' + namaKarakterSkinAktif();
+  const karEl = $('karakterAktifNama'); if (karEl) karEl.textContent = 'Karakter aktif: ' + namaKarakterAktif();
   // Kartu + judul karakter aktif (Beranda + hero login).
   const kAktif = karakterAktif();
   const nB = $('berandaCharNama'); if (nB) nB.textContent = kAktif ? (kAktif.nama + ' • Lv ' + kAktif.level) : 'Rex';
@@ -601,7 +681,7 @@ async function muatLeaderboard() {
 $('btnRefreshBoard').addEventListener('click', muatLeaderboard);
 
 /* ---------- Toko ---------- */
-/* Skin level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 skin). Set lengkap bisa ditukar Rp100.000. */
+/* v26: Skin Level dihapus — komentar lama dihapus bersama LEVEL_SKINS di atas. */
 /* Karakter level — GRATIS tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 hewan).
    Kartu gambar di /characters/animal-XX.jpg. Warna [utama, garis, perut]
    dipakai tampilan 2D fallback; `model` + `skala` dipakai model 3D hewan.
@@ -663,17 +743,15 @@ function gantiModel3D() {
   const k = karakterAktif();
   R3.gantiKarakter(k ? k.model : 'Fox', k ? k.skala : 0.512).catch(() => {});
 }
-function namaKarakterSkinAktif() {
+/* v26: label karakter aktif (dulu "Skin aktif") — skin level dihapus, yang
+   tampil hanya nama karakter hewan. */
+function namaKarakterAktif() {
   const char = (profile && profile.equipped && profile.equipped.character) || 'jolly';
-  const skin = (profile && profile.equipped && profile.equipped.skin) || '';
   const k = karakterLevel(char);
   // v25: nama karakter toko lama (jolly/kiko/momo/rex) — toko sudah dihapus,
   // hanya dipakai sebagai label kalau pemain masih memakai karakter lama.
   const NAMA_KARAKTER_LAMA = { jolly: 'Xbot', kiko: 'Xbot Hijau', momo: 'Xbot Pink', rex: 'Xbot Api' };
-  const cn = k ? k.nama : (NAMA_KARAKTER_LAMA[char] || 'Xbot');
-  if (!skin) return cn;
-  const sk = LEVEL_SKINS.find((x) => x.id === skin); // v24: skin toko dihapus, hanya skin level
-  return cn + ' • Skin ' + (sk ? sk.nama : skin);
+  return k ? k.nama : (NAMA_KARAKTER_LAMA[char] || 'Xbot');
 }
 function dimiliki(kind, id) {
   if (!profile) return false;
@@ -689,8 +767,7 @@ function terpakai(kind, id) {
 function renderToko() {
   // v25: toko karakter lama dihapus — hanya grid karakter level + power-up.
   renderKarakterLevel();
-  // v24: bagian skin toko dihapus — #tokoSkin kini hanya diisi skin level (renderSkinLevel).
-  renderSkinLevel();
+  // v26: Skin Level dihapus — toko kini hanya grid karakter level + power-up.
   renderTokoBagian('powerup', 'tokoPowerup');
   const ps = $('powerupSelect'); const cur = ps.value;
   ps.innerHTML = '<option value="">Tanpa power-up</option>';
@@ -723,33 +800,6 @@ function renderTokoBagian(kind, elId) {
     d.appendChild(row); el.appendChild(d);
   });
 }
-/* Skin level (gratis per 5 level) + panel tukar set lengkap → Rp100.000 */
-function renderSkinLevel() {
-  const el = $('tokoSkin');
-  const judul = document.createElement('h4'); judul.textContent = '🎨 Skin Level — Gratis tiap naik 5 level'; el.appendChild(judul);
-  const milik = LEVEL_SKINS.filter((s) => dimiliki('skin', s.id)).length;
-  LEVEL_SKINS.forEach((item) => {
-    const d = document.createElement('div'); d.className = 'toko-item';
-    const punya = dimiliki('skin', item.id);
-    d.innerHTML = '<div class="row"><span class="ikon">' + item.ikon + '</span><div style="flex:1"><b>' + esc(item.nama) + '</b><br><span class="muted">' + esc(item.desc) + '</span><br><span class="small">' + (punya ? (terpakai('skin', item.id) ? '✅ Dipakai' : 'Dimiliki') : '🔒 Terbuka di Lv ' + item.level) + '</span></div></div>';
-    const row = document.createElement('div'); row.className = 'row'; row.style.marginTop = '8px';
-    if (punya) {
-      const b = document.createElement('button'); b.className = 'btn-gelap btn-kecil'; b.textContent = terpakai('skin', item.id) ? 'Dipakai ✓' : 'Pakai';
-      b.disabled = terpakai('skin', item.id);
-      b.addEventListener('click', async () => { try { await api('/api/equip', 'POST', { kind: 'skin', id: item.id }); toast(item.nama + ' dipakai!'); await muatProfil(); } catch (e) { toast(e.message); } });
-      row.appendChild(b);
-    }
-    d.appendChild(row); el.appendChild(d);
-  });
-  const panel = document.createElement('div'); panel.className = 'fullset-panel';
-  const sudah = profile && profile.fullsetClaimed;
-  panel.innerHTML = '<b>🎁 Set Lengkap Skin Level: ' + milik + '/12</b><p class="muted">Kalau 12 skin level sudah lengkap, tukar jadi saldo <b>Rp100.000</b>! (Sekali saja)</p>';
-  const b = document.createElement('button'); b.className = 'btn-emas'; b.textContent = sudah ? '✅ Sudah ditukar Rp100.000' : '💱 Tukar Set Lengkap → Rp100.000';
-  b.disabled = sudah || milik < 12;
-  b.addEventListener('click', async () => { try { await api('/api/skins/fullset-claim', 'POST', {}); toast('Set lengkap ditukar! +Rp100.000 🎉'); await muatProfil(); } catch (e) { toast(e.message); } });
-  panel.appendChild(b); el.appendChild(panel);
-}
-
 /* Grid pilih karakter level (12 karakter, gratis tiap naik 5 level) */
 function renderKarakterLevel() {
   const el = $('tokoKarakterLevel');
@@ -1303,7 +1353,6 @@ async function selesaiLevel() {
       const d = await api('/api/finish-level', 'POST', { level: lvSelesai, coins: game.coins, coinCount: game.coinCount, distance: Math.floor(game.distance), durationMs: Date.now() - (game.mulaiAt || Date.now()) });
       tersimpan = true;
       pesan += '<p>Bonus level: <b>+' + (d.bonus != null ? d.bonus : 0) + '</b> • Total dari lari ini: <b>' + (d.coinsEarned != null ? d.coinsEarned : game.coins) + ' koin</b><br><span class="muted">Saldo sekarang: ' + (d.coins != null ? d.coins : '') + ' koin.</span></p>';
-      if (d.skinsBaru && d.skinsBaru.length) pesan += '<p>🎨 Skin baru terbuka: <b>' + d.skinsBaru.map(esc).join(', ') + '</b> — cek di Toko!</p>';
       if (d.charsBaru && d.charsBaru.length) pesan += '<p>🎭 Karakter baru terbuka: <b>' + d.charsBaru.map(esc).join(', ') + '</b> — cek di Toko!</p>';
       await muatProfil();
     } catch (e) { pesan += '<p class="muted">Gagal menyimpan ke server (' + esc(e.message) + ') — koin lokal tetap tercatat di panel hasil.</p>'; }

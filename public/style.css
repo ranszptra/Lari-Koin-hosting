@@ -169,11 +169,6 @@ body.mode-fullscreen .skill-hud{display:flex;position:absolute;left:50%;transfor
 .pause-overlay button{width:70%}
 
 /* Skin level + tukar set lengkap */
-#tokoSkin h4{margin:14px 0 8px;font-size:15px}
-.fullset-panel{background:#fff8e1;border:2px dashed #d4a017;border-radius:12px;padding:12px;margin-top:12px;text-align:center}
-.fullset-panel p{margin:6px 0 10px}
-.fullset-panel button{width:100%}
-.fullset-panel button:disabled{opacity:.65}
 
 /* Beranda: strip nama karakter aktif di atas canvas 3D */
 .beranda-char-nama{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);z-index:2;background:linear-gradient(180deg,#ffd54a,#f5b301);color:#3b2410;font-weight:800;font-size:13px;padding:5px 14px;border-radius:999px;box-shadow:0 2px 8px rgba(0,0,0,.35);white-space:nowrap}
