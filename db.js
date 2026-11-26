@@ -101,22 +101,25 @@ const CHARACTERS = { jolly: 0, kiko: 50000, momo: 100000, rex: 200000 };
 const SKINS = { emas: 25000, ninja: 50000, astronot: 75000, pelangi: 100000, shadow: 150000 };
 const POWERUPS = { magnet: 2000, perisai: 2000, koinx2: 3000 };
 
-// Karakter level — GRATIS, terbuka otomatis tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 karakter).
-// Kartu gambar di public/characters/char-01.jpg..char-12.webp (gaya streetwear Rans).
-// `warna` = warna utama karakter (dipakai tint Xbot 3D + tampilan 2D fallback).
+// Karakter level — GRATIS, terbuka otomatis tiap naik 5 level (Lv 5 s.d. Lv 60 = 12 hewan).
+// Kartu gambar di public/characters/animal-01.jpg..animal-12.jpg (hewan low-poly).
+// `warna` = warna utama hewan (tampilan 2D fallback + kartu).
+// `model` = berkas model 3D Quaternius di public/models-animals/ (glTF, rigged).
+// `skala` = skala model supaya tinggi hewan ~1,5 unit dunia (diukur dari model, lihat tests/inspect/probe-hewan.mjs).
+// Hewan TIDAK pakai topi/kacamata (topi & kacamata null) dan skin TIDAK mewarnai ulang model 3D.
 const LEVEL_CHARACTERS = [
-  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/char-01.jpg', warna: '#1a1a1a', gradasi: ['#2b2b2b', '#c62828', '#ff5252'], topi: 'cap', kacamata: '#e53935' },
-  { id: 'char-02', level: 10, nama: 'Royal', img: '/characters/char-02.jpg', warna: '#d32f2f', gradasi: ['#ff1744', '#c62828', '#7f0000'], topi: 'beanie', kacamata: '#e53935' },
-  { id: 'char-03', level: 15, nama: 'Sky', img: '/characters/char-03.jpg', warna: '#4fc3f7', gradasi: ['#b3e5fc', '#4fc3f7', '#01579b'], topi: 'beanie', kacamata: '#1565c0' },
-  { id: 'char-04', level: 20, nama: 'Frost', img: '/characters/char-04.jpg', warna: '#90caf9', gradasi: ['#e3f2fd', '#90caf9', '#1565c0'], topi: null, kacamata: null },
-  { id: 'char-05', level: 25, nama: 'Leaf', img: '/characters/char-05.webp', warna: '#66bb6a', gradasi: ['#a5d6a7', '#43a047', '#1b5e20'], topi: 'cap', kacamata: '#111111' },
-  { id: 'char-06', level: 30, nama: 'Violet', img: '/characters/char-06.webp', warna: '#ab47bc', gradasi: ['#ce93d8', '#8e24aa', '#4a148c'], topi: 'beanie', kacamata: '#111111' },
-  { id: 'char-07', level: 35, nama: 'Ember', img: '/characters/char-07.webp', warna: '#fb8c00', gradasi: ['#ffcc80', '#fb8c00', '#bf360c'], topi: 'cap', kacamata: '#111111' },
-  { id: 'char-08', level: 40, nama: 'Bubblegum', img: '/characters/char-08.webp', warna: '#f06292', gradasi: ['#f8bbd0', '#ec407a', '#880e4f'], topi: 'beanie', kacamata: '#111111' },
-  { id: 'char-09', level: 45, nama: 'Solar', img: '/characters/char-09.webp', warna: '#fdd835', gradasi: ['#fff176', '#fdd835', '#f57f17'], topi: 'cap', kacamata: '#111111' },
-  { id: 'char-10', level: 50, nama: 'Aqua', img: '/characters/char-10.webp', warna: '#26a69a', gradasi: ['#80cbc4', '#26a69a', '#004d40'], topi: 'beanie', kacamata: '#111111' },
-  { id: 'char-11', level: 55, nama: 'Shadow', img: '/characters/char-11.webp', warna: '#546e7a', gradasi: ['#90a4ae', '#546e7a', '#11171c'], topi: 'cap', kacamata: '#111111' },
-  { id: 'char-12', level: 60, nama: 'Gold', img: '/characters/char-12.webp', warna: '#ffd700', gradasi: ['#ffe082', '#ffd700', '#8d6e00'], topi: 'cap', kacamata: '#111111' },
+  { id: 'char-01', level: 5, nama: 'Rex', img: '/characters/animal-01.jpg', warna: '#e67e22', gradasi: ['#ffb74d', '#e67e22', '#bf360c'], topi: null, kacamata: null, model: 'Fox', skala: 0.512 },
+  { id: 'char-02', level: 10, nama: 'Fang', img: '/characters/animal-02.jpg', warna: '#7f8c8d', gradasi: ['#bdc3c7', '#7f8c8d', '#2c3e50'], topi: null, kacamata: null, model: 'Wolf', skala: 0.52 },
+  { id: 'char-03', level: 15, nama: 'Snow', img: '/characters/animal-03.jpg', warna: '#90caf9', gradasi: ['#e3f2fd', '#90caf9', '#1565c0'], topi: null, kacamata: null, model: 'Husky', skala: 0.478 },
+  { id: 'char-04', level: 20, nama: 'Mochi', img: '/characters/animal-04.jpg', warna: '#d9a066', gradasi: ['#ffcc80', '#d9a066', '#8d5a2b'], topi: null, kacamata: null, model: 'ShibaInu', skala: 0.541 },
+  { id: 'char-05', level: 25, nama: 'Spirit', img: '/characters/animal-05.jpg', warna: '#8d6e63', gradasi: ['#bcaaa4', '#8d6e63', '#4e342e'], topi: null, kacamata: null, model: 'Horse', skala: 0.36 },
+  { id: 'char-06', level: 30, nama: 'Blanco', img: '/characters/animal-06.jpg', warna: '#eceff1', gradasi: ['#ffffff', '#cfd8dc', '#78909c'], topi: null, kacamata: null, model: 'Horse_White', skala: 0.36 },
+  { id: 'char-07', level: 35, nama: 'Ranger', img: '/characters/animal-07.jpg', warna: '#6d4c41', gradasi: ['#a1887f', '#6d4c41', '#3e2723'], topi: null, kacamata: null, model: 'Stag', skala: 0.284 },
+  { id: 'char-08', level: 40, nama: 'Fawn', img: '/characters/animal-08.jpg', warna: '#a1887f', gradasi: ['#d7ccc8', '#a1887f', '#5d4037'], topi: null, kacamata: null, model: 'Deer', skala: 0.391 },
+  { id: 'char-09', level: 45, nama: 'Dunky', img: '/characters/animal-09.jpg', warna: '#9e9e9e', gradasi: ['#e0e0e0', '#9e9e9e', '#424242'], topi: null, kacamata: null, model: 'Donkey', skala: 0.445 },
+  { id: 'char-10', level: 50, nama: 'Moo', img: '/characters/animal-10.jpg', warna: '#616161', gradasi: ['#e0e0e0', '#9e9e9e', '#212121'], topi: null, kacamata: null, model: 'Cow', skala: 0.31 },
+  { id: 'char-11', level: 55, nama: 'Toro', img: '/characters/animal-11.jpg', warna: '#5d4037', gradasi: ['#8d6e63', '#5d4037', '#3e2723'], topi: null, kacamata: null, model: 'Bull', skala: 0.31 },
+  { id: 'char-12', level: 60, nama: 'Paca', img: '/characters/animal-12.jpg', warna: '#d7ccc8', gradasi: ['#fff8e1', '#d7ccc8', '#8d6e63'], topi: null, kacamata: null, model: 'Alpaca', skala: 0.31 },
 ];
 
 // Karakter level yang BARU terbuka untuk pemain (murni — dipakai server + tes).
